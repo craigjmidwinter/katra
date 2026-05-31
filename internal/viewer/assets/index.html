@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev Log</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="dl-shell">
+  <header class="dl-header">
+    <div class="dl-header-inner">
+      <div class="dl-brand">
+        <span class="dl-brand-mark"></span>
+        <div>
+          <h1 class="dl-title" id="site-title">Dev Log</h1>
+          <p class="dl-desc" id="site-desc"></p>
+        </div>
+      </div>
+      <div class="dl-meta">
+        <span class="dl-stat-chip" id="count-logged">0 logged</span>
+        <span class="dl-stat-chip dl-stat-chip-draft" id="count-drafts">0 in progress</span>
+      </div>
+    </div>
+    <nav class="dl-tagbar" id="tagbar"></nav>
+  </header>
+
+  <main class="dl-main">
+    <section class="dl-section" id="drafts-section" hidden>
+      <div class="dl-section-head">
+        <h2>In Progress</h2>
+        <span class="dl-section-sub">drafts — committed work-in-flight, not yet stamped</span>
+      </div>
+      <div class="dl-feed" id="drafts"></div>
+    </section>
+
+    <section class="dl-section" id="featured-section" hidden>
+      <div class="dl-section-head">
+        <h2>Deep Dives</h2>
+        <span class="dl-section-sub">the long reads — how systems actually work</span>
+      </div>
+      <div class="dl-feed" id="featured"></div>
+    </section>
+
+    <section class="dl-section" id="log-section">
+      <div class="dl-section-head">
+        <h2>The Log</h2>
+        <span class="dl-section-sub">newest first</span>
+      </div>
+      <div class="dl-feed" id="log"></div>
+    </section>
+
+    <p class="dl-empty" id="empty" hidden>No entries yet. Run <code>devlog new "Title"</code>.</p>
+  </main>
+
+  <footer class="dl-footer">
+    <span>built with <a href="https://github.com/craigjmidwinter/devlog">devlog</a></span>
+  </footer>
+</div>
+
+<div class="dl-lightbox" id="lightbox" hidden>
+  <img id="lightbox-img" alt="">
+  <button class="dl-lightbox-close" id="lightbox-close" aria-label="close">×</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

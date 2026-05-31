@@ -1,0 +1,9 @@
+# compiled binaries (this repo builds `devlog` and `devlog-mcp`)
+/devlog
+/devlog-mcp
+/bin/
+/dist/
+*.test
+
+# OS / editor
+.DS_Store
