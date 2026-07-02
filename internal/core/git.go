@@ -113,15 +113,13 @@ func (s *Store) Stamp(e *Entry, hashes []string) error {
 
 // CommitStamp stages and commits the (just stamped) entry file.
 func (s *Store) CommitStamp(e *Entry) error {
-	rel, err := filepath.Rel(s.repoDirOr(s.Dir), e.Path)
-	if err != nil {
-		rel = e.Path
-	}
+	// Use the absolute path: git commands run with cwd = the devlog dir,
+	// so a repo-root-relative pathspec would not resolve.
 	if _, err := s.git("add", "--", e.Path); err != nil {
 		return err
 	}
 	msg := fmt.Sprintf("%s stamp %s (%s)", s.Config.commitPrefix(), e.Slug, strings.Join(e.AllHashes(), ", "))
-	_, err = s.git("commit", "-m", msg, "--", rel)
+	_, err := s.git("commit", "-m", msg, "--", e.Path)
 	return err
 }
 
