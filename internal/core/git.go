@@ -160,7 +160,10 @@ func (s *Store) InstallHook() (string, error) {
 		gitDir = filepath.Join(root, ".git", "hooks")
 	}
 	if !filepath.IsAbs(gitDir) {
-		gitDir = filepath.Join(root, gitDir)
+		// `rev-parse --git-path` is relative to git's working dir (s.Dir), not
+		// the repo root — joining against root leaks the hook up a level for
+		// stores in a subdir and for custom core.hooksPath (e.g. husky).
+		gitDir = filepath.Join(s.Dir, gitDir)
 	}
 	if err := os.MkdirAll(gitDir, 0o755); err != nil {
 		return "", err
