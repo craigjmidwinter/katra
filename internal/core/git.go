@@ -29,6 +29,21 @@ func (s *Store) RepoRoot() (string, error) {
 	return s.git("rev-parse", "--show-toplevel")
 }
 
+// StagedFiles returns the repo-root-relative paths currently staged for commit.
+func (s *Store) StagedFiles() ([]string, error) {
+	out, err := s.git("diff", "--cached", "--name-only")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, l := range strings.Split(strings.TrimSpace(out), "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			files = append(files, l)
+		}
+	}
+	return files, nil
+}
+
 // HeadHash returns the short hash of HEAD.
 func (s *Store) HeadHash() (string, error) {
 	return s.git("rev-parse", "--short", "HEAD")

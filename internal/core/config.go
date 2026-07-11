@@ -38,12 +38,6 @@ type Config struct {
 	Accent       string `yaml:"accent,omitempty"`       // viewer accent colour, e.g. "#e0533d"
 	AutoCommit   bool   `yaml:"autoCommit,omitempty"`   // hook commits the stamp itself
 	CommitPrefix string `yaml:"commitPrefix,omitempty"` // prefix for stamp commits
-
-	// LogDir points the project's blog at a custom, self-contained static site
-	// (its own index.html + assets) instead of the built-in viewer — for repos
-	// with a bespoke, external-facing dev log. Relative to the store dir, or
-	// absolute. The store's nodes still feed the hub board/roadmap.
-	LogDir string `yaml:"logDir,omitempty"`
 }
 
 // DefaultConfig returns the config written by `katra init`.
