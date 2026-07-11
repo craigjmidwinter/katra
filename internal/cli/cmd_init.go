@@ -48,6 +48,13 @@ func initCmd() *cobra.Command {
 			fmt.Printf("  media/     — images, gifs, video, html embeds\n")
 			fmt.Printf("  config.yml — title, accent, hook behaviour\n\n")
 
+			// Register with the global registry so `katra hub` can find it.
+			if err := core.Register(dir); err != nil {
+				fmt.Printf("  (not registered globally: %v)\n", err)
+			} else {
+				fmt.Printf("  registered with the global katra registry (%s)\n", core.RegistryPath())
+			}
+
 			if installHook {
 				if p, err := s.InstallHook(); err != nil {
 					fmt.Printf("  (hook not installed: %v)\n", err)

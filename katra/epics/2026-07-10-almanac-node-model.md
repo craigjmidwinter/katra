@@ -4,7 +4,7 @@ date: "2026-07-10"
 time: "22:56:29"
 summary: Evolve devlog into the five-node wiki model
 type: epic
-status: active
+status: done
 horizon: now
 ---
 
@@ -17,5 +17,3 @@ MVP foundation shipped ([[node-model-mvp-foundation]]); remaining:
 [[rename-devlog-to-almanac-compat-shim]], [[stamp-closes-the-linked-task]],
 [[epic-status-rollup-from-child-tasks]]. Naming settled in
 [[name-the-tool-almanac]].
-
-
