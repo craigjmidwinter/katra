@@ -403,3 +403,32 @@ func TestCloseTasks(t *testing.T) {
 		t.Errorf("decision status mutated to %q; should stay accepted", d.FM.Status)
 	}
 }
+
+// TestEpicRollupStatus checks the epic status computed from child tasks.
+func TestEpicRollupStatus(t *testing.T) {
+	mk := func(status string) Entry {
+		return Entry{FM: Frontmatter{Type: "task", Status: status, Epic: "e"}}
+	}
+	cases := []struct {
+		name  string
+		tasks []Entry
+		want  string
+	}{
+		{"no children", nil, ""},
+		{"all todo", []Entry{mk("todo"), mk("todo")}, "planned"},
+		{"one doing", []Entry{mk("todo"), mk("doing")}, "active"},
+		{"some done", []Entry{mk("done"), mk("todo")}, "active"},
+		{"all done", []Entry{mk("done"), mk("done")}, "done"},
+		{"cut ignored -> all-done", []Entry{mk("done"), mk("cut")}, "done"},
+		{"only cut -> no basis", []Entry{mk("cut")}, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// A task for a different epic must never count.
+			nodes := append([]Entry{{FM: Frontmatter{Type: "task", Status: "todo", Epic: "other"}}}, c.tasks...)
+			if got := EpicRollupStatus(nodes, "e"); got != c.want {
+				t.Errorf("EpicRollupStatus = %q, want %q", got, c.want)
+			}
+		})
+	}
+}

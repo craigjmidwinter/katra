@@ -47,6 +47,7 @@ type entryData struct {
 	// are omitted when empty so entry records stay unchanged in shape.
 	Type         string   `json:"type"`
 	Status       string   `json:"status,omitempty"`
+	Rollup       string   `json:"rollup,omitempty"` // epics: status computed from child tasks (suggestion)
 	Effort       string   `json:"effort,omitempty"`
 	Horizon      string   `json:"horizon,omitempty"`
 	Epic         string   `json:"epic,omitempty"`
@@ -99,6 +100,10 @@ func BuildData(s *core.Store) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", e.Slug, err)
 		}
+		var rollup string
+		if e.Kind() == "epic" {
+			rollup = core.EpicRollupStatus(entries, e.Slug)
+		}
 		data.Entries = append(data.Entries, entryData{
 			Slug:     e.Slug,
 			Title:    e.FM.Title,
@@ -115,6 +120,7 @@ func BuildData(s *core.Store) ([]byte, error) {
 
 			Type:         e.Kind(),
 			Status:       e.FM.Status,
+			Rollup:       rollup,
 			Effort:       e.FM.Effort,
 			Horizon:      e.FM.Horizon,
 			Epic:         e.FM.Epic,

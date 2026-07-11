@@ -133,7 +133,65 @@ func epicCmd() *cobra.Command {
 		Use:   "epic",
 		Short: "Work with epics",
 	}
-	cmd.AddCommand(epicNewCmd())
+	cmd.AddCommand(epicNewCmd(), epicRollupCmd())
+	return cmd
+}
+
+// epicRollupCmd reports (or with --write, applies) each epic's status computed
+// from its child tasks.
+func epicRollupCmd() *cobra.Command {
+	var write bool
+	cmd := &cobra.Command{
+		Use:   "rollup [slug]",
+		Short: "Show each epic's status computed from its child tasks (--write to apply)",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := resolveStore()
+			if err != nil {
+				return err
+			}
+			nodes, err := s.ListNodes()
+			if err != nil {
+				return err
+			}
+			only := ""
+			if len(args) == 1 {
+				only = args[0]
+			}
+			var shown int
+			for i := range nodes {
+				e := nodes[i]
+				if e.Kind() != "epic" || (only != "" && e.Slug != only) {
+					continue
+				}
+				shown++
+				want := core.EpicRollupStatus(nodes, e.Slug)
+				if want == "" {
+					fmt.Printf("%-40s %-9s (no child tasks)\n", e.Slug, e.FM.Status)
+					continue
+				}
+				mark := "="
+				if want != e.FM.Status {
+					mark = "→"
+				}
+				fmt.Printf("%-40s %-9s %s %s\n", e.Slug, e.FM.Status, mark, want)
+				if write && want != e.FM.Status {
+					e.FM.Status = want
+					if err := e.Save(); err != nil {
+						return err
+					}
+				}
+			}
+			if only != "" && shown == 0 {
+				return fmt.Errorf("no epic with slug %q", only)
+			}
+			if write {
+				fmt.Println("✓ applied computed statuses")
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&write, "write", false, "write the computed status back to each epic")
 	return cmd
 }
 

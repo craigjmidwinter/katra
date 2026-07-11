@@ -280,6 +280,39 @@ func (s *Store) CloseTasks(entrySlug string, taskSlugs []string) ([]string, erro
 	return closed, nil
 }
 
+// EpicRollupStatus computes an epic's suggested status from its child tasks
+// (tasks whose FM.Epic == epicSlug), given the full set of nodes. Cut tasks are
+// ignored. It returns "" when the epic has no non-cut child tasks — meaning
+// "no basis; keep the stored status". Otherwise: all done -> "done"; any work
+// started (a done or doing child) -> "active"; all still todo -> "planned".
+func EpicRollupStatus(nodes []Entry, epicSlug string) string {
+	var total, done, started int
+	for _, n := range nodes {
+		if n.Kind() != "task" || n.FM.Epic != epicSlug {
+			continue
+		}
+		switch n.FM.Status {
+		case "cut":
+			continue
+		case "done":
+			done++
+		case "doing":
+			started++
+		}
+		total++
+	}
+	switch {
+	case total == 0:
+		return ""
+	case done == total:
+		return "done"
+	case done > 0 || started > 0:
+		return "active"
+	default:
+		return "planned"
+	}
+}
+
 func fileExists(p string) bool {
 	st, err := os.Stat(p)
 	return err == nil && !st.IsDir()
