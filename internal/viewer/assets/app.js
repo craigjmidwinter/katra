@@ -1,6 +1,6 @@
 // Dev-log viewer. Zero dependencies. Reads data.json (nodes pre-rendered to HTML
 // in Go) and lays them out. Entries flow through the classic zones — drafts →
-// "In Progress", featured → "Deep Dives", the rest → "The Log". The Almanac node
+// "In Progress", featured → "Deep Dives", the rest → "The Log". The Katra node
 // model adds forward-looking views: a Board (tasks by status), a Roadmap (epics
 // & loose tasks by horizon), Decisions and Reference (articles), plus a
 // per-node backlinks panel. Every node card carries id="<slug>" so in-body
@@ -29,7 +29,7 @@
     fetch("data.json", { cache: "no-store" })
       .then(function (r) { return r.json(); })
       .then(function (d) { state.data = d; render(); })
-      .catch(function (e) { console.error("devlog: failed to load data.json", e); });
+      .catch(function (e) { console.error("katra: failed to load data.json", e); });
   }
 
   function render() {

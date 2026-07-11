@@ -24,7 +24,7 @@ func (s *Store) git(args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// RepoRoot returns the git working-tree root containing the devlog.
+// RepoRoot returns the git working-tree root containing the katra.
 func (s *Store) RepoRoot() (string, error) {
 	return s.git("rev-parse", "--show-toplevel")
 }
@@ -113,7 +113,7 @@ func (s *Store) Stamp(e *Entry, hashes []string) error {
 
 // CommitStamp stages and commits the (just stamped) entry file.
 func (s *Store) CommitStamp(e *Entry) error {
-	// Use the absolute path: git commands run with cwd = the devlog dir,
+	// Use the absolute path: git commands run with cwd = the katra dir,
 	// so a repo-root-relative pathspec would not resolve.
 	if _, err := s.git("add", "--", e.Path); err != nil {
 		return err
@@ -130,7 +130,7 @@ func (s *Store) repoDirOr(fallback string) string {
 	return fallback
 }
 
-const hookMarker = "# >>> devlog post-commit >>>"
+const hookMarker = "# >>> katra post-commit >>>"
 
 // InstallHook writes (or refreshes) a post-commit hook that auto-stamps the
 // active draft. It appends to any existing hook, guarded by a marker block so
@@ -167,7 +167,7 @@ func (s *Store) InstallHook() (string, error) {
 	return hookPath, nil
 }
 
-// UninstallHook removes the devlog block from the post-commit hook.
+// UninstallHook removes the katra block from the post-commit hook.
 func (s *Store) UninstallHook() (string, error) {
 	root, err := s.RepoRoot()
 	if err != nil {
@@ -188,12 +188,12 @@ func (s *Store) UninstallHook() (string, error) {
 
 func hookBlock() string {
 	return hookMarker + `
-# Auto-stamps the active devlog draft with the commit you just made.
-# Skips its own stamp commits and commits that only touch the devlog.
-if command -v devlog >/dev/null 2>&1; then
-  devlog hook run --quiet || true
+# Auto-stamps the active katra draft with the commit you just made.
+# Skips its own stamp commits and commits that only touch the katra.
+if command -v katra >/dev/null 2>&1; then
+  katra hook run --quiet || true
 fi
-# <<< devlog post-commit <<<
+# <<< katra post-commit <<<
 `
 }
 
@@ -202,18 +202,18 @@ func stripHookBlock(s string) string {
 	if start < 0 {
 		return s
 	}
-	end := strings.Index(s, "# <<< devlog post-commit <<<")
+	end := strings.Index(s, "# <<< katra post-commit <<<")
 	if end < 0 {
 		return strings.TrimRight(s[:start], "\n") + "\n"
 	}
-	end += len("# <<< devlog post-commit <<<")
+	end += len("# <<< katra post-commit <<<")
 	rest := s[end:]
 	return strings.TrimRight(s[:start], "\n") + "\n" + strings.TrimLeft(rest, "\n")
 }
 
 // HookShouldSkip reports whether the post-commit hook should do nothing for the
-// current HEAD: either it's a devlog stamp commit, or it only touched the
-// devlog directory (avoids stamping our own bookkeeping commits in a loop).
+// current HEAD: either it's a katra stamp commit, or it only touched the
+// katra directory (avoids stamping our own bookkeeping commits in a loop).
 func (s *Store) HookShouldSkip() (bool, error) {
 	msg, err := s.git("log", "-1", "--format=%s")
 	if err != nil {

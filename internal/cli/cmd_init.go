@@ -16,7 +16,7 @@ func initCmd() *cobra.Command {
 	var here, installHook bool
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Create a devlog in this repository",
+		Short: "Create a katra in this repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			wd, _ := os.Getwd()
 			base := wd
@@ -38,12 +38,12 @@ func initCmd() *cobra.Command {
 			}
 			// a welcome draft so the page renders something immediately
 			_, _ = s.NewEntry(core.Frontmatter{
-				Title:   "Hello, devlog",
+				Title:   "Hello, katra",
 				Tags:    []string{"meta"},
 				Summary: "First entry — delete me.",
 			}, sampleBody)
 
-			fmt.Printf("✓ devlog created at %s\n", rel(wd, dir))
+			fmt.Printf("✓ katra created at %s\n", rel(wd, dir))
 			fmt.Printf("  entries/   — one markdown file per post\n")
 			fmt.Printf("  media/     — images, gifs, video, html embeds\n")
 			fmt.Printf("  config.yml — title, accent, hook behaviour\n\n")
@@ -55,13 +55,13 @@ func initCmd() *cobra.Command {
 					fmt.Printf("✓ post-commit hook installed at %s\n", rel(wd, p))
 				}
 			}
-			fmt.Printf("\nNext:  devlog serve     # open the live page\n")
-			fmt.Printf("       devlog new \"…\"    # start an entry\n")
+			fmt.Printf("\nNext:  katra serve     # open the live page\n")
+			fmt.Printf("       katra new \"…\"    # start an entry\n")
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&title, "title", "", "dev log title (default: repo name)")
-	cmd.Flags().BoolVar(&here, "here", false, "create the devlog in the current directory, not the repo root")
+	cmd.Flags().BoolVar(&here, "here", false, "create the katra in the current directory, not the repo root")
 	cmd.Flags().BoolVar(&installHook, "install-hook", false, "also install the auto-stamp post-commit hook")
 	return cmd
 }
@@ -89,7 +89,7 @@ right away.
 
 ## How it works
 
-- ` + "`devlog new \"Title\"`" + ` starts a draft (a markdown file in ` + "`entries/`" + `).
+- ` + "`katra new \"Title\"`" + ` starts a draft (a markdown file in ` + "`entries/`" + `).
 - Write the *why*, not a paraphrased diff. Drop in screenshots and components.
 - At commit time it gets stamped with the hash + diffstat and drops into the log.
 
@@ -101,7 +101,7 @@ Embed components by fencing them with a registered language:
 This is a callout. Markdown **works** inside it.
 ` + "```" + `
 
-Add media with ` + "`devlog capture <file>`" + `, before/after sliders with
-` + "`devlog compare <before> <after>`" + `, and interactive HTML artifacts with an
-` + "`embed`" + ` block. Then run ` + "`devlog serve`" + ` and watch it live-reload.
+Add media with ` + "`katra capture <file>`" + `, before/after sliders with
+` + "`katra compare <before> <after>`" + `, and interactive HTML artifacts with an
+` + "`embed`" + ` block. Then run ` + "`katra serve`" + ` and watch it live-reload.
 `

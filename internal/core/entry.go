@@ -39,7 +39,7 @@ type Frontmatter struct {
 	Featured bool     `yaml:"featured,omitempty"` // lands in the "Deep Dives" zone
 	Pinned   bool     `yaml:"pinned,omitempty"`
 
-	// Node-model fields (Almanac). Empty Type means "entry" for back-compat.
+	// Node-model fields (Katra). Empty Type means "entry" for back-compat.
 	Type         string   `yaml:"type,omitempty"`          // "" or "entry" = entry; else task|epic|decision|article
 	Status       string   `yaml:"status,omitempty"`        // task: todo|doing|done|cut ; epic: planned|active|done|cut ; decision: proposed|accepted|superseded|deprecated
 	Effort       string   `yaml:"effort,omitempty"`        // S|M|L
@@ -51,7 +51,7 @@ type Frontmatter struct {
 	SupersededBy []string `yaml:"superseded-by,omitempty"` // mirror of supersedes
 }
 
-// Entry is one devlog post: a markdown file with YAML frontmatter.
+// Entry is one katra post: a markdown file with YAML frontmatter.
 type Entry struct {
 	Path string      // absolute path to the .md file
 	Slug string      // filename minus the date prefix and extension

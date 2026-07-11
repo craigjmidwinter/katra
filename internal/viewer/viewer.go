@@ -43,7 +43,7 @@ type entryData struct {
 	Featured bool       `json:"featured"`
 	HTML     string     `json:"html"`
 
-	// Node-model fields (Almanac). "type" is always set (Kind()); the rest
+	// Node-model fields (Katra). "type" is always set (Kind()); the rest
 	// are omitted when empty so entry records stay unchanged in shape.
 	Type         string   `json:"type"`
 	Status       string   `json:"status,omitempty"`
@@ -55,7 +55,7 @@ type entryData struct {
 	Supersedes   []string `json:"supersedes,omitempty"`
 	SupersededBy []string `json:"supersededBy,omitempty"`
 
-	// Resolved link graph (Almanac wiki). Each ref is {slug,title,type}.
+	// Resolved link graph (Katra wiki). Each ref is {slug,title,type}.
 	// Links = outbound (body [[wikilinks]] + structured edges); Backlinks =
 	// "what links here". Only refs to real nodes appear; omitted when empty.
 	Links     []linkRef `json:"links,omitempty"`

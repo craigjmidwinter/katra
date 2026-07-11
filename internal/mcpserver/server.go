@@ -1,6 +1,7 @@
-// Package mcpserver exposes the devlog core operations as MCP tools so any
+// Package mcpserver exposes the katra core operations as MCP tools so any
 // agent or tooling can drive the dev log structurally (not just by shelling out
-// to the CLI). It resolves the devlog from $DEVLOG_DIR or the process cwd.
+// to the CLI). It resolves the katra from $KATRA_DIR (or legacy $DEVLOG_DIR),
+// else the process cwd.
 package mcpserver
 
 import (
@@ -17,19 +18,19 @@ import (
 
 // Run starts the MCP server over stdio.
 func Run(version string) error {
-	s := server.NewMCPServer("devlog", version)
+	s := server.NewMCPServer("katra", version)
 
-	s.AddTool(mcp.NewTool("devlog_list",
+	s.AddTool(mcp.NewTool("katra_list",
 		mcp.WithDescription("List dev log entries (newest first). Returns slug, title, date, draft status, hashes and tags."),
 		mcp.WithBoolean("drafts_only", mcp.Description("Only return unstamped drafts.")),
 	), handleList)
 
-	s.AddTool(mcp.NewTool("devlog_get",
+	s.AddTool(mcp.NewTool("katra_get",
 		mcp.WithDescription("Get one entry's frontmatter and raw markdown body by slug."),
 		mcp.WithString("slug", mcp.Required(), mcp.Description("The entry slug.")),
 	), handleGet)
 
-	s.AddTool(mcp.NewTool("devlog_new",
+	s.AddTool(mcp.NewTool("katra_new",
 		mcp.WithDescription("Create a new draft entry. Returns its slug. Write the *why*, not a paraphrased diff."),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Entry title.")),
 		mcp.WithString("body", mcp.Description("Initial markdown body.")),
@@ -38,13 +39,13 @@ func Run(version string) error {
 		mcp.WithBoolean("featured", mcp.Description("Mark as a Deep Dive (long read).")),
 	), handleNew)
 
-	s.AddTool(mcp.NewTool("devlog_append",
+	s.AddTool(mcp.NewTool("katra_append",
 		mcp.WithDescription("Append markdown to a draft. Defaults to the active draft if slug is omitted. Rich components are fenced code blocks: ```embed, ```compare, ```gallery, ```video, ```note, ```warning."),
 		mcp.WithString("markdown", mcp.Required(), mcp.Description("Markdown to append.")),
 		mcp.WithString("slug", mcp.Description("Target entry slug (default: active draft).")),
 	), handleAppend)
 
-	s.AddTool(mcp.NewTool("devlog_capture",
+	s.AddTool(mcp.NewTool("katra_capture",
 		mcp.WithDescription("Import a media file (image/gif/video/html) into the dev log and append it to a draft. Use this for screenshots, animation gifs, and interactive html artifacts."),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Path to the media file to import.")),
 		mcp.WithString("caption", mcp.Description("Caption for the media.")),
@@ -52,7 +53,7 @@ func Run(version string) error {
 		mcp.WithString("as", mcp.Description("Force kind: image|video|embed.")),
 	), handleCapture)
 
-	s.AddTool(mcp.NewTool("devlog_compare",
+	s.AddTool(mcp.NewTool("katra_compare",
 		mcp.WithDescription("Import two images and append a before/after comparison slider to a draft."),
 		mcp.WithString("before", mcp.Required(), mcp.Description("Path to the 'before' image.")),
 		mcp.WithString("after", mcp.Required(), mcp.Description("Path to the 'after' image.")),
@@ -60,20 +61,20 @@ func Run(version string) error {
 		mcp.WithString("slug", mcp.Description("Target entry slug (default: active draft).")),
 	), handleCompare)
 
-	s.AddTool(mcp.NewTool("devlog_stamp",
+	s.AddTool(mcp.NewTool("katra_stamp",
 		mcp.WithDescription("Stamp a draft with its commit hash(es) + computed diffstat, moving it from In Progress into the log. Defaults to HEAD and the active draft."),
 		mcp.WithString("hashes", mcp.Description("Comma-separated commit hash(es). Default: HEAD.")),
 		mcp.WithString("slug", mcp.Description("Target entry slug (default: active draft).")),
 	), handleStamp)
 
-	// --- Almanac node-model tools -----------------------------------------
+	// --- Katra node-model tools -----------------------------------------
 
-	s.AddTool(mcp.NewTool("devlog_nodes",
+	s.AddTool(mcp.NewTool("katra_nodes",
 		mcp.WithDescription("List nodes of a given type (newest first). Returns slug, title, type, date, status and other node-model fields. Omit type to list every node type."),
 		mcp.WithString("type", mcp.Description("Node type to list: entry|task|epic|decision|article. Empty = all types.")),
 	), handleNodes)
 
-	s.AddTool(mcp.NewTool("devlog_task_new",
+	s.AddTool(mcp.NewTool("katra_task_new",
 		mcp.WithDescription("Create a new task node (status defaults to todo). Returns its slug."),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Task title.")),
 		mcp.WithString("body", mcp.Description("Initial markdown body.")),
@@ -82,25 +83,25 @@ func Run(version string) error {
 		mcp.WithString("tags", mcp.Description("Comma-separated tags.")),
 	), handleTaskNew)
 
-	s.AddTool(mcp.NewTool("devlog_task_list",
+	s.AddTool(mcp.NewTool("katra_task_list",
 		mcp.WithDescription("List task nodes (newest first). Optionally filter by status."),
 		mcp.WithString("status", mcp.Description("Filter to this status: todo|doing|done|cut.")),
 	), handleTaskList)
 
-	s.AddTool(mcp.NewTool("devlog_task_set_status",
+	s.AddTool(mcp.NewTool("katra_task_set_status",
 		mcp.WithDescription("Set a task's status (todo|doing|done|cut)."),
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Task slug.")),
 		mcp.WithString("status", mcp.Required(), mcp.Description("New status: todo|doing|done|cut.")),
 	), handleTaskSetStatus)
 
-	s.AddTool(mcp.NewTool("devlog_epic_new",
+	s.AddTool(mcp.NewTool("katra_epic_new",
 		mcp.WithDescription("Create a new epic node. Returns its slug."),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Epic title.")),
 		mcp.WithString("body", mcp.Description("Initial markdown body.")),
 		mcp.WithString("horizon", mcp.Description("Planning horizon: now|next|later.")),
 	), handleEpicNew)
 
-	s.AddTool(mcp.NewTool("devlog_decide",
+	s.AddTool(mcp.NewTool("katra_decide",
 		mcp.WithDescription("Create a new decision (ADR) node. Returns its slug."),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Decision title.")),
 		mcp.WithString("body", mcp.Description("Initial markdown body.")),
@@ -108,7 +109,7 @@ func Run(version string) error {
 		mcp.WithString("entry", mcp.Description("The entry slug that recorded/occasioned this decision.")),
 	), handleDecide)
 
-	s.AddTool(mcp.NewTool("devlog_article_new",
+	s.AddTool(mcp.NewTool("katra_article_new",
 		mcp.WithDescription("Create a new article (evergreen reference) node. Returns its slug."),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Article title.")),
 		mcp.WithString("body", mcp.Description("Initial markdown body.")),
@@ -119,7 +120,7 @@ func Run(version string) error {
 }
 
 func store() (*core.Store, error) {
-	start := os.Getenv("DEVLOG_DIR")
+	start := core.EnvDir()
 	if start == "" {
 		start, _ = os.Getwd()
 	}
@@ -475,7 +476,7 @@ func resolveEntry(s *core.Store, slug string) (*core.Entry, error) {
 		return nil, err
 	}
 	if e == nil {
-		return nil, fmt.Errorf("no active draft; pass slug or create one with devlog_new")
+		return nil, fmt.Errorf("no active draft; pass slug or create one with katra_new")
 	}
 	return e, nil
 }

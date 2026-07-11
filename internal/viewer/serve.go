@@ -159,7 +159,7 @@ func (h *reloadHub) broadcast(msg string) {
 	}
 }
 
-// watch polls the devlog dir's mtimes and broadcasts a reload on any change.
+// watch polls the katra dir's mtimes and broadcasts a reload on any change.
 func watch(dir string, hub *reloadHub) {
 	last := ""
 	for {

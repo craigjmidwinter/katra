@@ -2,14 +2,14 @@
 
 **Status:** proposed (2026-07-10)
 **Type:** article (design doc — the first one the model describes)
-**Supersedes:** nothing yet; this is the founding spec for devlog's evolution
+**Supersedes:** nothing yet; this is the founding spec for katra's evolution
 from a dev *log* into a git-committed, markdown-native **project wiki**.
 
 ---
 
 ## 1. Why this exists
 
-devlog today does one thing well: it chronicles the **past** — one markdown
+katra today does one thing well: it chronicles the **past** — one markdown
 entry per chunk of work, stamped to the commit that produced it. But across a
 month of real projects, a second, complementary habit kept appearing on its
 own, in five mutually-incompatible shapes:
@@ -22,14 +22,14 @@ own, in five mutually-incompatible shapes:
 | holo-top | dated `docs/ROADMAP-2026-07.md` + milestone table | in-prose "NEXT / deferred" + gate table |
 | chesscast | 4-tier ROADMAP → SPRINT → TASKS_* → .taskqueue | `[ ]/[x]` checkboxes + P0/P1/P2 tiers |
 | caststudio | per-feature `<feature>-roadmap.md`, phased | checkboxes + effort tags + ASCII deps |
-| gta-vr / skyhawk | prose `STATUS.md` / `backlog.md` **+ a devlog** | CAPS tags, `~~strike~~`, `[NEXT]` |
+| gta-vr / skyhawk | prose `STATUS.md` / `backlog.md` **+ a katra** | CAPS tags, `~~strike~~`, `[NEXT]` |
 | cc-cockpit | `.taskqueue/pipeline.md` stage-machine | queue enum: planning→…→done |
 
 Two repos (**gta-vr**, **skyhawk**) had already paired a forward ledger with a
-devlog and coupled them **by hand** through the commit hash. skyhawk even wrote
+katra and coupled them **by hand** through the commit hash. skyhawk even wrote
 the charter verbatim in its backlog footer:
 
-> *"keep this file in sync with the session task list … the devlog carries the
+> *"keep this file in sync with the session task list … the katra carries the
 > history, this file carries the future."*
 
 That sentence is the whole design. There are two genres — a **backward,
@@ -55,7 +55,7 @@ edges are the skeleton, wikilinks are the connective tissue on top.
 Folder = type. Frontmatter `status` = position in lifecycle. Five types:
 
 ```
-devlog/
+katra/
   config.yml
   media/
   entries/     # the past — frozen, stamped to a commit  (exists today)
@@ -112,7 +112,7 @@ tags: [filler]
 - [ ] …
 ```
 
-- `status: doing` is the exact analog of a devlog **draft** — work started, no
+- `status: doing` is the exact analog of a katra **draft** — work started, no
   record yet.
 - `cut` is a first-class terminal state (not deletion) so the *reasons* survive
   — every repo kept a "deferred / cut with reasons" graveyard.
@@ -224,7 +224,7 @@ Today, in gta-vr and skyhawk, this is done by hand:
 
 ```
 epic (future) → task (todo)
-   → start work        task: doing            (≙ a devlog draft opens)
+   → start work        task: doing            (≙ a katra draft opens)
    → write the entry   entry drafted
    → commit + stamp    entry frozen to hash
         └─ stamp also: task → done, task.entry ← <entry-slug>
@@ -251,9 +251,9 @@ than per-repo.
 
 ## 8. Open questions
 
-1. ~~**Naming.**~~ **RESOLVED → "Almanac"** (see `docs/decisions/0001-name-the-tool-almanac.md`).
-   The five node types map onto a traditional almanac's sections. Rename
-   execution is deferred to its own task with a `devlog/`→`almanac/`
+1. ~~**Naming.**~~ **RESOLVED → "Katra"** (see `docs/decisions/0001-name-the-tool-katra.md`).
+   The five node types map onto a traditional katra's sections. Rename
+   execution is deferred to its own task with a `katra/`→`katra/`
    compatibility shim; the name itself is settled.
 2. **Epic status: computed or hand-set?** Rolling up from child tasks is clean,
    but an epic is sometimes "done enough" with tasks still open. Proposal:
@@ -261,10 +261,10 @@ than per-repo.
 3. **Wikilink identity.** Slug-based `[[slug]]` (Obsidian-style, matches the
    `[[…]]` already used in fitness). Confirm slugs are the stable node ID and
    are unique across types, or namespace them (`[[task:foo]]`).
-4. **CLI surface.** Likely `devlog task new|start`, `devlog epic new`,
-   `devlog decide "…"`, `devlog article new` — plus `stamp` learning to close
+4. **CLI surface.** Likely `katra task new|start`, `katra epic new`,
+   `katra decide "…"`, `katra article new` — plus `stamp` learning to close
    tasks. Exact verbs TBD.
-5. **MCP parity.** The `devlog-mcp` server needs the same new operations so
+5. **MCP parity.** The `katra-mcp` server needs the same new operations so
    agents can drive the full model, not just entries.
 
 ## 9. What we are *not* doing

@@ -1,4 +1,4 @@
-# devlog
+# katra
 
 A committed, rich-component **dev log you write as you build** — markdown
 entries with embedded interactive components, stamped automatically with the
@@ -9,18 +9,18 @@ the why, the dead ends, the screenshots and animations — and never lose a draf
 to a "promote" step that gets skipped.*
 
 ```
-devlog init                       # scaffold devlog/ in your repo
-devlog new "Reworked the swing"   # start a draft (a markdown file)
-devlog capture shot.png           # drop a screenshot into the current draft
-devlog compare before.png after.png
-devlog serve                      # live page on the LAN, reloads as you write
+katra init                       # scaffold katra/ in your repo
+katra new "Reworked the swing"   # start a draft (a markdown file)
+katra capture shot.png           # drop a screenshot into the current draft
+katra compare before.png after.png
+katra serve                      # live page on the LAN, reloads as you write
 # … you commit your code …
-devlog stamp                      # draft → logged, with hash + diffstat
+katra stamp                      # draft → logged, with hash + diffstat
 ```
 
 ## Why it's built this way
 
-- **One markdown file per entry** (`devlog/entries/2026-05-31-slug.md`), with
+- **One markdown file per entry** (`katra/entries/2026-05-31-slug.md`), with
   YAML frontmatter. No single giant file to corrupt or fight merge conflicts in.
 - **A draft is just an entry with no commit hash.** It shows up immediately in
   the **In Progress** panel — there's no scratch file and no separate "promote"
@@ -33,7 +33,7 @@ devlog stamp                      # draft → logged, with hash + diffstat
 ## Storage layout
 
 ```
-devlog/
+katra/
   config.yml        # title, accent colour, hook behaviour
   entries/          # one .md per post (YAML frontmatter + markdown body)
   media/            # images, gifs, video, html embeds
@@ -103,32 +103,32 @@ extension surface.
 
 | Command | What it does |
 |---|---|
-| `devlog init [--title T] [--install-hook]` | Scaffold a devlog in the repo |
-| `devlog new "Title" [--tags a,b] [--featured]` | Start a draft entry |
-| `devlog append [text] [--entry slug] [--file -]` | Append markdown to a draft |
-| `devlog capture <file> [--caption C]` | Import media into the active draft |
-| `devlog compare <before> <after>` | Add a before/after slider |
-| `devlog stamp [--hash H…] [--commit]` | Stamp the draft with commit + diffstat |
-| `devlog list [--drafts] [--json]` | List entries |
-| `devlog serve [--port N]` | Live, auto-reloading page on the LAN |
-| `devlog build [--out dir]` | Build a static site (GitHub Pages, etc.) |
-| `devlog hook install \| uninstall` | Manage the auto-stamp git hook |
-| `devlog doctor` | Find dangling media + parse errors |
+| `katra init [--title T] [--install-hook]` | Scaffold a katra in the repo |
+| `katra new "Title" [--tags a,b] [--featured]` | Start a draft entry |
+| `katra append [text] [--entry slug] [--file -]` | Append markdown to a draft |
+| `katra capture <file> [--caption C]` | Import media into the active draft |
+| `katra compare <before> <after>` | Add a before/after slider |
+| `katra stamp [--hash H…] [--commit]` | Stamp the draft with commit + diffstat |
+| `katra list [--drafts] [--json]` | List entries |
+| `katra serve [--port N]` | Live, auto-reloading page on the LAN |
+| `katra build [--out dir]` | Build a static site (GitHub Pages, etc.) |
+| `katra hook install \| uninstall` | Manage the auto-stamp git hook |
+| `katra doctor` | Find dangling media + parse errors |
 
 ## Git integration
 
-`devlog stamp` reads `git` to resolve the hash and compute the diffstat
-(`--numstat`). For a chapter of small commits: `devlog stamp --hash a,b,c`.
+`katra stamp` reads `git` to resolve the hash and compute the diffstat
+(`--numstat`). For a chapter of small commits: `katra stamp --hash a,b,c`.
 
 The optional **post-commit hook** removes the "forgot to stamp" failure mode
 entirely:
 
 ```
-devlog hook install
+katra hook install
 ```
 
 After each commit it stamps the active draft with that commit. It skips its own
-bookkeeping commits and commits that only touch the devlog. By default the stamp
+bookkeeping commits and commits that only touch the katra. By default the stamp
 is left as a working-tree change for you to commit; set `autoCommit: true` in
 `config.yml` to have it commit the stamp itself.
 
@@ -136,36 +136,36 @@ is left as a working-tree change for you to commit; set `autoCommit: true` in
 
 Two surfaces let an agent drive the log while it works:
 
-- **CLI** — agents shell out to `devlog new/append/capture/compare/stamp`.
-- **MCP server** — `devlog-mcp` exposes `devlog_list`, `devlog_get`,
-  `devlog_new`, `devlog_append`, `devlog_capture`, `devlog_compare`,
-  `devlog_stamp` over stdio. Add to `.mcp.json`:
+- **CLI** — agents shell out to `katra new/append/capture/compare/stamp`.
+- **MCP server** — `katra-mcp` exposes `katra_list`, `katra_get`,
+  `katra_new`, `katra_append`, `katra_capture`, `katra_compare`,
+  `katra_stamp` over stdio. Add to `.mcp.json`:
 
   ```json
   {
     "mcpServers": {
-      "devlog": { "command": "devlog-mcp" }
+      "katra": { "command": "katra-mcp" }
     }
   }
   ```
 
-  It resolves the devlog from `$DEVLOG_DIR` or the working directory.
+  It resolves the katra from `$DEVLOG_DIR` or the working directory.
 
 A **Claude Code skill** is in [`skill/`](skill/SKILL.md); symlink it into your
-skills directory to invoke the workflow as `/devlog`.
+skills directory to invoke the workflow as `/katra`.
 
 ## Install
 
 ```
-go install github.com/craigjmidwinter/devlog/cmd/devlog@latest
-go install github.com/craigjmidwinter/devlog/cmd/devlog-mcp@latest
+go install github.com/craigjmidwinter/katra/cmd/katra@latest
+go install github.com/craigjmidwinter/katra/cmd/katra-mcp@latest
 ```
 
 Or from a clone:
 
 ```
-go build -o ~/bin/devlog ./cmd/devlog
-go build -o ~/bin/devlog-mcp ./cmd/devlog-mcp
+go build -o ~/bin/katra ./cmd/katra
+go build -o ~/bin/katra-mcp ./cmd/katra-mcp
 ```
 
 ## License

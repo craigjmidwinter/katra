@@ -42,7 +42,7 @@ func hookInstallCmd() *cobra.Command {
 func hookUninstallCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "uninstall",
-		Short: "Remove the devlog post-commit hook",
+		Short: "Remove the katra post-commit hook",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, err := resolveStore()
 			if err != nil {
@@ -52,7 +52,7 @@ func hookUninstallCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("✓ removed devlog hook from %s\n", rel(mustWd(), p))
+			fmt.Printf("✓ removed katra hook from %s\n", rel(mustWd(), p))
 			return nil
 		},
 	}
@@ -69,7 +69,7 @@ func hookRunCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, err := resolveStore()
 			if err != nil {
-				return nil // not in a devlog repo — silently no-op
+				return nil // not in a katra repo — silently no-op
 			}
 			skip, err := s.HookShouldSkip()
 			if err != nil || skip {
@@ -87,12 +87,12 @@ func hookRunCmd() *cobra.Command {
 				return nil
 			}
 			if !quiet {
-				fmt.Printf("devlog: stamped %q with %s\n", e.Slug, head)
+				fmt.Printf("katra: stamped %q with %s\n", e.Slug, head)
 			}
 			if s.Config.AutoCommit {
 				_ = s.CommitStamp(e)
 			} else if !quiet {
-				fmt.Printf("devlog: review + commit %s\n", rel(mustWd(), e.Path))
+				fmt.Printf("katra: review + commit %s\n", rel(mustWd(), e.Path))
 			}
 			return nil
 		},

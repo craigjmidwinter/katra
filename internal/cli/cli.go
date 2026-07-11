@@ -1,4 +1,4 @@
-// Package cli wires the devlog subcommands. Every command is a thin shell over
+// Package cli wires the katra subcommands. Every command is a thin shell over
 // internal/core (and internal/viewer); the same operations are also exposed
 // over MCP, so the logic stays in core, not here.
 package cli
@@ -13,10 +13,10 @@ import (
 
 var version = "0.1.0"
 
-// Execute runs the devlog CLI.
+// Execute runs the katra CLI.
 func Execute() {
 	root := &cobra.Command{
-		Use:           "devlog",
+		Use:           "katra",
 		Short:         "A committed, rich-component dev log you write as you build",
 		Version:       version,
 		SilenceUsage:  true,
@@ -45,9 +45,10 @@ func Execute() {
 	}
 }
 
-// resolveStore finds the devlog for the current directory (or $DEVLOG_DIR).
+// resolveStore finds the katra for the current directory (or $KATRA_DIR,
+// falling back to the legacy $DEVLOG_DIR).
 func resolveStore() (*core.Store, error) {
-	if env := os.Getenv("DEVLOG_DIR"); env != "" {
+	if env := core.EnvDir(); env != "" {
 		return core.FindStore(env)
 	}
 	wd, err := os.Getwd()

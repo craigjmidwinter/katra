@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-// Store is a single devlog: a directory containing config.yml, entries/, media/.
+// Store is a single katra: a directory containing config.yml, entries/, media/.
 type Store struct {
-	Dir    string // the devlog directory (holds config.yml)
+	Dir    string // the katra directory (holds config.yml)
 	Config Config
 }
 
@@ -52,8 +52,8 @@ func (s *Store) DirForType(t string) string {
 // MediaDir is where imported images/gifs/video/embeds live.
 func (s *Store) MediaDir() string { return filepath.Join(s.Dir, "media") }
 
-// FindStore walks up from start looking for a devlog directory. It matches
-// either `start/.../devlog/config.yml` or a `config.yml` in an ancestor itself.
+// FindStore walks up from start looking for a katra directory. It matches
+// either `start/.../katra/config.yml` or a `config.yml` in an ancestor itself.
 func FindStore(start string) (*Store, error) {
 	dir, err := filepath.Abs(start)
 	if err != nil {
@@ -63,9 +63,12 @@ func FindStore(start string) (*Store, error) {
 		if fileExists(filepath.Join(dir, ConfigFile)) && dirExists(filepath.Join(dir, "entries")) {
 			return openStore(dir)
 		}
-		cand := filepath.Join(dir, DefaultDirName, ConfigFile)
-		if fileExists(cand) {
-			return openStore(filepath.Join(dir, DefaultDirName))
+		// Prefer the current dir name; fall back to the legacy one so repos
+		// created before the rename resolve without migration.
+		for _, name := range []string{DefaultDirName, LegacyDirName} {
+			if fileExists(filepath.Join(dir, name, ConfigFile)) {
+				return openStore(filepath.Join(dir, name))
+			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -83,10 +86,10 @@ func openStore(dir string) (*Store, error) {
 	return &Store{Dir: dir, Config: cfg}, nil
 }
 
-// InitStore creates a new devlog directory at dir with the given title.
+// InitStore creates a new katra directory at dir with the given title.
 func InitStore(dir, title string) (*Store, error) {
 	if fileExists(filepath.Join(dir, ConfigFile)) {
-		return nil, fmt.Errorf("devlog already exists at %s", dir)
+		return nil, fmt.Errorf("katra already exists at %s", dir)
 	}
 	for _, d := range []string{
 		dir,

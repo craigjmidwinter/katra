@@ -12,7 +12,7 @@ func captureCmd() *cobra.Command {
 	var noAppend bool
 	cmd := &cobra.Command{
 		Use:   "capture <file>",
-		Short: "Import media into the devlog and add it to a draft",
+		Short: "Import media into the katra and add it to a draft",
 		Args:  cobra.ExactArgs(1),
 		Long: "Copies an image / gif / video / html artifact into media/ and appends\n" +
 			"the right block to the active draft (or --entry). Use --no-append to\n" +

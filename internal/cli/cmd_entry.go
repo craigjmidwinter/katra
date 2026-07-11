@@ -113,7 +113,7 @@ func targetEntry(s *core.Store, slug string) (*core.Entry, error) {
 		return nil, err
 	}
 	if e == nil {
-		return nil, fmt.Errorf("no active draft — pass --entry <slug> or `devlog new`")
+		return nil, fmt.Errorf("no active draft — pass --entry <slug> or `katra new`")
 	}
 	return e, nil
 }

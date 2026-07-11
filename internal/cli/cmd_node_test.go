@@ -26,7 +26,7 @@ func runNodeCmd(t *testing.T, storeDir string, args ...string) (string, error) {
 	os.Stdout = w
 	defer func() { os.Stdout = orig }()
 
-	root := &cobra.Command{Use: "devlog", SilenceUsage: true, SilenceErrors: true}
+	root := &cobra.Command{Use: "katra", SilenceUsage: true, SilenceErrors: true}
 	root.AddCommand(taskCmd(), epicCmd(), decideCmd(), articleCmd())
 	root.SetOut(w)
 	root.SetErr(w)

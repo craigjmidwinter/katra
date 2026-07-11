@@ -7,8 +7,10 @@ tags:
     - product
 summary: Rename devlog -> Almanac; the five node types map onto an almanac's sections
 type: decision
-status: accepted
+status: superseded
 entry: designing-the-wiki-shaped-evolution-tasks-epics-decisions-articles
+superseded-by:
+    - name-the-tool-katra-almanac-was-taken
 ---
 
 ## Context

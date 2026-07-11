@@ -1,4 +1,4 @@
-// Command devlog-mcp serves the devlog operations over the Model Context
+// Command katra-mcp serves the katra operations over the Model Context
 // Protocol (stdio), so agents can drive the dev log structurally.
 package main
 
@@ -11,7 +11,7 @@ import (
 
 func main() {
 	if err := mcpserver.Run("0.1.0"); err != nil {
-		fmt.Fprintln(os.Stderr, "devlog-mcp:", err)
+		fmt.Fprintln(os.Stderr, "katra-mcp:", err)
 		os.Exit(1)
 	}
 }

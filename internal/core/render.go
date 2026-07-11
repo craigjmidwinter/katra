@@ -202,7 +202,7 @@ func (r *componentRenderer) renderFenced(w util.BufWriter, source []byte, node a
 	if fn, ok := Registry[lang]; ok {
 		out, err := fn(body)
 		if err != nil {
-			out = "<!-- devlog component error (" + html.EscapeString(lang) + "): " + html.EscapeString(err.Error()) + " -->"
+			out = "<!-- katra component error (" + html.EscapeString(lang) + "): " + html.EscapeString(err.Error()) + " -->"
 		}
 		_, _ = w.WriteString(out)
 		return ast.WalkSkipChildren, nil

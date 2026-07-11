@@ -1,4 +1,4 @@
-# Design sketch: a global devlog hub (`devlogd`)
+# Design sketch: a global katra hub (`katrad`)
 
 **Status:** sketch (2026-07-10) — spit-balling, not yet a committed plan
 **Type:** article (design note)
@@ -8,7 +8,7 @@
 
 ## The problem
 
-To use devlog across many repos today you run `devlog serve` **once per
+To use katra across many repos today you run `katra serve` **once per
 project** and juggle the resulting ports/tabs. With the tool spreading to ~40
 repos under `~/workspace`, that juggling is the dominant operational tax. There
 is no single place to see "everything."
@@ -16,21 +16,21 @@ is no single place to see "everything."
 ## The idea
 
 One long-running service on a **stable URL** (e.g. `localhost:4200`, started by
-launchd on login) that discovers and serves **every** project's devlog. Bookmark
+launchd on login) that discovers and serves **every** project's katra. Bookmark
 it once. Each project's log is a sub-view; the existing per-repo viewer becomes a
 tenant.
 
 ```
-~/.config/devlog/registry.yml          # project roots (+ optional scan roots)
+~/.config/katra/registry.yml          # project roots (+ optional scan roots)
         │
-   devlogd  ──serves──►  localhost:4200/             project index (cards)
+   katrad  ──serves──►  localhost:4200/             project index (cards)
         │                              /p/skyhawk/    skyhawk's existing viewer
-   watches each devlog/ (fsnotify)     /p/gta-vr/     …live-reloads on write
+   watches each katra/ (fsnotify)     /p/gta-vr/     …live-reloads on write
 ```
 
-This is cheaper than it looks: devlog already renders `data.json` + static HTML
+This is cheaper than it looks: katra already renders `data.json` + static HTML
 and already has a file-watch + live-reload loop. The hub is that machinery made
-**multi-tenant** — watch N `devlog/` dirs, reload the affected project's view.
+**multi-tenant** — watch N `katra/` dirs, reload the affected project's view.
 
 ## Why it's worth building (the real prize)
 
@@ -48,22 +48,22 @@ The hub is where the node model pays off at the *portfolio* level.
 
 ## Design decisions to pin
 
-1. **Discovery — layered.** `devlog init` auto-appends the repo to the global
-   registry, *plus* optional scan roots (`~/workspace/*/devlog/`) so existing
+1. **Discovery — layered.** `katra init` auto-appends the repo to the global
+   registry, *plus* optional scan roots (`~/workspace/*/katra/`) so existing
    logs are found with zero registration. (Beats pure-explicit = tedious, or
    pure-scan = surprising.)
-2. **Two modes, one renderer.** `devlogd` (live daemon, watches — the dev-loop
-   tool) and `devlog build --all` (one static aggregate site — the publish/share
+2. **Two modes, one renderer.** `katrad` (live daemon, watches — the dev-loop
+   tool) and `katra build --all` (one static aggregate site — the publish/share
    artifact).
-3. **A third binary.** Ships alongside `devlog` + `devlog-mcp` as **`devlogd`**
-   (or `devlog hub`). Keeps the core CLI simple and offline-first; `devlog serve`
+3. **A third binary.** Ships alongside `katra` + `katra-mcp` as **`katrad`**
+   (or `katra hub`). Keeps the core CLI simple and offline-first; `katra serve`
    stays for single-repo / LAN / offline use.
 4. **Read-only first.** MVP serves; writing stays in the CLI/MCP per repo.
    Editing through the hub UI is a tempting but much larger later step.
 
 ## New engineering (everything else is the current viewer ×N)
 
-- Multi-tenant **watch + reload** across many `devlog/` dirs.
+- Multi-tenant **watch + reload** across many `katra/` dirs.
 - Per-project **media path** isolation and **slug namespacing** (slugs are only
   unique within a repo; the hub must namespace by project).
 - The **registry** format + lifecycle (launchd plist, port/host config).
@@ -73,9 +73,9 @@ The hub is where the node model pays off at the *portfolio* level.
 ## In the target model
 
 This whole note is an **epic** (`horizon: later`) once the model exists, with
-tasks roughly: *registry format & auto-register* · *devlogd multi-tenant
+tasks roughly: *registry format & auto-register* · *katrad multi-tenant
 watch/serve* · *project index view* · *cross-project board & roadmap* · *static
-`build --all`* · *launchd install (`devlogd install`)*.
+`build --all`* · *launchd install (`katrad install`)*.
 
 ## Open questions
 
@@ -84,7 +84,7 @@ watch/serve* · *project index view* · *cross-project board & roadmap* · *stat
   roadmaps want this; it's scope-creepy. Defer, but design slugs to allow it.
 - ~~**Auth / exposure.**~~ **RESOLVED → network-reachable (LAN).** The author
   reads the dashboard from a phone, so localhost-only is out; the daemon binds to
-  the LAN like `devlog serve` does today. *Open sub-question:* a cross-project
+  the LAN like `katra serve` does today. *Open sub-question:* a cross-project
   dashboard is more sensitive than one repo's log, so LAN exposure likely wants
   optional auth / a bind-address setting — deferred, but don't ship it wide-open
   by default.

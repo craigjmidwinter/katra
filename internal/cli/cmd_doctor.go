@@ -16,13 +16,13 @@ var mediaRefRe = regexp.MustCompile(`media/[A-Za-z0-9._\-/]+`)
 func doctorCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
-		Short: "Check the devlog for problems (dangling media, parse errors)",
+		Short: "Check the katra for problems (dangling media, parse errors)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, err := resolveStore()
 			if err != nil {
 				return err
 			}
-			fmt.Printf("devlog: %s\n", s.Dir)
+			fmt.Printf("katra: %s\n", s.Dir)
 			problems := 0
 
 			entries, err := s.List()
@@ -48,7 +48,7 @@ func doctorCmd() *cobra.Command {
 			}
 			fmt.Printf("  %d entries (%d drafts)\n", len(entries), drafts)
 			if drafts > 1 {
-				fmt.Printf("  ⚠ %d drafts open — `devlog stamp` targets the newest\n", drafts)
+				fmt.Printf("  ⚠ %d drafts open — `katra stamp` targets the newest\n", drafts)
 			}
 
 			used := map[string]bool{}
