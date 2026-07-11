@@ -93,10 +93,25 @@ func serveCmd() *cobra.Command {
 
 func buildCmd() *cobra.Command {
 	var out string
+	var all bool
 	cmd := &cobra.Command{
 		Use:   "build",
 		Short: "Build a static site (index.html + data.json + media)",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if all {
+				projects, err := hubProjects()
+				if err != nil {
+					return err
+				}
+				if len(projects) == 0 {
+					return fmt.Errorf("no katras registered — run `katra init` in a repo first")
+				}
+				if err := viewer.BuildHub(projects, out); err != nil {
+					return err
+				}
+				fmt.Printf("✓ built aggregate site for %d project(s) → %s\n", len(projects), rel(mustWd(), out))
+				return nil
+			}
 			s, err := resolveStore()
 			if err != nil {
 				return err
@@ -109,6 +124,7 @@ func buildCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&out, "out", "dist", "output directory")
+	cmd.Flags().BoolVar(&all, "all", false, "build one aggregate site of every registered katra")
 	return cmd
 }
 

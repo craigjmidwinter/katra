@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -94,10 +95,10 @@ func ServeHub(projects []HubProject, port int) error {
 		}
 	}
 	mux.HandleFunc("/board", func(w http.ResponseWriter, r *http.Request) {
-		page(hubBoardHTML(projects))(w, r)
+		page(hubBoardHTML(projects, true))(w, r)
 	})
 	mux.HandleFunc("/roadmap", func(w http.ResponseWriter, r *http.Request) {
-		page(hubRoadmapHTML(projects))(w, r)
+		page(hubRoadmapHTML(projects, true))(w, r)
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +106,7 @@ func ServeHub(projects []HubProject, port int) error {
 			http.NotFound(w, r)
 			return
 		}
-		page(hubIndexHTML(projects))(w, r)
+		page(hubIndexHTML(projects, true))(w, r)
 	})
 
 	addr := fmt.Sprintf(":%d", port)
@@ -146,18 +147,54 @@ func sseHandler(hub *reloadHub) http.HandlerFunc {
 	}
 }
 
+// navHref returns the link for a nav key, absolute when served (web) or a
+// relative .html file for a static build.
+func navHref(key string, web bool) string {
+	if web {
+		switch key {
+		case "board":
+			return "/board"
+		case "roadmap":
+			return "/roadmap"
+		default:
+			return "/"
+		}
+	}
+	switch key {
+	case "board":
+		return "board.html"
+	case "roadmap":
+		return "roadmap.html"
+	default:
+		return "index.html"
+	}
+}
+
+// projHref links into a project's viewer: absolute /p/<id>/ when served, or a
+// relative p/<id>/index.html for a static build. anchor may be "".
+func projHref(id, anchor string, web bool) string {
+	base := "p/" + id + "/index.html"
+	if web {
+		base = "/p/" + id + "/"
+	}
+	if anchor != "" {
+		return base + "#" + anchor
+	}
+	return base
+}
+
 // hubShell wraps inner HTML in the common page chrome + nav. active is the
 // current section ("projects"|"board"|"roadmap") for highlighting.
-func hubShell(active, inner string) string {
+func hubShell(active, inner string, web bool) string {
 	nav := ""
-	for _, l := range []struct{ href, label, key string }{
-		{"/", "Projects", "projects"}, {"/board", "Board", "board"}, {"/roadmap", "Roadmap", "roadmap"},
+	for _, l := range []struct{ label, key string }{
+		{"Projects", "projects"}, {"Board", "board"}, {"Roadmap", "roadmap"},
 	} {
 		cls := "nav"
 		if l.key == active {
 			cls = "nav on"
 		}
-		nav += fmt.Sprintf(`<a class="%s" href="%s">%s</a>`, cls, l.href, l.label)
+		nav += fmt.Sprintf(`<a class="%s" href="%s">%s</a>`, cls, navHref(l.key, web), l.label)
 	}
 	return `<!doctype html><html><head><meta charset="utf-8">` +
 		`<meta name="viewport" content="width=device-width, initial-scale=1">` +
@@ -172,7 +209,7 @@ func hubShell(active, inner string) string {
 }
 
 // hubIndexHTML renders the project index page (cards, per-project counts).
-func hubIndexHTML(projects []HubProject) string {
+func hubIndexHTML(projects []HubProject, web bool) string {
 	var b strings.Builder
 	if len(projects) == 0 {
 		b.WriteString(`<p>No katras registered yet. Run <code>katra init</code> in a repo.</p>`)
@@ -195,32 +232,32 @@ func hubIndexHTML(projects []HubProject) string {
 		if title == "" {
 			title = p.ID
 		}
-		fmt.Fprintf(&b, `<a class="card" href="/p/%s/"><div class="t">%s</div>`,
-			html.EscapeString(p.ID), html.EscapeString(title))
+		fmt.Fprintf(&b, `<a class="card" href="%s"><div class="t">%s</div>`,
+			projHref(p.ID, "", web), html.EscapeString(title))
 		fmt.Fprintf(&b, `<div class="m"><span class="b">%d entries</span><span class="b">%d drafts</span><span class="b">%d doing</span><span class="b">%s</span></div></a>`,
 			len(entries), drafts, doing, html.EscapeString(p.Store.Dir))
 	}
-	return hubShell("projects", b.String())
+	return hubShell("projects", b.String(), web)
 }
 
 // hubTaskCard renders one task as a card linking into its project's viewer.
-func hubTaskCard(pid, title, effort, slug string) string {
+func hubTaskCard(pid, title, effort, slug string, web bool) string {
 	eff := ""
 	if effort != "" {
 		eff = fmt.Sprintf(`<span class="eff">%s</span>`, html.EscapeString(effort))
 	}
-	return fmt.Sprintf(`<a class="card" href="/p/%s/#%s"><div class="t">%s%s</div><div class="proj">%s</div></a>`,
-		html.EscapeString(pid), html.EscapeString(slug), html.EscapeString(title), eff, html.EscapeString(pid))
+	return fmt.Sprintf(`<a class="card" href="%s"><div class="t">%s%s</div><div class="proj">%s</div></a>`,
+		projHref(pid, slug, web), html.EscapeString(title), eff, html.EscapeString(pid))
 }
 
 // hubBoardHTML renders one board of Doing + Todo tasks across every project.
-func hubBoardHTML(projects []HubProject) string {
+func hubBoardHTML(projects []HubProject, web bool) string {
 	var doing, todo strings.Builder
 	nDoing, nTodo := 0, 0
 	for _, p := range projects {
 		tasks, _ := p.Store.ListNodes("task")
 		for _, t := range tasks {
-			card := hubTaskCard(p.ID, t.FM.Title, t.FM.Effort, t.Slug)
+			card := hubTaskCard(p.ID, t.FM.Title, t.FM.Effort, t.Slug, web)
 			switch t.FM.Status {
 			case "doing":
 				doing.WriteString(card)
@@ -233,11 +270,11 @@ func hubBoardHTML(projects []HubProject) string {
 	}
 	inner := fmt.Sprintf(`<h2>Doing — %d</h2>`, nDoing) + orEmpty(doing.String(), "Nothing in progress.") +
 		fmt.Sprintf(`<h2>Todo — %d</h2>`, nTodo) + orEmpty(todo.String(), "Nothing queued.")
-	return hubShell("board", inner)
+	return hubShell("board", inner, web)
 }
 
 // hubRoadmapHTML renders epics grouped by horizon across every project.
-func hubRoadmapHTML(projects []HubProject) string {
+func hubRoadmapHTML(projects []HubProject, web bool) string {
 	buckets := map[string]*strings.Builder{"now": {}, "next": {}, "later": {}, "": {}}
 	for _, p := range projects {
 		epics, _ := p.Store.ListNodes("epic")
@@ -246,8 +283,8 @@ func hubRoadmapHTML(projects []HubProject) string {
 			if _, ok := buckets[h]; !ok {
 				h = ""
 			}
-			fmt.Fprintf(buckets[h], `<a class="card" href="/p/%s/#%s"><div class="t">%s <span class="eff">%s</span></div><div class="proj">%s</div></a>`,
-				html.EscapeString(p.ID), html.EscapeString(e.Slug), html.EscapeString(e.FM.Title),
+			fmt.Fprintf(buckets[h], `<a class="card" href="%s"><div class="t">%s <span class="eff">%s</span></div><div class="proj">%s</div></a>`,
+				projHref(p.ID, e.Slug, web), html.EscapeString(e.FM.Title),
 				html.EscapeString(orDash(e.FM.Status)), html.EscapeString(p.ID))
 		}
 	}
@@ -258,7 +295,31 @@ func hubRoadmapHTML(projects []HubProject) string {
 		}
 		fmt.Fprintf(&b, `<h2>%s</h2>%s`, h.label, buckets[h.key].String())
 	}
-	return hubShell("roadmap", orEmpty(b.String(), "No epics yet."))
+	return hubShell("roadmap", orEmpty(b.String(), "No epics yet."), web)
+}
+
+// BuildHub writes a static aggregate site to outDir: the hub index/board/roadmap
+// as .html files, plus each project's full static site under p/<id>/.
+func BuildHub(projects []HubProject, outDir string) error {
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return err
+	}
+	pages := map[string]string{
+		"index.html":   hubIndexHTML(projects, false),
+		"board.html":   hubBoardHTML(projects, false),
+		"roadmap.html": hubRoadmapHTML(projects, false),
+	}
+	for name, html := range pages {
+		if err := os.WriteFile(filepath.Join(outDir, name), []byte(html), 0o644); err != nil {
+			return err
+		}
+	}
+	for _, p := range projects {
+		if err := Build(p.Store, filepath.Join(outDir, "p", p.ID)); err != nil {
+			return fmt.Errorf("%s: %w", p.ID, err)
+		}
+	}
+	return nil
 }
 
 func orEmpty(s, empty string) string {
