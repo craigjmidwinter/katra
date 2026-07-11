@@ -2,12 +2,17 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/craigjmidwinter/katra/internal/core"
 	"github.com/craigjmidwinter/katra/internal/viewer"
 	"github.com/spf13/cobra"
 )
+
+const hubLaunchLabel = "com.katra.hub"
 
 // hubCmd groups cross-project ("hub") commands: list every registered katra and
 // serve them all from one URL.
@@ -16,8 +21,102 @@ func hubCmd() *cobra.Command {
 		Use:   "hub",
 		Short: "Work across every registered katra",
 	}
-	cmd.AddCommand(hubListCmd(), hubServeCmd())
+	cmd.AddCommand(hubListCmd(), hubServeCmd(), hubInstallCmd(), hubUninstallCmd())
 	return cmd
+}
+
+// hubPlistPath is the launchd agent file location.
+func hubPlistPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, "Library", "LaunchAgents", hubLaunchLabel+".plist"), nil
+}
+
+// hubPlist renders the launchd agent plist that keeps `katra hub serve` running.
+func hubPlist(binary string, port int, logPath string) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>%s</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>%s</string>
+    <string>hub</string>
+    <string>serve</string>
+    <string>--port</string>
+    <string>%d</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>%s</string>
+  <key>StandardErrorPath</key><string>%s</string>
+</dict>
+</plist>
+`, hubLaunchLabel, binary, port, logPath, logPath)
+}
+
+func hubInstallCmd() *cobra.Command {
+	var port int
+	cmd := &cobra.Command{
+		Use:   "install",
+		Short: "Install a launchd agent so the hub runs at login (macOS)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if runtime.GOOS != "darwin" {
+				return fmt.Errorf("hub install is only supported on macOS")
+			}
+			bin, err := os.Executable()
+			if err != nil {
+				return err
+			}
+			home, _ := os.UserHomeDir()
+			logPath := filepath.Join(home, "Library", "Logs", "katra-hub.log")
+			plistPath, err := hubPlistPath()
+			if err != nil {
+				return err
+			}
+			if err := os.MkdirAll(filepath.Dir(plistPath), 0o755); err != nil {
+				return err
+			}
+			if err := os.WriteFile(plistPath, []byte(hubPlist(bin, port, logPath)), 0o644); err != nil {
+				return err
+			}
+			// Reload cleanly: unload any existing, then load.
+			_ = exec.Command("launchctl", "unload", plistPath).Run()
+			if out, err := exec.Command("launchctl", "load", "-w", plistPath).CombinedOutput(); err != nil {
+				return fmt.Errorf("launchctl load: %v: %s", err, out)
+			}
+			fmt.Printf("✓ hub agent installed → %s\n", plistPath)
+			fmt.Printf("  serving on http://localhost:%d/ at login; logs at %s\n", port, logPath)
+			return nil
+		},
+	}
+	cmd.Flags().IntVar(&port, "port", 4200, "port the agent serves on")
+	return cmd
+}
+
+func hubUninstallCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "uninstall",
+		Short: "Remove the hub launchd agent (macOS)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if runtime.GOOS != "darwin" {
+				return fmt.Errorf("hub uninstall is only supported on macOS")
+			}
+			plistPath, err := hubPlistPath()
+			if err != nil {
+				return err
+			}
+			_ = exec.Command("launchctl", "unload", plistPath).Run()
+			if err := os.Remove(plistPath); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			fmt.Printf("✓ hub agent removed\n")
+			return nil
+		},
+	}
 }
 
 // hubProjects builds the served project list from the global registry, pruning
