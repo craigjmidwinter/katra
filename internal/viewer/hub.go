@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/craigjmidwinter/katra/internal/core"
@@ -100,6 +101,9 @@ func ServeHub(projects []HubProject, port int) error {
 	mux.HandleFunc("/roadmap", func(w http.ResponseWriter, r *http.Request) {
 		page(hubRoadmapHTML(projects, true))(w, r)
 	})
+	mux.HandleFunc("/log", func(w http.ResponseWriter, r *http.Request) {
+		page(hubLogHTML(projects, true))(w, r)
+	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -156,6 +160,8 @@ func navHref(key string, web bool) string {
 			return "/board"
 		case "roadmap":
 			return "/roadmap"
+		case "log":
+			return "/log"
 		default:
 			return "/"
 		}
@@ -165,6 +171,8 @@ func navHref(key string, web bool) string {
 		return "board.html"
 	case "roadmap":
 		return "roadmap.html"
+	case "log":
+		return "log.html"
 	default:
 		return "index.html"
 	}
@@ -188,7 +196,7 @@ func projHref(id, anchor string, web bool) string {
 func hubShell(active, inner string, web bool) string {
 	nav := ""
 	for _, l := range []struct{ label, key string }{
-		{"Projects", "projects"}, {"Board", "board"}, {"Roadmap", "roadmap"},
+		{"Projects", "projects"}, {"Log", "log"}, {"Board", "board"}, {"Roadmap", "roadmap"},
 	} {
 		cls := "nav"
 		if l.key == active {
@@ -298,14 +306,50 @@ func hubRoadmapHTML(projects []HubProject, web bool) string {
 	return hubShell("roadmap", orEmpty(b.String(), "No epics yet."), web)
 }
 
-// BuildHub writes a static aggregate site to outDir: the hub index/board/roadmap
-// as .html files, plus each project's full static site under p/<id>/.
+// hubLogHTML renders one reverse-chronological feed of every project's log
+// entries (blog posts), newest first, each linking into its project's viewer.
+func hubLogHTML(projects []HubProject, web bool) string {
+	type row struct {
+		pid, title, date, tm, slug string
+		draft                      bool
+	}
+	var rows []row
+	for _, p := range projects {
+		entries, _ := p.Store.ListNodes("entry")
+		for _, e := range entries {
+			rows = append(rows, row{p.ID, e.FM.Title, e.FM.Date, e.FM.Time, e.Slug, e.IsDraft()})
+		}
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].date != rows[j].date {
+			return rows[i].date > rows[j].date
+		}
+		return rows[i].tm > rows[j].tm
+	})
+	var b strings.Builder
+	if len(rows) == 0 {
+		b.WriteString(`<p class="proj">No log entries yet across any project.</p>`)
+	}
+	for _, r := range rows {
+		draft := ""
+		if r.draft {
+			draft = ` <span class="eff">draft</span>`
+		}
+		fmt.Fprintf(&b, `<a class="card" href="%s"><div class="t">%s%s</div><div class="m"><span class="b">%s</span><span class="proj">%s</span></div></a>`,
+			projHref(r.pid, r.slug, web), html.EscapeString(r.title), draft, html.EscapeString(r.date), html.EscapeString(r.pid))
+	}
+	return hubShell("log", b.String(), web)
+}
+
+// BuildHub writes a static aggregate site to outDir: the hub index/log/board/
+// roadmap as .html files, plus each project's full static site under p/<id>/.
 func BuildHub(projects []HubProject, outDir string) error {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return err
 	}
 	pages := map[string]string{
 		"index.html":   hubIndexHTML(projects, false),
+		"log.html":     hubLogHTML(projects, false),
 		"board.html":   hubBoardHTML(projects, false),
 		"roadmap.html": hubRoadmapHTML(projects, false),
 	}
