@@ -6,6 +6,15 @@ tags:
     - design
     - architecture
     - dogfood
+hashes:
+    - fd14581
+    - 7b42188
+    - 9f2f6cf
+    - 0dd49ee
+stat:
+    f: 73
+    a: 3218
+    d: 239
 ---
 
 devlog chronicles the **past**. Today, sitting down to plan this evolution, the
@@ -120,9 +129,22 @@ nodes — the [[almanac-node-model]] epic (active) with its tasks, the
 epic, the decision backlinks this very entry via its `entry:` edge. The tool now
 plans and records its own development.
 
+## Postscript: Almanac → Katra, and the loop closes
+
+Two things landed after the above. First, the name: an availability check killed
+"Almanac" — it collides with an existing *codealmanac* codebase-wiki tool — so the
+tool is now **Katra** (Vulcan: a being's preserved memory and knowledge). Recorded
+as [[name-the-tool-katra-almanac-was-taken]], which supersedes
+[[name-the-tool-almanac]]; the whole rename ships behind a `devlog/`→`katra/`
+compat shim so no existing repo needs migrating.
+
+Second, the roadmap this entry filed as nodes is fully burned down — the MVP,
+`stamp --closes`, the epic rollup, and the rename all shipped, tested, and
+dogfooded. The [[almanac-node-model]] epic is done in all but name.
+
 ```note
-This entry is a draft — no commit hash yet. It stamps into the log when the
-design docs land in a commit. Which is exactly the future→past loop the model
-describes — run by hand once more before we mechanize it via
-[[stamp-closes-the-linked-task]].
+And now this entry stops being a draft. It's stamped as a chapter of the whole
+arc — the future→past loop the model describes, finally run *by the tool*:
+[[stamp-closes-the-linked-task]] is real, and this is the last time it's done by
+hand.
 ```
