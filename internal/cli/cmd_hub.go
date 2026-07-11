@@ -192,7 +192,17 @@ func hubProjects() ([]viewer.HubProject, error) {
 		if err != nil {
 			continue
 		}
-		projects = append(projects, viewer.HubProject{ID: projectID(dir, used), Store: s})
+		p := viewer.HubProject{ID: projectID(dir, used), Store: s}
+		// Resolve a custom log site (bespoke external-facing dev log), if declared.
+		if ld := s.Config.LogDir; ld != "" {
+			if !filepath.IsAbs(ld) {
+				ld = filepath.Join(s.Dir, ld)
+			}
+			if fi, err := os.Stat(ld); err == nil && fi.IsDir() {
+				p.LogDir = filepath.Clean(ld)
+			}
+		}
+		projects = append(projects, p)
 	}
 	return projects, nil
 }

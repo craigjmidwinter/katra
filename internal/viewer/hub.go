@@ -12,19 +12,21 @@ import (
 	"github.com/craigjmidwinter/katra/internal/core"
 )
 
-// HubProject is one katra served by the hub under /p/<ID>/.
+// HubProject is one katra served by the hub under /p/<ID>/. When LogDir is set,
+// the hub serves that custom static site instead of the built-in viewer.
 type HubProject struct {
-	ID    string
-	Store *core.Store
+	ID     string
+	Store  *core.Store
+	LogDir string // absolute path to a custom static log site, or "" for the built-in viewer
 }
 
 // ServeHub runs the multi-tenant hub: one server, an index of every registered
 // katra at /, and each project's viewer at /p/<id>/. data.json is generated per
 // request; any change in any store reloads open tabs (one global livereload).
 func ServeHub(projects []HubProject, port int) error {
-	byID := make(map[string]*core.Store, len(projects))
+	byID := make(map[string]HubProject, len(projects))
 	for _, p := range projects {
-		byID[p.ID] = p.Store
+		byID[p.ID] = p
 	}
 
 	hub := &reloadHub{clients: map[chan string]struct{}{}}
@@ -38,13 +40,29 @@ func ServeHub(projects []HubProject, port int) error {
 	mux.HandleFunc("/p/", func(w http.ResponseWriter, r *http.Request) {
 		rest := strings.TrimPrefix(r.URL.Path, "/p/")
 		id, sub, hasSlash := strings.Cut(rest, "/")
-		store, ok := byID[id]
+		proj, ok := byID[id]
 		if !ok {
 			http.NotFound(w, r)
 			return
 		}
+		store := proj.Store
 		if !hasSlash {
 			http.Redirect(w, r, "/p/"+id+"/", http.StatusFound)
+			return
+		}
+		// Custom log site: serve the project's own static files verbatim.
+		if proj.LogDir != "" {
+			name := sub
+			if name == "" {
+				name = "index.html"
+			}
+			p := filepath.Join(proj.LogDir, filepath.Clean("/"+name))
+			if !strings.HasPrefix(p, proj.LogDir) {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			w.Header().Set("Cache-Control", "no-cache")
+			http.ServeFile(w, r, p)
 			return
 		}
 		switch {
@@ -240,8 +258,12 @@ func hubIndexHTML(projects []HubProject, web bool) string {
 		if title == "" {
 			title = p.ID
 		}
-		fmt.Fprintf(&b, `<a class="card" href="%s"><div class="t">%s</div>`,
-			projHref(p.ID, "", web), html.EscapeString(title))
+		badge := ""
+		if p.LogDir != "" {
+			badge = ` <span class="eff">custom log</span>`
+		}
+		fmt.Fprintf(&b, `<a class="card" href="%s"><div class="t">%s%s</div>`,
+			projHref(p.ID, "", web), html.EscapeString(title), badge)
 		fmt.Fprintf(&b, `<div class="m"><span class="b">%d entries</span><span class="b">%d drafts</span><span class="b">%d doing</span><span class="b">%s</span></div></a>`,
 			len(entries), drafts, doing, html.EscapeString(p.Store.Dir))
 	}
