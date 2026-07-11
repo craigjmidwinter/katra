@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/craigjmidwinter/devlog/internal/core"
-	"github.com/craigjmidwinter/devlog/internal/viewer"
+	"github.com/craigjmidwinter/katra/internal/core"
+	"github.com/craigjmidwinter/katra/internal/viewer"
 	"github.com/spf13/cobra"
 )
 

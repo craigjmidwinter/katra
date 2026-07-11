@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/craigjmidwinter/devlog/internal/core"
-	"github.com/craigjmidwinter/devlog/internal/viewer"
+	"github.com/craigjmidwinter/katra/internal/core"
+	"github.com/craigjmidwinter/katra/internal/viewer"
 )
 
 type linkJSON struct {

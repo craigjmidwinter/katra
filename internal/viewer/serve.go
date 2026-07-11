@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/craigjmidwinter/devlog/internal/core"
+	"github.com/craigjmidwinter/katra/internal/core"
 )
 
 // reloadClient is injected before </body> on the served page. It opens an SSE

@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/craigjmidwinter/devlog/internal/core"
+	"github.com/craigjmidwinter/katra/internal/core"
 )
 
 //go:embed assets/*

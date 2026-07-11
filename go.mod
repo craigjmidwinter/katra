@@ -1,4 +1,4 @@
-module github.com/craigjmidwinter/devlog
+module github.com/craigjmidwinter/katra
 
 go 1.25.1
 

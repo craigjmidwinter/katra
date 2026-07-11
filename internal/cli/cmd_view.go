@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/craigjmidwinter/devlog/internal/viewer"
+	"github.com/craigjmidwinter/katra/internal/viewer"
 	"github.com/spf13/cobra"
 )
 

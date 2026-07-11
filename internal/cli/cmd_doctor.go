@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/craigjmidwinter/devlog/internal/core"
+	"github.com/craigjmidwinter/katra/internal/core"
 	"github.com/spf13/cobra"
 )
 

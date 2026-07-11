@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/craigjmidwinter/devlog/internal/core"
+	"github.com/craigjmidwinter/katra/internal/core"
 )
 
 // HubProject is one katra served by the hub under /p/<ID>/.

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/craigjmidwinter/devlog/internal/mcpserver"
+	"github.com/craigjmidwinter/katra/internal/mcpserver"
 )
 
 func main() {
