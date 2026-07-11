@@ -253,6 +253,33 @@ func (s *Store) GetNode(slug string) (*Entry, error) {
 	return nil, fmt.Errorf("no node with slug %q", slug)
 }
 
+// CloseTasks marks each given task slug done and links it to the entry that
+// completed it (sets FM.Entry = entrySlug). Every slug is validated to refer to
+// a task before any file is mutated; it returns the slugs it closed.
+func (s *Store) CloseTasks(entrySlug string, taskSlugs []string) ([]string, error) {
+	nodes := make([]*Entry, 0, len(taskSlugs))
+	for _, slug := range taskSlugs {
+		n, err := s.GetNode(slug)
+		if err != nil {
+			return nil, fmt.Errorf("closes %q: %w", slug, err)
+		}
+		if n.Kind() != "task" {
+			return nil, fmt.Errorf("closes %q: not a task (it is a %s)", slug, n.Kind())
+		}
+		nodes = append(nodes, n)
+	}
+	closed := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		n.FM.Status = "done"
+		n.FM.Entry = entrySlug
+		if err := n.Save(); err != nil {
+			return closed, err
+		}
+		closed = append(closed, n.Slug)
+	}
+	return closed, nil
+}
+
 func fileExists(p string) bool {
 	st, err := os.Stat(p)
 	return err == nil && !st.IsDir()

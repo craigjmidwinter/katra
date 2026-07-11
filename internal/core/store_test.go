@@ -351,3 +351,55 @@ func TestInitStoreCreatesTypeDirs(t *testing.T) {
 		t.Errorf("NodeTypes = %v, want (sorted) %v", NodeTypes, want)
 	}
 }
+
+// TestCloseTasks verifies stamp's task-closing helper: a task is marked done and
+// linked to the entry, the batch validates before mutating, and non-tasks /
+// missing slugs are rejected.
+func TestCloseTasks(t *testing.T) {
+	s := newTestStore(t)
+	if _, err := s.NewNode("epic", Frontmatter{Title: "Big epic"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.NewNode("task", Frontmatter{Title: "Do the thing", Status: "doing", Epic: "big-epic"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.NewNode("decision", Frontmatter{Title: "A call", Status: "accepted"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	entry, err := s.NewEntry(Frontmatter{Title: "Shipped it"}, "body")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Happy path.
+	closed, err := s.CloseTasks(entry.Slug, []string{"do-the-thing"})
+	if err != nil {
+		t.Fatalf("CloseTasks: %v", err)
+	}
+	if len(closed) != 1 || closed[0] != "do-the-thing" {
+		t.Fatalf("closed = %v, want [do-the-thing]", closed)
+	}
+	got, err := s.GetNode("do-the-thing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.FM.Status != "done" {
+		t.Errorf("task status = %q, want done", got.FM.Status)
+	}
+	if got.FM.Entry != entry.Slug {
+		t.Errorf("task entry = %q, want %q", got.FM.Entry, entry.Slug)
+	}
+
+	// Missing slug is rejected.
+	if _, err := s.CloseTasks(entry.Slug, []string{"nope"}); err == nil {
+		t.Error("expected error closing a missing slug")
+	}
+
+	// A non-task in the batch is rejected AND nothing is mutated (validate-first).
+	if _, err := s.CloseTasks(entry.Slug, []string{"a-call"}); err == nil {
+		t.Error("expected error closing a decision as a task")
+	}
+	if d, _ := s.GetNode("a-call"); d.FM.Status != "accepted" {
+		t.Errorf("decision status mutated to %q; should stay accepted", d.FM.Status)
+	}
+}
