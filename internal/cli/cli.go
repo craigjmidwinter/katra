@@ -35,6 +35,8 @@ func Execute() {
 		hookCmd(),
 		doctorCmd(),
 		checkCmd(),
+		guardCmd(),
+		setupCmd(),
 		hubCmd(),
 		taskCmd(),
 		epicCmd(),
