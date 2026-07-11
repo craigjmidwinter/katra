@@ -23,9 +23,26 @@
       </div>
     </div>
     <nav class="dl-tagbar" id="tagbar"></nav>
+    <nav class="dl-nav" id="nav" hidden></nav>
   </header>
 
   <main class="dl-main">
+    <section class="dl-section" id="board-section" hidden>
+      <div class="dl-section-head">
+        <h2>Board</h2>
+        <span class="dl-section-sub">tasks by status — todo · doing · done</span>
+      </div>
+      <div class="dl-board" id="board"></div>
+    </section>
+
+    <section class="dl-section" id="roadmap-section" hidden>
+      <div class="dl-section-head">
+        <h2>Roadmap</h2>
+        <span class="dl-section-sub">epics &amp; loose tasks by horizon — now · next · later</span>
+      </div>
+      <div class="dl-board" id="roadmap"></div>
+    </section>
+
     <section class="dl-section" id="drafts-section" hidden>
       <div class="dl-section-head">
         <h2>In Progress</h2>
@@ -48,6 +65,22 @@
         <span class="dl-section-sub">newest first</span>
       </div>
       <div class="dl-feed" id="log"></div>
+    </section>
+
+    <section class="dl-section" id="decisions-section" hidden>
+      <div class="dl-section-head">
+        <h2>Decisions</h2>
+        <span class="dl-section-sub">ADRs — what we chose and why, until when</span>
+      </div>
+      <div class="dl-feed" id="decisions"></div>
+    </section>
+
+    <section class="dl-section" id="articles-section" hidden>
+      <div class="dl-section-head">
+        <h2>Reference</h2>
+        <span class="dl-section-sub">articles — how things work</span>
+      </div>
+      <div class="dl-feed" id="articles"></div>
     </section>
 
     <p class="dl-empty" id="empty" hidden>No entries yet. Run <code>devlog new "Title"</code>.</p>

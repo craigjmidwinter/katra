@@ -1,6 +1,10 @@
 # compiled binaries (this repo builds `devlog` and `devlog-mcp`)
+# NOTE: `/devlog` matches both the built binary AND the `devlog/` data dir that
+# `devlog init` creates here (we dogfood). Re-include the directory so the log
+# gets committed; only the bare binary file stays ignored.
 /devlog
 /devlog-mcp
+!/devlog/
 /bin/
 /dist/
 *.test

@@ -34,6 +34,10 @@ func Execute() {
 		buildCmd(),
 		hookCmd(),
 		doctorCmd(),
+		taskCmd(),
+		epicCmd(),
+		decideCmd(),
+		articleCmd(),
 	)
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)

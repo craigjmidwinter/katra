@@ -42,11 +42,45 @@ type entryData struct {
 	Draft    bool       `json:"draft"`
 	Featured bool       `json:"featured"`
 	HTML     string     `json:"html"`
+
+	// Node-model fields (Almanac). "type" is always set (Kind()); the rest
+	// are omitted when empty so entry records stay unchanged in shape.
+	Type         string   `json:"type"`
+	Status       string   `json:"status,omitempty"`
+	Effort       string   `json:"effort,omitempty"`
+	Horizon      string   `json:"horizon,omitempty"`
+	Epic         string   `json:"epic,omitempty"`
+	Entry        string   `json:"entry,omitempty"`
+	Supersedes   []string `json:"supersedes,omitempty"`
+	SupersededBy []string `json:"supersededBy,omitempty"`
+
+	// Resolved link graph (Almanac wiki). Each ref is {slug,title,type}.
+	// Links = outbound (body [[wikilinks]] + structured edges); Backlinks =
+	// "what links here". Only refs to real nodes appear; omitted when empty.
+	Links     []linkRef `json:"links,omitempty"`
+	Backlinks []linkRef `json:"backlinks,omitempty"`
+}
+
+type linkRef struct {
+	Slug  string `json:"slug"`
+	Title string `json:"title"`
+	Type  string `json:"type"`
+}
+
+func toLinkRefs(refs []core.LinkRef) []linkRef {
+	if len(refs) == 0 {
+		return nil
+	}
+	out := make([]linkRef, len(refs))
+	for i, r := range refs {
+		out[i] = linkRef{Slug: r.Slug, Title: r.Title, Type: r.Type}
+	}
+	return out
 }
 
 // BuildData renders the store to the JSON payload the viewer reads.
 func BuildData(s *core.Store) ([]byte, error) {
-	entries, err := s.List()
+	entries, err := s.ListNodes(core.NodeTypes...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +91,11 @@ func BuildData(s *core.Store) ([]byte, error) {
 			Accent:      s.Config.Accent,
 		},
 	}
+	known := core.KnownSlugs(entries)
+	renderer := core.NewRenderer(func(slug string) bool { return known[slug] })
+	graph := core.BuildLinkGraph(entries)
 	for _, e := range entries {
-		htmlBody, err := core.RenderMarkdown(e.Body)
+		htmlBody, err := renderer.Render(e.Body)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", e.Slug, err)
 		}
@@ -75,6 +112,18 @@ func BuildData(s *core.Store) ([]byte, error) {
 			Draft:    e.IsDraft(),
 			Featured: e.FM.Featured,
 			HTML:     htmlBody,
+
+			Type:         e.Kind(),
+			Status:       e.FM.Status,
+			Effort:       e.FM.Effort,
+			Horizon:      e.FM.Horizon,
+			Epic:         e.FM.Epic,
+			Entry:        e.FM.Entry,
+			Supersedes:   e.FM.Supersedes,
+			SupersededBy: e.FM.SupersededBy,
+
+			Links:     toLinkRefs(graph.Out[e.Slug]),
+			Backlinks: toLinkRefs(graph.Back[e.Slug]),
 		})
 	}
 	return json.MarshalIndent(data, "", "  ")

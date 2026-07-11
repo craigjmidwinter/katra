@@ -38,6 +38,16 @@ type Frontmatter struct {
 	Cover    string   `yaml:"cover,omitempty"`
 	Featured bool     `yaml:"featured,omitempty"` // lands in the "Deep Dives" zone
 	Pinned   bool     `yaml:"pinned,omitempty"`
+
+	// Node-model fields (Almanac). Empty Type means "entry" for back-compat.
+	Type         string   `yaml:"type,omitempty"`          // "" or "entry" = entry; else task|epic|decision|article
+	Status       string   `yaml:"status,omitempty"`        // task: todo|doing|done|cut ; epic: planned|active|done|cut ; decision: proposed|accepted|superseded|deprecated
+	Effort       string   `yaml:"effort,omitempty"`        // S|M|L
+	Horizon      string   `yaml:"horizon,omitempty"`       // now|next|later
+	Epic         string   `yaml:"epic,omitempty"`          // task -> parent epic slug
+	Entry        string   `yaml:"entry,omitempty"`         // task/decision -> the entry slug that recorded/occasioned it
+	Supersedes   []string `yaml:"supersedes,omitempty"`    // decision chain
+	SupersededBy []string `yaml:"superseded-by,omitempty"` // mirror of supersedes
 }
 
 // Entry is one devlog post: a markdown file with YAML frontmatter.
@@ -48,10 +58,20 @@ type Entry struct {
 	Body string      // markdown body (everything after the frontmatter)
 }
 
+// Kind returns the node type: FM.Type, or "entry" when empty (back-compat).
+func (e Entry) Kind() string {
+	if e.FM.Type == "" {
+		return "entry"
+	}
+	return e.FM.Type
+}
+
 // IsDraft reports whether the entry has not yet been stamped with a commit.
 // A draft renders in the "In Progress" panel; it just needs a hash.
+// Draft-ness is an entry-only concept — other node types (task/epic/decision/
+// article) carry their own lifecycle in FM.Status and are never "drafts".
 func (e Entry) IsDraft() bool {
-	return e.FM.Hash == "" && len(e.FM.Hashes) == 0
+	return e.Kind() == "entry" && e.FM.Hash == "" && len(e.FM.Hashes) == 0
 }
 
 // AllHashes returns the unified list of commit hashes for the entry.

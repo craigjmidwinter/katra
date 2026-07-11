@@ -234,8 +234,107 @@ figcaption { font-size: 12px; color: var(--ink-faint); text-align: center; margi
 .dl-empty { text-align: center; color: var(--ink-faint); padding: 60px 0; }
 .dl-footer { text-align: center; padding: 30px 0 50px; color: var(--ink-faint); font-size: 12px; }
 
+/* anchor targets clear the sticky header when jumped to via [[wikilinks]] */
+.dl-card, .dl-node { scroll-margin-top: 92px; }
+
+/* ── Section nav ──────────────────────────────────────── */
+.dl-nav {
+  display: flex; gap: 16px; flex-wrap: wrap; padding: 0 0 13px;
+  font-family: var(--mono); font-size: 11px;
+}
+.dl-nav-link { color: var(--ink-dim); border-bottom: 0; }
+.dl-nav-link:hover { color: var(--accent); text-decoration: none; }
+
+/* ── Node badges ──────────────────────────────────────── */
+.dl-badge {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .02em;
+  color: var(--ink-dim); background: var(--bg-2);
+  border: 1px solid var(--line); padding: 2px 7px; border-radius: 5px;
+  white-space: nowrap;
+}
+.dl-badge-effort { color: var(--accent); border-color: rgba(224,83,61,0.32); }
+.dl-badge-type { text-transform: uppercase; letter-spacing: .1em; }
+.dl-status-todo    { color: var(--ink-dim); }
+.dl-status-doing   { color: var(--draft); border-color: rgba(216,163,58,0.35); }
+.dl-status-done    { color: var(--add); border-color: rgba(78,192,122,0.3); }
+.dl-status-cut     { color: var(--ink-faint); }
+.dl-status-planned { color: var(--ink-dim); }
+.dl-status-active  { color: var(--draft); border-color: rgba(216,163,58,0.35); }
+.dl-status-proposed   { color: var(--ink-dim); }
+.dl-status-accepted   { color: var(--add); border-color: rgba(78,192,122,0.3); }
+.dl-status-superseded { color: var(--ink-faint); }
+.dl-status-deprecated { color: var(--del); }
+
+.dl-card-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+/* ── Board / Roadmap (kanban columns) ─────────────────── */
+.dl-board { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+.dl-col {
+  flex: 1 1 200px; min-width: 0;
+  background: var(--bg-2); border: 1px solid var(--line-soft);
+  border-radius: var(--radius); padding: 12px 12px 14px;
+}
+.dl-col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: .12em; color: var(--ink-dim);
+  margin-bottom: 12px; padding-bottom: 9px; border-bottom: 1px solid var(--line-soft);
+}
+.dl-col-count { color: var(--ink-faint); }
+.dl-col-doing .dl-col-name { color: var(--draft); }
+.dl-col-done  .dl-col-name { color: var(--add); }
+.dl-col-cut   .dl-col-name { color: var(--ink-faint); text-decoration: line-through; }
+.dl-col-now   .dl-col-name { color: var(--accent); }
+.dl-col-body { display: flex; flex-direction: column; gap: 10px; min-height: 8px; }
+
+/* ── Node card (task / epic tiles) ────────────────────── */
+.dl-node {
+  background: var(--bg-card); border: 1px solid var(--line);
+  border-radius: 9px; padding: 12px 13px; transition: border-color .15s ease;
+}
+.dl-node:hover { border-color: #2f323b; }
+.dl-node-title {
+  display: block; font-size: 14px; font-weight: 600; line-height: 1.35;
+  letter-spacing: -0.01em; color: var(--ink); border-bottom: 0;
+}
+.dl-node-title:hover { color: var(--accent); text-decoration: none; }
+.dl-node-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 9px; }
+.dl-node-epic { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); border-bottom: 0; }
+.dl-node-epic:hover { color: var(--accent); text-decoration: none; }
+
+/* epic rollup — child task list */
+.dl-epic-tasks { list-style: none; margin: 11px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.dl-epic-task-link { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-dim); border-bottom: 0; }
+.dl-epic-task-link:hover { color: var(--accent); text-decoration: none; }
+.dl-epic-task-mark { width: 6px; height: 6px; border-radius: 50%; flex: none; background: currentColor; opacity: .7; }
+
+/* ── Backlinks panel ──────────────────────────────────── */
+.dl-backlinks { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--line-soft); }
+.dl-card > .dl-backlinks { margin: 0; padding: 13px 22px; background: rgba(0,0,0,0.16); }
+.dl-backlinks-head {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .12em; color: var(--ink-faint); margin-bottom: 8px;
+}
+.dl-backlinks-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.dl-backlink {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--ink-dim);
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 6px; padding: 3px 8px;
+}
+.dl-backlink:hover { color: var(--ink); border-color: var(--ink-faint); text-decoration: none; }
+.dl-backlink-type {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--ink-faint);
+}
+
+/* ── Wikilinks (rendered in Go) ───────────────────────── */
+.dl-card-body a.dl-wikilink { border-bottom: 1px dashed rgba(224,83,61,0.5); }
+.dl-card-body a.dl-wikilink-missing { color: var(--ink-faint); border-bottom-color: var(--line); cursor: help; }
+
 @media (max-width: 640px) {
   .dl-card-title { font-size: 18px; }
   .dl-gallery { grid-template-columns: 1fr; }
   .dl-header-inner { flex-wrap: wrap; }
+  .dl-col { flex-basis: 100%; }
 }

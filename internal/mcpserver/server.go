@@ -66,6 +66,55 @@ func Run(version string) error {
 		mcp.WithString("slug", mcp.Description("Target entry slug (default: active draft).")),
 	), handleStamp)
 
+	// --- Almanac node-model tools -----------------------------------------
+
+	s.AddTool(mcp.NewTool("devlog_nodes",
+		mcp.WithDescription("List nodes of a given type (newest first). Returns slug, title, type, date, status and other node-model fields. Omit type to list every node type."),
+		mcp.WithString("type", mcp.Description("Node type to list: entry|task|epic|decision|article. Empty = all types.")),
+	), handleNodes)
+
+	s.AddTool(mcp.NewTool("devlog_task_new",
+		mcp.WithDescription("Create a new task node (status defaults to todo). Returns its slug."),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Task title.")),
+		mcp.WithString("body", mcp.Description("Initial markdown body.")),
+		mcp.WithString("effort", mcp.Description("Effort estimate: S|M|L.")),
+		mcp.WithString("epic", mcp.Description("Parent epic slug.")),
+		mcp.WithString("tags", mcp.Description("Comma-separated tags.")),
+	), handleTaskNew)
+
+	s.AddTool(mcp.NewTool("devlog_task_list",
+		mcp.WithDescription("List task nodes (newest first). Optionally filter by status."),
+		mcp.WithString("status", mcp.Description("Filter to this status: todo|doing|done|cut.")),
+	), handleTaskList)
+
+	s.AddTool(mcp.NewTool("devlog_task_set_status",
+		mcp.WithDescription("Set a task's status (todo|doing|done|cut)."),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Task slug.")),
+		mcp.WithString("status", mcp.Required(), mcp.Description("New status: todo|doing|done|cut.")),
+	), handleTaskSetStatus)
+
+	s.AddTool(mcp.NewTool("devlog_epic_new",
+		mcp.WithDescription("Create a new epic node. Returns its slug."),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Epic title.")),
+		mcp.WithString("body", mcp.Description("Initial markdown body.")),
+		mcp.WithString("horizon", mcp.Description("Planning horizon: now|next|later.")),
+	), handleEpicNew)
+
+	s.AddTool(mcp.NewTool("devlog_decide",
+		mcp.WithDescription("Create a new decision (ADR) node. Returns its slug."),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Decision title.")),
+		mcp.WithString("body", mcp.Description("Initial markdown body.")),
+		mcp.WithString("supersedes", mcp.Description("Comma-separated decision slug(s) this one supersedes.")),
+		mcp.WithString("entry", mcp.Description("The entry slug that recorded/occasioned this decision.")),
+	), handleDecide)
+
+	s.AddTool(mcp.NewTool("devlog_article_new",
+		mcp.WithDescription("Create a new article (evergreen reference) node. Returns its slug."),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Article title.")),
+		mcp.WithString("body", mcp.Description("Initial markdown body.")),
+		mcp.WithString("tags", mcp.Description("Comma-separated tags.")),
+	), handleArticleNew)
+
 	return server.ServeStdio(s)
 }
 
@@ -259,6 +308,162 @@ func handleStamp(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	return mcp.NewToolResultText(fmt.Sprintf("stamped %s → %v", e.Slug, e.AllHashes())), nil
+}
+
+// nodeRow is the JSON shape returned by node listing tools.
+type nodeRow struct {
+	Slug    string   `json:"slug"`
+	Title   string   `json:"title"`
+	Type    string   `json:"type"`
+	Date    string   `json:"date"`
+	Time    string   `json:"time,omitempty"`
+	Status  string   `json:"status,omitempty"`
+	Effort  string   `json:"effort,omitempty"`
+	Horizon string   `json:"horizon,omitempty"`
+	Epic    string   `json:"epic,omitempty"`
+	Entry   string   `json:"entry,omitempty"`
+	Tags    []string `json:"tags,omitempty"`
+}
+
+func toNodeRow(e core.Entry) nodeRow {
+	return nodeRow{
+		Slug:    e.Slug,
+		Title:   e.FM.Title,
+		Type:    e.Kind(),
+		Date:    e.FM.Date,
+		Time:    e.FM.Time,
+		Status:  e.FM.Status,
+		Effort:  e.FM.Effort,
+		Horizon: e.FM.Horizon,
+		Epic:    e.FM.Epic,
+		Entry:   e.FM.Entry,
+		Tags:    e.FM.Tags,
+	}
+}
+
+func handleNodes(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	var nodes []core.Entry
+	if t := argString(req, "type"); t != "" {
+		nodes, err = s.ListNodes(t)
+	} else {
+		nodes, err = s.ListNodes()
+	}
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	rows := make([]nodeRow, 0, len(nodes))
+	for _, e := range nodes {
+		rows = append(rows, toNodeRow(e))
+	}
+	return jsonResult(rows)
+}
+
+func handleTaskNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	e, err := s.NewNode("task", core.Frontmatter{
+		Title:  argString(req, "title"),
+		Status: "todo",
+		Effort: argString(req, "effort"),
+		Epic:   argString(req, "epic"),
+		Tags:   splitCSV(argString(req, "tags")),
+	}, argString(req, "body"))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("created task %q (%s)", e.Slug, e.Path)), nil
+}
+
+func handleTaskList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	nodes, err := s.ListNodes("task")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	status := argString(req, "status")
+	rows := make([]nodeRow, 0, len(nodes))
+	for _, e := range nodes {
+		if status != "" && e.FM.Status != status {
+			continue
+		}
+		rows = append(rows, toNodeRow(e))
+	}
+	return jsonResult(rows)
+}
+
+func handleTaskSetStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	status := argString(req, "status")
+	if status == "" {
+		return mcp.NewToolResultError("status is required"), nil
+	}
+	e, err := s.GetNode(argString(req, "slug"))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	e.FM.Status = status
+	if err := e.Save(); err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("set %s status → %s", e.Slug, status)), nil
+}
+
+func handleEpicNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	e, err := s.NewNode("epic", core.Frontmatter{
+		Title:   argString(req, "title"),
+		Horizon: argString(req, "horizon"),
+	}, argString(req, "body"))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("created epic %q (%s)", e.Slug, e.Path)), nil
+}
+
+func handleDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	e, err := s.NewNode("decision", core.Frontmatter{
+		Title:      argString(req, "title"),
+		Supersedes: splitCSV(argString(req, "supersedes")),
+		Entry:      argString(req, "entry"),
+	}, argString(req, "body"))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("created decision %q (%s)", e.Slug, e.Path)), nil
+}
+
+func handleArticleNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	e, err := s.NewNode("article", core.Frontmatter{
+		Title: argString(req, "title"),
+		Tags:  splitCSV(argString(req, "tags")),
+	}, argString(req, "body"))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("created article %q (%s)", e.Slug, e.Path)), nil
 }
 
 func resolveEntry(s *core.Store, slug string) (*core.Entry, error) {
