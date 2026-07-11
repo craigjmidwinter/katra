@@ -119,6 +119,7 @@ func handleList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResu
 		Slug   string   `json:"slug"`
 		Title  string   `json:"title"`
 		Date   string   `json:"date"`
+		Time   string   `json:"time,omitempty"`
 		Draft  bool     `json:"draft"`
 		Hashes []string `json:"hashes,omitempty"`
 		Tags   []string `json:"tags,omitempty"`
@@ -128,7 +129,7 @@ func handleList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResu
 		if draftsOnly && !e.IsDraft() {
 			continue
 		}
-		rows = append(rows, row{e.Slug, e.FM.Title, e.FM.Date, e.IsDraft(), e.AllHashes(), e.FM.Tags})
+		rows = append(rows, row{e.Slug, e.FM.Title, e.FM.Date, e.FM.Time, e.IsDraft(), e.AllHashes(), e.FM.Tags})
 	}
 	return jsonResult(rows)
 }
@@ -146,6 +147,7 @@ func handleGet(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResul
 		"slug":     e.Slug,
 		"title":    e.FM.Title,
 		"date":     e.FM.Date,
+		"time":     e.FM.Time,
 		"tags":     e.FM.Tags,
 		"draft":    e.IsDraft(),
 		"hashes":   e.AllHashes(),

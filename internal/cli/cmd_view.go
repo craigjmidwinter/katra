@@ -28,6 +28,7 @@ func listCmd() *cobra.Command {
 					Slug   string   `json:"slug"`
 					Title  string   `json:"title"`
 					Date   string   `json:"date"`
+					Time   string   `json:"time,omitempty"`
 					Draft  bool     `json:"draft"`
 					Hashes []string `json:"hashes,omitempty"`
 					Tags   []string `json:"tags,omitempty"`
@@ -37,7 +38,7 @@ func listCmd() *cobra.Command {
 					if draftsOnly && !e.IsDraft() {
 						continue
 					}
-					rows = append(rows, row{e.Slug, e.FM.Title, e.FM.Date, e.IsDraft(), e.AllHashes(), e.FM.Tags})
+					rows = append(rows, row{e.Slug, e.FM.Title, e.FM.Date, e.FM.Time, e.IsDraft(), e.AllHashes(), e.FM.Tags})
 				}
 				enc := json.NewEncoder(os.Stdout)
 				enc.SetIndent("", "  ")
@@ -59,7 +60,11 @@ func listCmd() *cobra.Command {
 				if h := e.AllHashes(); len(h) > 0 {
 					hash = fmt.Sprintf("%v", h)
 				}
-				fmt.Printf("%s%s  %-46s  %s%s\n", marker, e.FM.Date, truncate(e.FM.Title, 46), hash, stat)
+				when := e.FM.Date
+				if e.FM.Time != "" {
+					when += " " + e.FM.Time
+				}
+				fmt.Printf("%s%-19s  %-46s  %s%s\n", marker, when, truncate(e.FM.Title, 46), hash, stat)
 			}
 			return nil
 		},

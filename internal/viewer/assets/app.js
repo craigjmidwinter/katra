@@ -78,7 +78,8 @@
     var head = el("div", "dl-card-head");
     var row = el("div", "dl-card-titlerow");
     row.appendChild(el("h3", "dl-card-title", esc(e.title)));
-    row.appendChild(el("span", "dl-card-date", esc(e.date || "")));
+    var when = (e.date || "") + (e.time ? " " + e.time.slice(0, 5) : "");
+    row.appendChild(el("span", "dl-card-date", esc(when)));
     head.appendChild(row);
     if (e.tags && e.tags.length) {
       var tags = el("div", "dl-card-tags");

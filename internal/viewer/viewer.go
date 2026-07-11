@@ -33,6 +33,7 @@ type entryData struct {
 	Slug     string     `json:"slug"`
 	Title    string     `json:"title"`
 	Date     string     `json:"date"`
+	Time     string     `json:"time,omitempty"`
 	Tags     []string   `json:"tags,omitempty"`
 	Hashes   []string   `json:"hashes,omitempty"`
 	Stat     *core.Stat `json:"stat,omitempty"`
@@ -65,6 +66,7 @@ func BuildData(s *core.Store) ([]byte, error) {
 			Slug:     e.Slug,
 			Title:    e.FM.Title,
 			Date:     e.FM.Date,
+			Time:     e.FM.Time,
 			Tags:     e.FM.Tags,
 			Hashes:   e.AllHashes(),
 			Stat:     e.FM.Stat,

@@ -29,6 +29,7 @@ func (s *Stat) Add(o Stat) {
 type Frontmatter struct {
 	Title    string   `yaml:"title"`
 	Date     string   `yaml:"date"`
+	Time     string   `yaml:"time,omitempty"` // HH:MM:SS, orders same-day entries
 	Tags     []string `yaml:"tags,omitempty"`
 	Hash     string   `yaml:"hash,omitempty"`
 	Hashes   []string `yaml:"hashes,omitempty"`
@@ -149,3 +150,6 @@ func slugFromFilename(path string) string {
 
 // Today returns today's date in the canonical YYYY-MM-DD form.
 func Today() string { return time.Now().Format("2006-01-02") }
+
+// NowTime returns the current wall-clock time in the canonical HH:MM:SS form.
+func NowTime() string { return time.Now().Format("15:04:05") }

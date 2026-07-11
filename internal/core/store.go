@@ -92,6 +92,11 @@ func (s *Store) List() ([]Entry, error) {
 		if out[i].FM.Date != out[j].FM.Date {
 			return out[i].FM.Date > out[j].FM.Date
 		}
+		// Same day: creation time orders entries; untimed (legacy) entries
+		// fall back to filename order among themselves
+		if out[i].FM.Time != out[j].FM.Time {
+			return out[i].FM.Time > out[j].FM.Time
+		}
 		return filepath.Base(out[i].Path) > filepath.Base(out[j].Path)
 	})
 	return out, nil
@@ -129,6 +134,9 @@ func (s *Store) Get(slug string) (*Entry, error) {
 func (s *Store) NewEntry(fm Frontmatter, body string) (*Entry, error) {
 	if fm.Date == "" {
 		fm.Date = Today()
+	}
+	if fm.Time == "" {
+		fm.Time = NowTime()
 	}
 	if fm.Title == "" {
 		return nil, fmt.Errorf("title is required")
