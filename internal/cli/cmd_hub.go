@@ -21,8 +21,64 @@ func hubCmd() *cobra.Command {
 		Use:   "hub",
 		Short: "Work across every registered katra",
 	}
-	cmd.AddCommand(hubListCmd(), hubServeCmd(), hubInstallCmd(), hubUninstallCmd())
+	cmd.AddCommand(hubListCmd(), hubServeCmd(), hubScanCmd(), hubInstallCmd(), hubUninstallCmd())
 	return cmd
+}
+
+func hubScanCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "scan [root...]",
+		Short: "Find and register every katra under the given roots (default: cwd)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			roots := args
+			if len(roots) == 0 {
+				wd, _ := os.Getwd()
+				roots = []string{wd}
+			}
+			r, err := core.LoadRegistry()
+			if err != nil {
+				return err
+			}
+			skip := map[string]bool{"node_modules": true, ".venv": true, "Library": true, ".git": true, "vendor": true, "dist": true, "PackageCache": true}
+			added := 0
+			for _, root := range roots {
+				_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
+					if err != nil || !fi.IsDir() {
+						return nil
+					}
+					if skip[fi.Name()] {
+						return filepath.SkipDir
+					}
+					if fi.Name() == core.DefaultDirName || fi.Name() == core.LegacyDirName {
+						if isStore(path) {
+							if r.Add(path) {
+								added++
+								fmt.Printf("  + %s\n", path)
+							}
+							return filepath.SkipDir
+						}
+					}
+					return nil
+				})
+			}
+			if added > 0 {
+				if err := r.Save(); err != nil {
+					return err
+				}
+			}
+			fmt.Printf("✓ %d newly registered (%d total)\n", added, len(r.Projects))
+			return nil
+		},
+	}
+}
+
+// isStore reports whether dir looks like a katra store (config.yml + entries/).
+func isStore(dir string) bool {
+	if fi, err := os.Stat(filepath.Join(dir, "config.yml")); err != nil || fi.IsDir() {
+		return false
+	}
+	fi, err := os.Stat(filepath.Join(dir, "entries"))
+	return err == nil && fi.IsDir()
 }
 
 // hubPlistPath is the launchd agent file location.
