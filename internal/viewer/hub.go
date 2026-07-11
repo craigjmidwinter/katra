@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/craigjmidwinter/katra/internal/core"
 )
@@ -191,40 +192,227 @@ func projHref(id, anchor string, web bool) string {
 	return base
 }
 
-// hubShell wraps inner HTML in the common page chrome + nav. active is the
-// current section ("projects"|"board"|"roadmap") for highlighting.
-func hubShell(active, inner string, web bool) string {
-	nav := ""
-	for _, l := range []struct{ label, key string }{
-		{"Projects", "projects"}, {"Log", "log"}, {"Board", "board"}, {"Roadmap", "roadmap"},
-	} {
-		cls := "nav"
-		if l.key == active {
-			cls = "nav on"
-		}
-		nav += fmt.Sprintf(`<a class="%s" href="%s">%s</a>`, cls, navHref(l.key, web), l.label)
-	}
-	return `<!doctype html><html><head><meta charset="utf-8">` +
-		`<meta name="viewport" content="width=device-width, initial-scale=1">` +
-		`<title>Katra hub</title><style>` +
-		`:root{color-scheme:light dark}body{font:16px/1.5 system-ui,sans-serif;max-width:820px;margin:2.2rem auto;padding:0 1.25rem}` +
-		`h1{font-size:1.3rem;margin:0 0 .3rem}h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;opacity:.55;margin:1.6rem 0 .5rem}` +
-		`nav{margin:.2rem 0 1.4rem}a.nav{text-decoration:none;color:inherit;opacity:.55;margin-right:1rem;font-size:.95rem}a.nav.on{opacity:1;font-weight:600;border-bottom:2px solid currentColor;padding-bottom:2px}` +
-		`a.card{display:block;text-decoration:none;color:inherit;border:1px solid #8883;border-radius:10px;padding:.7rem .95rem;margin:.5rem 0}a.card:hover{border-color:#8886;background:#8881}` +
-		`.t{font-weight:600}.m{opacity:.55;font-size:.82rem;margin-top:.15rem}.b{display:inline-block;margin-right:.8rem}.proj{opacity:.55;font-size:.8rem}` +
-		`.eff{opacity:.55;font-size:.78rem;border:1px solid #8884;border-radius:4px;padding:0 .3rem;margin-left:.4rem}` +
-		`</style></head><body><h1>Katra hub</h1><nav>` + nav + `</nav>` + inner + `</body></html>`
+// hubCSS is the Field Notebook × Workbench styling shared by every hub page.
+const hubCSS = `
+:root{
+  --paper:#f4efe4;--paper-side:#efe7d6;--paper-card:#fbf8f1;--paper-sunk:#f1ebdd;
+  --ink:#2c2823;--ink-2:#4a4239;--ink-dim:#6f6656;--ink-soft:#8a7f6d;--ink-faint:#a99a80;
+  --line:#e5dcc9;--line-2:#e0d5bf;--line-3:#d8cbb4;
+  --accent:#b5502f;--amber:#c08a3a;--amber-ink:#a9741f;--green:#4a8a5c;--green-dot:#5aa877;
+  --serif:"Newsreader",Georgia,serif;--sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 }
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.01em}
+.hub-top{display:flex;align-items:center;gap:16px;height:60px;padding:0 28px;background:var(--paper-card);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.hub-logo{display:flex;align-items:center;gap:10px}
+.hub-mark{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e0a06f,#8a3d24);display:block}
+.hub-logo .nm{font-family:var(--serif);font-size:20px;font-weight:600}
+.hub-logo .sub{font-family:var(--mono);font-size:10px;color:var(--ink-faint);border-left:1px solid var(--line-2);padding-left:12px}
+.hub-search{margin-left:14px;display:flex;align-items:center;gap:9px;background:var(--paper-sunk);border:1px solid var(--line-2);border-radius:9px;padding:8px 14px;width:300px;max-width:34vw;color:var(--ink-faint);font-size:12.5px}
+.hub-search .kbd{margin-left:auto;font-family:var(--mono);font-size:10px;border:1px solid var(--line-2);border-radius:4px;padding:0 5px}
+.hub-stats{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-soft);display:flex;gap:14px;flex-wrap:wrap}
+.hub-stats b{color:var(--ink)}.hub-stats .amber b{color:var(--amber-ink)}.hub-stats .up{color:var(--green)}
+.hub-nav{display:flex;gap:4px;padding:10px 28px 0;background:var(--paper);border-bottom:1px solid var(--line)}
+.hub-nav a{font-family:var(--mono);font-size:12px;color:var(--ink-soft);padding:8px 13px;border-radius:8px 8px 0 0;border-bottom:2px solid transparent}
+.hub-nav a:hover{color:var(--ink)}
+.hub-nav a.on{color:var(--accent);font-weight:600;border-bottom-color:var(--accent)}
+.hub-main{padding:26px 28px 60px;max-width:1240px}
+.sec-head{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+.sec-head .dot{width:8px;height:8px;border-radius:50%}
+.sec-head h2{font-size:20px;margin:0}
+.sec-head .note{font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+.sec-gap{margin-top:34px}
+.flight-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.flight-card{background:var(--paper-card);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:11px;padding:12px 14px;display:block}
+.flight-card:hover{border-color:var(--line-3)}
+.flight-card.draft{background:#faf4e6;border:1px dashed #d8b98a}
+.flight-card .pid{font-family:var(--mono);font-size:9.5px;margin-bottom:6px}
+.flight-card .ft{font-family:var(--serif);font-size:15px;font-weight:600;line-height:1.25}
+.flight-card .fm{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);margin-top:7px}
+.flight-card .fm.draft{color:var(--amber-ink)}
+.proj-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.proj-card{background:var(--paper-card);border:1px solid var(--line);border-radius:13px;overflow:hidden;display:block}
+.proj-card:hover{border-color:var(--line-3)}
+.proj-card .bar{height:4px}
+.proj-card .pad{padding:15px 16px}
+.proj-card .row{display:flex;justify-content:space-between;align-items:baseline}
+.proj-card h3{margin:0;font-size:18px}
+.proj-card .ago{font-family:var(--mono);font-size:10px;color:var(--ink-faint)}
+.proj-card .desc{font-size:12.5px;color:var(--ink-soft);margin:5px 0 12px}
+.spark{display:flex;align-items:flex-end;gap:3px;height:24px;margin-bottom:11px}
+.spark span{flex:1;background:#ece3d1;border-radius:1px;min-height:2px}
+.proj-card .counts{display:flex;gap:12px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint)}
+.proj-card .counts b{color:var(--ink)}.proj-card .counts .amber b{color:var(--amber-ink)}
+.hub-cols{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:34px}
+.hub-cols h2{font-size:20px;margin:0 0 14px}
+.road-row{display:flex;align-items:center;gap:12px;background:var(--paper-card);border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:9px}
+.road-row .hz{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;width:44px}
+.road-row .hz.now{color:var(--accent)}.road-row .hz.next{color:var(--amber-ink)}.road-row .hz.later{color:var(--ink-soft)}
+.road-row .dot{width:7px;height:7px;border-radius:50%}
+.road-row .rt{font-family:var(--serif);font-size:15px;font-weight:600;flex:1;min-width:0}
+.road-row .rp{font-family:var(--mono);font-size:10px;color:var(--ink-faint)}
+.dec-card{display:block;background:var(--paper-card);border:1px solid var(--line);border-left:2px solid var(--green-dot);border-radius:10px;padding:11px 13px;margin-bottom:9px}
+.dec-card.muted{border-left-color:var(--line-3)}
+.dec-card .dt{font-family:var(--serif);font-size:14px;font-weight:600;line-height:1.3}
+.dec-card.muted .dt{color:var(--ink-soft)}
+.dec-card .dm{font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);margin-top:5px}
+/* aggregate board/roadmap/log sub-pages reuse these simple card classes */
+.hub-main h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);font-family:var(--mono);margin:26px 0 10px}
+.hub-main h2:first-child{margin-top:0}
+a.card{display:block;background:var(--paper-card);border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin:9px 0}
+a.card:hover{border-color:var(--line-3)}
+.card .t{font-family:var(--serif);font-weight:600;font-size:16px}
+.card .m{color:var(--ink-soft);font-family:var(--mono);font-size:11px;margin-top:4px}
+.card .b{display:inline-block;margin-right:.9rem}
+.card .proj{color:var(--ink-faint);font-family:var(--mono);font-size:10.5px;margin-top:4px}
+.eff{font-family:var(--mono);font-size:9.5px;color:var(--ink-soft);border:1px solid var(--line-2);border-radius:4px;padding:1px 5px;margin-left:.4rem;text-transform:uppercase}
+.empty{color:var(--ink-faint);font-family:var(--mono);font-size:12px}
+@media(max-width:980px){.flight-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.proj-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hub-cols{grid-template-columns:1fr}}
+@media(max-width:620px){.flight-grid,.proj-grid{grid-template-columns:1fr}.hub-search{display:none}}
+`
 
-// hubIndexHTML renders the project index page (cards, per-project counts).
-func hubIndexHTML(projects []HubProject, web bool) string {
-	var b strings.Builder
-	if len(projects) == 0 {
-		b.WriteString(`<p>No katras registered yet. Run <code>katra init</code> in a repo.</p>`)
-	}
+// hubShell wraps inner HTML in the common hub chrome: a top bar (logo + search +
+// portfolio stats) and a tab nav. active is the current section for highlighting.
+func hubShell(active, inner string, web bool, projects []HubProject) string {
+	var inFlight int
 	for _, p := range projects {
 		entries, _ := p.Store.ListNodes("entry")
 		tasks, _ := p.Store.ListNodes("task")
+		for _, e := range entries {
+			if e.IsDraft() {
+				inFlight++
+			}
+		}
+		for _, t := range tasks {
+			if t.FM.Status == "doing" {
+				inFlight++
+			}
+		}
+	}
+	daemon := ""
+	if web {
+		daemon = `<span class="up">● daemon up</span>`
+	}
+	header := `<div class="hub-top">` +
+		`<div class="hub-logo"><span class="hub-mark"></span><span class="nm">Katra</span>` +
+		`<span class="sub">all projects</span></div>` +
+		`<div class="hub-search">⌕ Search every project…<span class="kbd">⌘K</span></div>` +
+		fmt.Sprintf(`<div class="hub-stats"><span><b>%d</b> projects</span><span class="amber"><b>%d</b> in flight</span>%s</div>`,
+			len(projects), inFlight, daemon) +
+		`</div>`
+
+	nav := `<div class="hub-nav">`
+	for _, l := range []struct{ label, key string }{
+		{"Projects", "projects"}, {"Log", "log"}, {"Board", "board"}, {"Roadmap", "roadmap"},
+	} {
+		cls := ""
+		if l.key == active {
+			cls = " class=\"on\""
+		}
+		nav += fmt.Sprintf(`<a%s href="%s">%s</a>`, cls, navHref(l.key, web), l.label)
+	}
+	nav += `</div>`
+
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
+		`<meta name="viewport" content="width=device-width, initial-scale=1">` +
+		`<link rel="preconnect" href="https://fonts.googleapis.com">` +
+		`<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>` +
+		`<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">` +
+		`<title>Katra hub</title><style>` + hubCSS + `</style></head><body>` +
+		header + nav + `<div class="hub-main">` + inner + `</div></body></html>`
+}
+
+// projAccent returns a project's configured accent, or a warm default.
+func projAccent(p HubProject) string {
+	if a := strings.TrimSpace(p.Store.Config.Accent); a != "" {
+		return a
+	}
+	return "#c86a3f"
+}
+
+// latestDate returns a project's most recent entry date ("" if none).
+func latestDate(entries []core.Entry) string {
+	best := ""
+	for _, e := range entries {
+		if e.FM.Date > best {
+			best = e.FM.Date
+		}
+	}
+	return best
+}
+
+// agoLabel turns a YYYY-MM-DD into a coarse "2h/3d/…" relative to now.
+func agoLabel(date string) string {
+	if date == "" {
+		return "—"
+	}
+	t, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return date
+	}
+	d := time.Since(t)
+	switch {
+	case d < 24*time.Hour:
+		return "today"
+	case d < 48*time.Hour:
+		return "1d ago"
+	case d < 30*24*time.Hour:
+		return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+	default:
+		return date
+	}
+}
+
+// sparkBars buckets entry dates into 7 slots ending at the latest date, so a
+// project card shows its recent cadence. Empty when there are no dated entries.
+func sparkBars(entries []core.Entry) []int {
+	bars := make([]int, 7)
+	var maxT time.Time
+	var ts []time.Time
+	for _, e := range entries {
+		t, err := time.Parse("2006-01-02", e.FM.Date)
+		if err != nil {
+			continue
+		}
+		ts = append(ts, t)
+		if t.After(maxT) {
+			maxT = t
+		}
+	}
+	for _, t := range ts {
+		days := int(maxT.Sub(t).Hours() / 24)
+		if days >= 0 && days < 7 {
+			bars[6-days]++
+		}
+	}
+	return bars
+}
+
+// hubIndexHTML renders the portfolio pulse: everything in flight across repos, a
+// project index, and a rolled-up roadmap + recent decisions.
+func hubIndexHTML(projects []HubProject, web bool) string {
+	if len(projects) == 0 {
+		return hubShell("projects",
+			`<p class="empty">No katras registered yet. Run <code>katra init</code> in a repo.</p>`,
+			web, projects)
+	}
+
+	type proj struct {
+		p                       HubProject
+		entries                 []core.Entry
+		tasks, epics, decisions []core.Entry
+		drafts, doing           int
+		latest                  string
+	}
+	var ps []proj
+	for _, p := range projects {
+		entries, _ := p.Store.ListNodes("entry")
+		tasks, _ := p.Store.ListNodes("task")
+		epics, _ := p.Store.ListNodes("epic")
+		decisions, _ := p.Store.ListNodes("decision")
 		var drafts, doing int
 		for _, e := range entries {
 			if e.IsDraft() {
@@ -236,16 +424,158 @@ func hubIndexHTML(projects []HubProject, web bool) string {
 				doing++
 			}
 		}
-		title := p.Store.Config.Title
-		if title == "" {
-			title = p.ID
-		}
-		fmt.Fprintf(&b, `<a class="card" href="%s"><div class="t">%s</div>`,
-			projHref(p.ID, "", web), html.EscapeString(title))
-		fmt.Fprintf(&b, `<div class="m"><span class="b">%d entries</span><span class="b">%d drafts</span><span class="b">%d doing</span><span class="b">%s</span></div></a>`,
-			len(entries), drafts, doing, html.EscapeString(p.Store.Dir))
+		ps = append(ps, proj{p, entries, tasks, epics, decisions, drafts, doing, latestDate(entries)})
 	}
-	return hubShell("projects", b.String(), web)
+	sort.SliceStable(ps, func(i, j int) bool { return ps[i].latest > ps[j].latest })
+
+	var b strings.Builder
+
+	// ── In flight everywhere: doing tasks + open drafts across repos ──────────
+	var flight strings.Builder
+	nFlight := 0
+	for _, x := range ps {
+		accent := projAccent(x.p)
+		for _, t := range x.tasks {
+			if t.FM.Status != "doing" {
+				continue
+			}
+			fmt.Fprintf(&flight, `<a class="flight-card" href="%s" style="border-left-color:%s">`+
+				`<div class="pid" style="color:%s">%s</div><div class="ft">%s</div><div class="fm">task · doing</div></a>`,
+				projHref(x.p.ID, t.Slug, web), attr(accent), attr(accent),
+				html.EscapeString(x.p.ID), html.EscapeString(t.FM.Title))
+			nFlight++
+		}
+		for _, e := range x.entries {
+			if !e.IsDraft() {
+				continue
+			}
+			fmt.Fprintf(&flight, `<a class="flight-card draft" href="%s">`+
+				`<div class="pid" style="color:%s">%s</div><div class="ft">%s</div><div class="fm draft">✎ draft entry</div></a>`,
+				projHref(x.p.ID, e.Slug, web), attr(accent),
+				html.EscapeString(x.p.ID), html.EscapeString(e.FM.Title))
+			nFlight++
+		}
+	}
+	b.WriteString(`<div class="sec-head"><span class="dot" style="background:var(--amber)"></span>` +
+		`<h2>In flight everywhere</h2><span class="note">every doing task &amp; open draft, all repos</span></div>`)
+	if nFlight == 0 {
+		b.WriteString(`<p class="empty">Nothing in flight — every repo is at a clean stopping point.</p>`)
+	} else {
+		b.WriteString(`<div class="flight-grid">` + flight.String() + `</div>`)
+	}
+
+	// ── Projects grid ────────────────────────────────────────────────────────
+	b.WriteString(`<div class="sec-head sec-gap"><h2>Projects</h2>` +
+		`<span class="note">sorted by last activity</span></div><div class="proj-grid">`)
+	for _, x := range ps {
+		accent := projAccent(x.p)
+		title := x.p.Store.Config.Title
+		if title == "" {
+			title = x.p.ID
+		}
+		fmt.Fprintf(&b, `<a class="proj-card" href="%s"><div class="bar" style="background:%s"></div><div class="pad">`,
+			projHref(x.p.ID, "", web), attr(accent))
+		fmt.Fprintf(&b, `<div class="row"><h3>%s</h3><span class="ago">%s</span></div>`,
+			html.EscapeString(title), html.EscapeString(agoLabel(x.latest)))
+		if d := strings.TrimSpace(x.p.Store.Config.Description); d != "" {
+			fmt.Fprintf(&b, `<div class="desc">%s</div>`, html.EscapeString(d))
+		} else {
+			b.WriteString(`<div class="desc">&nbsp;</div>`)
+		}
+		b.WriteString(sparkHTML(sparkBars(x.entries), accent))
+		fmt.Fprintf(&b, `<div class="counts"><span class="amber"><b>%d</b> doing</span>`+
+			`<span><b>%d</b> draft%s</span><span><b>%d</b> entries</span></div></div></a>`,
+			x.doing, x.drafts, plural(x.drafts), len(x.entries))
+	}
+	b.WriteString(`</div>`)
+
+	// ── Portfolio roadmap + Recent decisions ─────────────────────────────────
+	b.WriteString(`<div class="hub-cols"><div><h2>Portfolio roadmap</h2>`)
+	horizons := []struct{ key, label string }{{"now", "now"}, {"next", "next"}, {"later", "later"}}
+	roadRows := 0
+	for _, h := range horizons {
+		for _, x := range ps {
+			for _, e := range x.epics {
+				if e.FM.Horizon != h.key {
+					continue
+				}
+				fmt.Fprintf(&b, `<a class="road-row" href="%s"><span class="hz %s">%s</span>`+
+					`<span class="dot" style="background:%s"></span><span class="rt">%s</span>`+
+					`<span class="rp">%s</span></a>`,
+					projHref(x.p.ID, e.Slug, web), h.key, h.label, attr(projAccent(x.p)),
+					html.EscapeString(e.FM.Title), html.EscapeString(x.p.ID))
+				roadRows++
+			}
+		}
+	}
+	if roadRows == 0 {
+		b.WriteString(`<p class="empty">No scheduled epics yet.</p>`)
+	}
+	b.WriteString(`</div><div><h2>Recent decisions</h2>`)
+
+	type dec struct {
+		pid, title, status, date string
+		slug                     string
+	}
+	var decs []dec
+	for _, x := range ps {
+		for _, d := range x.decisions {
+			decs = append(decs, dec{x.p.ID, d.FM.Title, d.FM.Status, d.FM.Date, d.Slug})
+		}
+	}
+	sort.SliceStable(decs, func(i, j int) bool { return decs[i].date > decs[j].date })
+	if len(decs) == 0 {
+		b.WriteString(`<p class="empty">No decisions recorded yet.</p>`)
+	}
+	for i, d := range decs {
+		if i >= 6 {
+			break
+		}
+		muted := ""
+		if d.status == "superseded" || d.status == "deprecated" {
+			muted = " muted"
+		}
+		status := d.status
+		if status == "" {
+			status = "accepted"
+		}
+		fmt.Fprintf(&b, `<a class="dec-card%s" href="%s"><div class="dt">%s</div>`+
+			`<div class="dm">%s · %s</div></a>`,
+			muted, projHref(d.pid, d.slug, web), html.EscapeString(d.title),
+			html.EscapeString(d.pid), html.EscapeString(status))
+	}
+	b.WriteString(`</div></div>`)
+
+	return hubShell("projects", b.String(), web, projects)
+}
+
+// sparkHTML renders a normalized 7-bar sparkline; bars with activity use accent.
+func sparkHTML(bars []int, accent string) string {
+	max := 1
+	for _, v := range bars {
+		if v > max {
+			max = v
+		}
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="spark">`)
+	for _, v := range bars {
+		h := 15 + (v*85)/max
+		color := "#ece3d1"
+		if v > 0 {
+			color = attr(accent)
+		}
+		fmt.Fprintf(&b, `<span style="height:%d%%;background:%s"></span>`, h, color)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
 }
 
 // hubTaskCard renders one task as a card linking into its project's viewer.
@@ -278,7 +608,7 @@ func hubBoardHTML(projects []HubProject, web bool) string {
 	}
 	inner := fmt.Sprintf(`<h2>Doing — %d</h2>`, nDoing) + orEmpty(doing.String(), "Nothing in progress.") +
 		fmt.Sprintf(`<h2>Todo — %d</h2>`, nTodo) + orEmpty(todo.String(), "Nothing queued.")
-	return hubShell("board", inner, web)
+	return hubShell("board", inner, web, projects)
 }
 
 // hubRoadmapHTML renders epics grouped by horizon across every project.
@@ -303,7 +633,7 @@ func hubRoadmapHTML(projects []HubProject, web bool) string {
 		}
 		fmt.Fprintf(&b, `<h2>%s</h2>%s`, h.label, buckets[h.key].String())
 	}
-	return hubShell("roadmap", orEmpty(b.String(), "No epics yet."), web)
+	return hubShell("roadmap", orEmpty(b.String(), "No epics yet."), web, projects)
 }
 
 // hubLogHTML renders one reverse-chronological feed of every project's log
@@ -338,7 +668,7 @@ func hubLogHTML(projects []HubProject, web bool) string {
 		fmt.Fprintf(&b, `<a class="card" href="%s"><div class="t">%s%s</div><div class="m"><span class="b">%s</span><span class="proj">%s</span></div></a>`,
 			projHref(r.pid, r.slug, web), html.EscapeString(r.title), draft, html.EscapeString(r.date), html.EscapeString(r.pid))
 	}
-	return hubShell("log", b.String(), web)
+	return hubShell("log", b.String(), web, projects)
 }
 
 // BuildHub writes a static aggregate site to outDir: the hub index/log/board/
@@ -378,4 +708,10 @@ func orDash(s string) string {
 		return "—"
 	}
 	return s
+}
+
+// attr escapes a (config-controlled) value for use inside an HTML attribute,
+// e.g. an accent color dropped into a style="" attribute.
+func attr(s string) string {
+	return strings.NewReplacer(`&`, "&amp;", `"`, "&quot;", `<`, "&lt;", `>`, "&gt;").Replace(s)
 }

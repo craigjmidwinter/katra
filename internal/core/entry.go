@@ -13,9 +13,9 @@ import (
 
 // Stat is a commit diffstat: files changed, lines added, lines deleted.
 type Stat struct {
-	F int `yaml:"f"`
-	A int `yaml:"a"`
-	D int `yaml:"d"`
+	F int `yaml:"f" json:"f"`
+	A int `yaml:"a" json:"a"`
+	D int `yaml:"d" json:"d"`
 }
 
 // Add accumulates another stat (used when chaptering several commits).

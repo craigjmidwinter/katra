@@ -3,97 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dev Log</title>
+<title>Katra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="dl-shell">
-  <header class="dl-header">
-    <div class="dl-header-inner">
-      <div class="dl-brand">
-        <span class="dl-brand-mark"></span>
-        <div>
-          <h1 class="dl-title" id="site-title">Dev Log</h1>
-          <p class="dl-desc" id="site-desc"></p>
-        </div>
-      </div>
-      <div class="dl-meta">
-        <span class="dl-stat-chip" id="count-logged">0 logged</span>
-        <span class="dl-stat-chip dl-stat-chip-draft" id="count-drafts">0 in progress</span>
-      </div>
-    </div>
-    <nav class="dl-tagbar" id="tagbar"></nav>
-    <nav class="dl-nav" id="nav" hidden></nav>
-  </header>
-
-  <main class="dl-main">
-    <section class="dl-section" id="board-section" hidden>
-      <div class="dl-section-head">
-        <h2>Board</h2>
-        <span class="dl-section-sub">tasks by status — todo · doing · done</span>
-      </div>
-      <div class="dl-board" id="board"></div>
-    </section>
-
-    <section class="dl-section" id="roadmap-section" hidden>
-      <div class="dl-section-head">
-        <h2>Roadmap</h2>
-        <span class="dl-section-sub">epics &amp; loose tasks by horizon — now · next · later</span>
-      </div>
-      <div class="dl-board" id="roadmap"></div>
-    </section>
-
-    <section class="dl-section" id="drafts-section" hidden>
-      <div class="dl-section-head">
-        <h2>In Progress</h2>
-        <span class="dl-section-sub">drafts — committed work-in-flight, not yet stamped</span>
-      </div>
-      <div class="dl-feed" id="drafts"></div>
-    </section>
-
-    <section class="dl-section" id="featured-section" hidden>
-      <div class="dl-section-head">
-        <h2>Deep Dives</h2>
-        <span class="dl-section-sub">the long reads — how systems actually work</span>
-      </div>
-      <div class="dl-feed" id="featured"></div>
-    </section>
-
-    <section class="dl-section" id="log-section">
-      <div class="dl-section-head">
-        <h2>The Log</h2>
-        <span class="dl-section-sub">newest first</span>
-      </div>
-      <div class="dl-feed" id="log"></div>
-    </section>
-
-    <section class="dl-section" id="decisions-section" hidden>
-      <div class="dl-section-head">
-        <h2>Decisions</h2>
-        <span class="dl-section-sub">ADRs — what we chose and why, until when</span>
-      </div>
-      <div class="dl-feed" id="decisions"></div>
-    </section>
-
-    <section class="dl-section" id="articles-section" hidden>
-      <div class="dl-section-head">
-        <h2>Reference</h2>
-        <span class="dl-section-sub">articles — how things work</span>
-      </div>
-      <div class="dl-feed" id="articles"></div>
-    </section>
-
-    <p class="dl-empty" id="empty" hidden>No entries yet. Run <code>katra new "Title"</code>.</p>
-  </main>
-
-  <footer class="dl-footer">
-    <span>built with <a href="https://github.com/craigjmidwinter/devlog">katra</a></span>
-  </footer>
+<!--
+  Katra viewer — "Field Notebook × Workbench". A persistent app shell (fixed
+  left nav, main canvas, contextual right rail) rendered client-side from
+  data.json. Views: Overview (a Future→Now→Past time spine), Board (tasks by
+  status), Roadmap (epics by horizon), Timeline, the Library lists (Entries,
+  Decisions, Reference), and a single-node reading view. Zero dependencies;
+  markdown + rich components are pre-rendered to HTML in Go.
+-->
+<div class="kv-app">
+  <aside class="kv-side" id="side"></aside>
+  <div class="kv-canvas" id="canvas"></div>
 </div>
 
-<div class="dl-lightbox" id="lightbox" hidden>
+<div class="kv-lightbox" id="lightbox" hidden>
   <img id="lightbox-img" alt="">
-  <button class="dl-lightbox-close" id="lightbox-close" aria-label="close">×</button>
+  <button class="kv-lightbox-close" id="lightbox-close" aria-label="close">×</button>
 </div>
 
 <script src="app.js"></script>
