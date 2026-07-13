@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -33,11 +34,56 @@ const LegacyDirName = "devlog"
 // Config is the per-katra settings file (katra/config.yml). It is small on
 // purpose: presentation + the two git-hook knobs.
 type Config struct {
-	Title        string `yaml:"title"`
-	Description  string `yaml:"description,omitempty"`
-	Accent       string `yaml:"accent,omitempty"`       // viewer accent colour, e.g. "#e0533d"
-	AutoCommit   bool   `yaml:"autoCommit,omitempty"`   // hook commits the stamp itself
-	CommitPrefix string `yaml:"commitPrefix,omitempty"` // prefix for stamp commits
+	Title        string       `yaml:"title"`
+	Description  string       `yaml:"description,omitempty"`
+	Accent       string       `yaml:"accent,omitempty"`       // viewer accent colour, e.g. "#e0533d"
+	AutoCommit   bool         `yaml:"autoCommit,omitempty"`   // hook commits the stamp itself
+	CommitPrefix string       `yaml:"commitPrefix,omitempty"` // prefix for stamp commits
+	Memory       MemoryConfig `yaml:"memory,omitempty"`       // Claude Code memory ingest settings
+}
+
+// MemoryConfig controls the memory-ingest layer (see memory.go). All fields are
+// optional; an absent block behaves as enabled with defaults, so older configs
+// keep working.
+type MemoryConfig struct {
+	// Enabled toggles ingest. nil means the default (true) — a pointer so that
+	// an explicit `enabled: false` is distinguishable from an absent field.
+	Enabled *bool `yaml:"enabled,omitempty"`
+	// Types is the set of memory metadata.type values admitted for ingest.
+	// Empty means the default: ["project"].
+	Types []string `yaml:"types,omitempty"`
+	// SensitiveTerms are extra strings that trigger quarantine on a match
+	// (case-insensitive), layered on top of the built-in secret detectors.
+	SensitiveTerms []string `yaml:"sensitiveTerms,omitempty"`
+}
+
+// memoryEnabled reports whether ingest is on (default true when unset).
+func (c Config) memoryEnabled() bool {
+	if c.Memory.Enabled == nil {
+		return true
+	}
+	return *c.Memory.Enabled
+}
+
+// memoryTypes returns the admitted metadata.type values (default ["project"]).
+func (c Config) memoryTypes() []string {
+	if len(c.Memory.Types) == 0 {
+		return []string{"project"}
+	}
+	return c.Memory.Types
+}
+
+// memoryAdmits reports whether a memory file's metadata.type is ingested.
+func (c Config) memoryAdmits(t string) bool {
+	if t == "" {
+		return false
+	}
+	for _, want := range c.memoryTypes() {
+		if strings.EqualFold(t, want) {
+			return true
+		}
+	}
+	return false
 }
 
 // DefaultConfig returns the config written by `katra init`.

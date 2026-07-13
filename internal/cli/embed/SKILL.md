@@ -15,9 +15,23 @@ rich components, served as a live page and committed alongside the code.
   post) + `media/` + `config.yml`. Run `katra list` to see if one exists; if not,
   `katra init`.
 - **A draft is an entry with no commit hash.** It renders in the "In Progress"
-  panel immediately — there is no scratch file and no promote step. You write the
-  draft as you work, then *stamp* it at commit time (hash + diffstat) and it drops
+  panel immediately — there is no scratch file and no promote step. The draft is
+  the running post; you *stamp* it at commit time (hash + diffstat) and it drops
   into the log. Nothing can get stuck.
+
+## What katra wants from you (read this)
+
+Your project-memory already captures the play-by-play. **katra ingests that
+memory into the log at commit time**, so you don't need to re-type what you
+already wrote to memory. Spend your effort on the things a text memory *can't*
+hold:
+
+- **Assets — capture them liberally, as work happens.** Screenshots
+  (`katra capture`), before/after sliders (`katra compare`), galleries,
+  charts, diagrams, and rendered artifacts (`embed`). A single capture is worth
+  paragraphs.
+- **The reasoning.** The decision and the *why*, the alternative you rejected,
+  the dead ends. That's the signal memory paraphrases away.
 
 ## Workflow
 
@@ -26,17 +40,18 @@ rich components, served as a live page and committed alongside the code.
    katra new "What you're about to do" --tags area,kind
    ```
    Write for a reader: the *why*, the alternative you rejected, the evidence —
-   not a paraphrased diff. Be candid about dead ends; that's the point.
+   not a paraphrased diff.
 
-2. **As you work** → keep extending the draft:
+2. **As you work** → capture assets and reasoning as they happen:
    ```
-   katra append "A paragraph of markdown about what just happened."
    katra capture path/to/screenshot.png --caption "after the fix"
    katra capture path/to/animation.gif --caption "the horde, dispatched"
    katra compare before.png after.png --caption "bunker reshape"
+   katra append "Why we went with X over Y, and what broke first."
    ```
    `append` also reads stdin (`--file -`) for longer markdown. Capture handles
-   images, gifs, video, and interactive `.html` artifacts automatically.
+   images, gifs, video, and interactive `.html` artifacts automatically. Reach
+   for capture/compare the moment there's something visual — don't wait.
 
 3. **Rich components** — embed them in `append`ed markdown as fenced blocks:
    `embed` (sandboxed iframe artifact), `compare` (before/after slider),
@@ -59,8 +74,9 @@ rich components, served as a live page and committed alongside the code.
 
 ## Notes
 
-- Always keep the draft current *while* working — lining the work up for a post
-  is itself QA, and a stale log is the failure mode this tool exists to prevent.
+- katra folds your project-memory into the draft at commit time — keep using
+  memory as you always do. Your job here is the assets and the *why*, not a
+  running transcript.
 - One draft at a time is the happy path; `stamp` targets the newest draft. Use
   `--entry <slug>` to target a specific one.
 - If the MCP server is connected, the equivalents are `katra_new`,

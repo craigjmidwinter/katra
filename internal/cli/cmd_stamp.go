@@ -35,10 +35,10 @@ func stampCmd() *cobra.Command {
 			}
 			// Tasks this entry closes: the draft's `closes:` frontmatter plus any
 			// --closes flags, de-duped. Recorded on the entry so the linkage
-			// persists, and applied after a successful stamp.
-			toClose := mergeSlugs(e.FM.Closes, closes)
-			e.FM.Closes = toClose
-			if err := s.Stamp(e, hashes); err != nil {
+			// persists, and applied by PublishEntry after a successful stamp.
+			e.FM.Closes = mergeSlugs(e.FM.Closes, closes)
+			res, err := s.PublishEntry(e, hashes)
+			if err != nil {
 				return err
 			}
 			fmt.Printf("✓ stamped %s → %v", e.Slug, e.AllHashes())
@@ -46,15 +46,14 @@ func stampCmd() *cobra.Command {
 				fmt.Printf("  (%d files, +%d −%d)", e.FM.Stat.F, e.FM.Stat.A, e.FM.Stat.D)
 			}
 			fmt.Println()
-			if len(toClose) > 0 {
-				closed, err := s.CloseTasks(e.Slug, toClose)
-				if err != nil {
-					return fmt.Errorf("stamped, but closing tasks failed: %w", err)
-				}
-				fmt.Printf("✓ closed %d task(s): %v\n", len(closed), closed)
+			if len(res.Closed) > 0 {
+				fmt.Printf("✓ closed %d task(s): %v\n", len(res.Closed), res.Closed)
+			}
+			if len(res.Epics) > 0 {
+				fmt.Printf("✓ rolled up %d epic(s): %v\n", len(res.Epics), res.Epics)
 			}
 			if commit {
-				if err := s.CommitStamp(e); err != nil {
+				if err := s.CommitStamp(e, res.Mutated); err != nil {
 					return fmt.Errorf("stamped but commit failed: %w", err)
 				}
 				fmt.Printf("✓ committed the stamp\n")

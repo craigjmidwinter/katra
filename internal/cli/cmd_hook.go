@@ -83,14 +83,21 @@ func hookRunCmd() *cobra.Command {
 			if err != nil {
 				return nil
 			}
-			if err := s.Stamp(e, []string{head}); err != nil {
+			res, err := s.PublishEntry(e, []string{head})
+			if err != nil {
 				return nil
 			}
 			if !quiet {
 				fmt.Printf("katra: stamped %q with %s\n", e.Slug, head)
+				if len(res.Closed) > 0 {
+					fmt.Printf("katra: closed task(s): %v\n", res.Closed)
+				}
+				if len(res.Epics) > 0 {
+					fmt.Printf("katra: rolled up epic(s): %v\n", res.Epics)
+				}
 			}
 			if s.Config.AutoCommit {
-				_ = s.CommitStamp(e)
+				_ = s.CommitStamp(e, res.Mutated)
 			} else if !quiet {
 				fmt.Printf("katra: review + commit %s\n", rel(mustWd(), e.Path))
 			}

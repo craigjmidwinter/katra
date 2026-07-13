@@ -47,6 +47,7 @@ type Frontmatter struct {
 	Epic         string   `yaml:"epic,omitempty"`          // task -> parent epic slug
 	Entry        string   `yaml:"entry,omitempty"`         // task/decision -> the entry slug that recorded/occasioned it
 	Closes       []string `yaml:"closes,omitempty"`        // entry -> task slug(s) it completes; consumed at stamp time
+	Advances     []string `yaml:"advances,omitempty"`      // entry -> task slug(s) it moves forward (todo -> doing); a declared edge, not a wikilink suggestion
 	Supersedes   []string `yaml:"supersedes,omitempty"`    // decision chain
 	SupersededBy []string `yaml:"superseded-by,omitempty"` // mirror of supersedes
 }

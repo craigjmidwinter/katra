@@ -2,6 +2,7 @@ package core
 
 import (
 	"bufio"
+	"crypto/sha1"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,6 +15,26 @@ import (
 func (s *Store) git(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = s.Dir
+	out, err := cmd.Output()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(string(ee.Stderr)))
+		}
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// gitRoot runs a git command with cwd = the repo root, so repo-relative
+// pathspecs resolve correctly (the store often lives in a subdirectory, where
+// git's own git commands otherwise interpret pathspecs relative to that subdir).
+func (s *Store) gitRoot(args ...string) (string, error) {
+	root, err := s.RepoRoot()
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("git", args...)
+	cmd.Dir = root
 	out, err := cmd.Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
@@ -47,6 +68,65 @@ func (s *Store) StagedFiles() ([]string, error) {
 // HeadHash returns the short hash of HEAD.
 func (s *Store) HeadHash() (string, error) {
 	return s.git("rev-parse", "--short", "HEAD")
+}
+
+// DirtyPaths returns the repo-root-relative paths that currently differ from the
+// index/HEAD in the working tree: staged, unstaged, and untracked. Reverted
+// files (identical to HEAD again) do not appear, so an edit-then-revert nets
+// nothing. It is the coverage-verification counterpart to StagedFiles.
+func (s *Store) DirtyPaths() ([]string, error) {
+	out, err := s.git("status", "--porcelain", "--untracked-files=all")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, l := range strings.Split(out, "\n") {
+		if len(l) < 4 {
+			continue
+		}
+		// Porcelain v1: "XY <path>" or "XY <old> -> <new>" for renames.
+		path := strings.TrimSpace(l[3:])
+		if i := strings.Index(path, " -> "); i >= 0 {
+			path = path[i+4:]
+		}
+		path = strings.Trim(path, "\"")
+		if path != "" {
+			files = append(files, path)
+		}
+	}
+	return files, nil
+}
+
+// StoreRelPrefix returns the store directory's path relative to the repo root,
+// as a slash-terminated prefix (e.g. "katra/"), for filtering store-only paths
+// out of a code-change set. It resolves symlinks on both ends so the comparison
+// holds on macOS (/var vs /private/var). Returns "" when it cannot be computed.
+func (s *Store) StoreRelPrefix() string {
+	root, err := s.RepoRoot()
+	if err != nil {
+		return ""
+	}
+	if real, e := filepath.EvalSymlinks(root); e == nil {
+		root = real
+	}
+	dir := s.Dir
+	if real, e := filepath.EvalSymlinks(dir); e == nil {
+		dir = real
+	}
+	rel, err := filepath.Rel(root, dir)
+	if err != nil {
+		return ""
+	}
+	return filepath.ToSlash(rel) + "/"
+}
+
+// IsStorePath reports whether a repo-relative path lives inside the katra store.
+func (s *Store) IsStorePath(repoRel string) bool {
+	prefix := s.StoreRelPrefix()
+	if prefix == "" {
+		return false
+	}
+	return strings.HasPrefix(filepath.ToSlash(repoRel), prefix)
 }
 
 // ShortHash normalises any revision to its short form.
@@ -126,15 +206,26 @@ func (s *Store) Stamp(e *Entry, hashes []string) error {
 	return e.Save()
 }
 
-// CommitStamp stages and commits the (just stamped) entry file.
-func (s *Store) CommitStamp(e *Entry) error {
-	// Use the absolute path: git commands run with cwd = the katra dir,
-	// so a repo-root-relative pathspec would not resolve.
-	if _, err := s.git("add", "--", e.Path); err != nil {
+// CommitStamp stages and commits every file the publish mutated — the stamped
+// entry plus any closed-task and rolled-up-epic files — as one bookkeeping commit
+// (§ fix #6), so those edits don't linger dirty in the working tree. paths must
+// be absolute (git runs with cwd = the katra dir, so repo-root-relative
+// pathspecs would not resolve); e.Path is always included as a fallback.
+func (s *Store) CommitStamp(e *Entry, paths []string) error {
+	seen := map[string]bool{}
+	var files []string
+	for _, p := range append([]string{e.Path}, paths...) {
+		if p == "" || seen[p] {
+			continue
+		}
+		seen[p] = true
+		files = append(files, p)
+	}
+	if _, err := s.git(append([]string{"add", "--"}, files...)...); err != nil {
 		return err
 	}
 	msg := fmt.Sprintf("%s stamp %s (%s)", s.Config.commitPrefix(), e.Slug, strings.Join(e.AllHashes(), ", "))
-	_, err := s.git("commit", "-m", msg, "--", e.Path)
+	_, err := s.git(append([]string{"commit", "-m", msg, "--"}, files...)...)
 	return err
 }
 
@@ -266,4 +357,146 @@ func (s *Store) HookShouldSkip() (bool, error) {
 		}
 	}
 	return any && onlyDevlog, nil
+}
+
+// --- change-record sourcing (fingerprint inputs) ----------------------------
+
+// gitBlobID returns the git blob object id (sha1 of "blob <len>\x00<content>")
+// for the given bytes — the same id git stores in the index/tree, so a
+// working-tree fingerprint and a staged-index fingerprint of identical content
+// agree.
+func gitBlobID(content []byte) string {
+	h := sha1.New()
+	fmt.Fprintf(h, "blob %d", len(content))
+	h.Write([]byte{0})
+	h.Write(content)
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+// headBlobIDs maps each of the given repo-relative paths to its blob id at HEAD
+// (absent paths are omitted). A repo with no commits (or any git error) yields an
+// empty map — callers then treat every path as newly added.
+func (s *Store) headBlobIDs(paths []string) map[string]string {
+	out := map[string]string{}
+	if len(paths) == 0 {
+		return out
+	}
+	args := append([]string{"ls-tree", "-z", "HEAD", "--"}, paths...)
+	res, err := s.gitRoot(args...)
+	if err != nil {
+		return out
+	}
+	for _, rec := range strings.Split(res, "\x00") {
+		// "<mode> <type> <object>\t<path>"
+		tab := strings.IndexByte(rec, '\t')
+		if tab < 0 {
+			continue
+		}
+		meta := strings.Fields(rec[:tab])
+		if len(meta) < 3 || meta[1] != "blob" {
+			continue
+		}
+		out[strings.TrimSpace(rec[tab+1:])] = meta[2]
+	}
+	return out
+}
+
+// indexEntry is a staged index entry's mode + blob id.
+type indexEntry struct {
+	Mode string
+	Blob string
+}
+
+// indexEntries maps each given repo-relative path present in the index to its
+// staged mode + blob id (paths staged for deletion are omitted).
+func (s *Store) indexEntries(paths []string) map[string]indexEntry {
+	out := map[string]indexEntry{}
+	if len(paths) == 0 {
+		return out
+	}
+	args := append([]string{"ls-files", "-s", "-z", "--"}, paths...)
+	res, err := s.gitRoot(args...)
+	if err != nil {
+		return out
+	}
+	for _, rec := range strings.Split(res, "\x00") {
+		// "<mode> <object> <stage>\t<path>"
+		tab := strings.IndexByte(rec, '\t')
+		if tab < 0 {
+			continue
+		}
+		meta := strings.Fields(rec[:tab])
+		if len(meta) < 3 {
+			continue
+		}
+		out[strings.TrimSpace(rec[tab+1:])] = indexEntry{Mode: meta[0], Blob: meta[1]}
+	}
+	return out
+}
+
+// workingTreeChangeRecords builds the canonical change record for each path from
+// its current working-tree content (the Stop-gate view).
+func (s *Store) workingTreeChangeRecords(root string, paths []string) []changeRecord {
+	base := s.headBlobIDs(paths)
+	recs := make([]changeRecord, 0, len(paths))
+	for _, p := range paths {
+		bb := base[p]
+		content, err := os.ReadFile(filepath.Join(root, p))
+		if err != nil {
+			if bb != "" {
+				// Present at HEAD, gone from the working tree → deletion.
+				recs = append(recs, changeRecord{Path: p, Op: "D", BaseBlob: bb})
+			}
+			continue
+		}
+		op := "M"
+		if bb == "" {
+			op = "A"
+		}
+		recs = append(recs, changeRecord{
+			Path:     p,
+			Op:       op,
+			Mode:     workingTreeMode(filepath.Join(root, p)),
+			BaseBlob: bb,
+			Blob:     gitBlobID(content),
+		})
+	}
+	return recs
+}
+
+// indexChangeRecords builds the canonical change record for each path from its
+// STAGED index blob (the pre-commit view of what will actually be committed).
+func (s *Store) indexChangeRecords(paths []string) []changeRecord {
+	base := s.headBlobIDs(paths)
+	idx := s.indexEntries(paths)
+	recs := make([]changeRecord, 0, len(paths))
+	for _, p := range paths {
+		bb := base[p]
+		if e, ok := idx[p]; ok {
+			op := "M"
+			if bb == "" {
+				op = "A"
+			}
+			recs = append(recs, changeRecord{Path: p, Op: op, Mode: e.Mode, BaseBlob: bb, Blob: e.Blob})
+			continue
+		}
+		if bb != "" {
+			// In HEAD, not in the index → staged deletion.
+			recs = append(recs, changeRecord{Path: p, Op: "D", BaseBlob: bb})
+		}
+	}
+	return recs
+}
+
+// workingTreeMode returns git's file mode for a working-tree path (executable
+// bit only; git tracks 100644 vs 100755 for regular files).
+func workingTreeMode(abs string) string {
+	fi, err := os.Stat(abs)
+	if err != nil {
+		return "100644"
+	}
+	if fi.Mode()&0o111 != 0 {
+		return "100755"
+	}
+	return "100644"
 }

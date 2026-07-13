@@ -305,10 +305,20 @@ func handleStamp(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 		}
 		hashes = []string{h}
 	}
-	if err := s.Stamp(e, hashes); err != nil {
+	// Route through PublishEntry so a stamp over MCP applies the same task-close
+	// + epic-rollup follow-ups as the CLI and post-commit hook (§ fix #12).
+	res, err := s.PublishEntry(e, hashes)
+	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	return mcp.NewToolResultText(fmt.Sprintf("stamped %s → %v", e.Slug, e.AllHashes())), nil
+	msg := fmt.Sprintf("stamped %s → %v", e.Slug, e.AllHashes())
+	if len(res.Closed) > 0 {
+		msg += fmt.Sprintf("; closed %v", res.Closed)
+	}
+	if len(res.Epics) > 0 {
+		msg += fmt.Sprintf("; rolled up %v", res.Epics)
+	}
+	return mcp.NewToolResultText(msg), nil
 }
 
 // nodeRow is the JSON shape returned by node listing tools.

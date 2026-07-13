@@ -16,11 +16,18 @@ import (
 var katraSkill string
 
 // Hook command strings written into .claude/settings.json. All are tagged with
-// "katra" so setup can find and replace its own entries idempotently.
+// "katra" so setup can find and replace its own entries idempotently. Every hook
+// routes through the single `katra agent-hook <event>` adapter (fail-open).
 const (
-	hookSessionStart = `echo '📓 katra — log work as you go: katra new "…"; the hub board/log shows everything.'`
-	hookStop         = `katra check --quiet 2>/dev/null || echo '📓 katra — staged changes but no active draft. Log it: katra new "…"'`
-	hookGuard        = `katra guard`
+	hookSessionStart = `katra agent-hook session-start`
+	hookTurnStart    = `katra agent-hook turn-start`
+	hookPostTool     = `katra agent-hook post-tool`
+	hookStop         = `katra agent-hook stop`
+	hookPreCompact   = `katra agent-hook snapshot --event pre-compact`
+	hookSessionEnd   = `katra agent-hook snapshot --event session-end`
+	// hookPreCommit is the coverage gate: a PreToolUse(Bash) check that blocks a
+	// `git commit` whose staged code has no reconciliation receipt.
+	hookPreCommit = `katra agent-hook pre-commit`
 )
 
 func setupCmd() *cobra.Command {
@@ -118,6 +125,17 @@ func mergeKatraHooks(path string, gate bool) error {
 		}
 		return g
 	}
+	// groupAsync is like group but marks the hook async (non-blocking) — used for
+	// the SessionEnd memory snapshot, which must never delay session teardown.
+	groupAsync := func(command string, matcher string) map[string]any {
+		g := map[string]any{
+			"hooks": []any{map[string]any{"type": "command", "command": command, "async": true}},
+		}
+		if matcher != "" {
+			g["matcher"] = matcher
+		}
+		return g
+	}
 	// setEvent drops any existing katra-owned groups for an event, then appends ours.
 	setEvent := func(event string, mine map[string]any) {
 		var kept []any
@@ -132,9 +150,13 @@ func mergeKatraHooks(path string, gate bool) error {
 	}
 
 	setEvent("SessionStart", group(hookSessionStart, ""))
+	setEvent("UserPromptSubmit", group(hookTurnStart, ""))
+	setEvent("PostToolUse", group(hookPostTool, "Edit|Write"))
 	setEvent("Stop", group(hookStop, ""))
+	setEvent("PreCompact", group(hookPreCompact, ""))
+	setEvent("SessionEnd", groupAsync(hookSessionEnd, ""))
 	if gate {
-		setEvent("PreToolUse", group(hookGuard, "Bash"))
+		setEvent("PreToolUse", group(hookPreCommit, "Bash"))
 	} else if existing, ok := hooks["PreToolUse"].([]any); ok {
 		// drop any prior katra gate, keep other PreToolUse hooks
 		var kept []any

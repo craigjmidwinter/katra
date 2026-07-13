@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -24,24 +23,11 @@ func gateBlocks() bool {
 	if err != nil || len(staged) == 0 {
 		return false
 	}
-	root, err := s.RepoRoot()
-	if err != nil {
+	if s.StoreRelPrefix() == "" {
 		return false
 	}
-	if real, e := filepath.EvalSymlinks(root); e == nil {
-		root = real
-	}
-	dir := s.Dir
-	if real, e := filepath.EvalSymlinks(dir); e == nil {
-		dir = real
-	}
-	storeRel, err := filepath.Rel(root, dir)
-	if err != nil {
-		return false
-	}
-	storePrefix := filepath.ToSlash(storeRel) + "/"
 	for _, f := range staged {
-		if !strings.HasPrefix(filepath.ToSlash(f), storePrefix) {
+		if !s.IsStorePath(f) {
 			// found a non-store (code) file staged
 			draft, _ := s.ActiveDraft()
 			return draft == nil
