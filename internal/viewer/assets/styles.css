@@ -105,6 +105,31 @@ h1, h2, h3, h4 { font-family: var(--serif); font-weight: 600; letter-spacing: -0
 .kv-proj-desc { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); margin-top: 2px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ── Project switcher ────────────────────────────────────── */
+.kv-proj.switch { cursor: pointer; position: relative; }
+.kv-proj.switch:hover { border-color: var(--line-3); }
+.kv-proj-caret { margin-left: auto; flex: none; color: var(--ink-faint); font-size: 11px; }
+.kv-projmenu {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
+  background: var(--paper-card); border: 1px solid var(--line-2); border-radius: 11px;
+  box-shadow: 0 14px 34px rgba(60, 50, 35, .18);
+  padding: 6px; max-height: 60vh; overflow-y: auto;
+}
+.kv-projmenu-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 9px; border-radius: 8px;
+  font-size: 13px; color: var(--ink-2); cursor: pointer;
+}
+.kv-projmenu-item:hover { background: #f3e7d1; }
+.kv-projmenu-item.active { color: var(--accent); font-weight: 600; }
+.kv-projmenu-item .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.kv-projmenu-all {
+  display: block; margin-top: 5px; padding: 8px 9px 4px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono); font-size: 11px; color: var(--ink-soft); cursor: pointer;
+}
+.kv-projmenu-all:hover { color: var(--accent); }
+
 .kv-navlabel {
   font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em;
   text-transform: uppercase; color: var(--ink-faint); margin: 20px 11px 8px;

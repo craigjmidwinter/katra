@@ -14,6 +14,7 @@
 
   var state = {
     data: null,
+    hub: null,      // {hub, projects[]} from projects.json — null in a standalone viewer
     bySlug: {},
     children: {},   // epic slug -> [task nodes]
     thread: null,   // active tag filter
@@ -56,9 +57,14 @@
 
   // ── load + index ──────────────────────────────────────────────────────────
   function load() {
-    fetch("data.json", { cache: "no-store" })
-      .then(function (r) { return r.json(); })
-      .then(function (d) { boot(d); })
+    var dataP = fetch("data.json", { cache: "no-store" }).then(function (r) { return r.json(); });
+    // Sibling katras power the project switcher. Served by the hub; absent in a
+    // standalone single-project viewer — in which case we just render no switcher.
+    var projP = fetch("projects.json", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; });
+    Promise.all([dataP, projP])
+      .then(function (res) { state.hub = res[1]; boot(res[0]); })
       .catch(function (e) { console.error("katra: failed to load data.json", e); });
   }
 
@@ -134,12 +140,18 @@
     var side = document.getElementById("side");
     side.innerHTML = "";
 
-    var proj = el("div", "kv-proj");
+    var hasSwitcher = !!(state.hub && state.hub.projects && state.hub.projects.length);
+    var proj = el("div", "kv-proj" + (hasSwitcher ? " switch" : ""));
     proj.appendChild(el("span", "kv-proj-mark"));
     var pt = el("div"); pt.style.minWidth = "0";
     pt.appendChild(el("div", "kv-proj-name", esc(d.site && d.site.title || "Katra")));
     if (d.site && d.site.description) pt.appendChild(el("div", "kv-proj-desc", esc(d.site.description)));
     proj.appendChild(pt);
+    if (hasSwitcher) {
+      proj.appendChild(el("span", "kv-proj-caret", "▾"));
+      proj.title = "Switch project";
+      proj.onclick = function (ev) { ev.stopPropagation(); toggleProjMenu(proj); };
+    }
     side.appendChild(proj);
 
     var counts = {
@@ -192,6 +204,46 @@
     if (count != null) a.appendChild(el("span", "kv-navcount", String(count)));
     a.onclick = function () { go(hash); };
     return a;
+  }
+
+  // ── Project switcher — jump to any sibling katra, or up to the hub ─────────
+  function toggleProjMenu(anchor) {
+    var existing = document.getElementById("kv-projmenu");
+    if (existing) { existing.remove(); return; }
+
+    var menu = el("div", "kv-projmenu");
+    menu.id = "kv-projmenu";
+    menu.onclick = function (ev) { ev.stopPropagation(); }; // let links work, don't re-toggle
+
+    var here = (state.data.site && state.data.site.title) || "";
+    (state.hub.projects || []).forEach(function (p) {
+      var a = el("a", "kv-projmenu-item" + (p.title === here ? " active" : ""));
+      var dot = el("span", "dot");
+      dot.style.background = p.accent || "var(--accent)";
+      a.appendChild(dot);
+      a.appendChild(document.createTextNode(p.title));
+      a.href = p.href;
+      menu.appendChild(a);
+    });
+    if (state.hub.hub) {
+      var all = el("a", "kv-projmenu-all", "◈ All projects");
+      all.href = state.hub.hub;
+      menu.appendChild(all);
+    }
+    anchor.appendChild(menu);
+
+    // Any click elsewhere (or Escape) closes it.
+    setTimeout(function () {
+      function close() {
+        var m = document.getElementById("kv-projmenu");
+        if (m) m.remove();
+        document.removeEventListener("click", close);
+        document.removeEventListener("keydown", onKey);
+      }
+      function onKey(e) { if (e.key === "Escape") close(); }
+      document.addEventListener("click", close);
+      document.addEventListener("keydown", onKey);
+    }, 0);
   }
 
   // ── shared chrome ─────────────────────────────────────────────────────────

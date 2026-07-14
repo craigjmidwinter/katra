@@ -1,6 +1,7 @@
 package viewer
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
@@ -12,6 +13,42 @@ import (
 
 	"github.com/craigjmidwinter/katra/internal/core"
 )
+
+// projectsJSON is the sibling-project list the per-project viewer's switcher
+// reads from <viewer>/projects.json. Hrefs are absolute when served by the hub
+// and relative for a static build (where the reader sits in p/<id>/). Absent in
+// a standalone single-project `katra serve`/`build` — the viewer then simply
+// renders no switcher.
+func projectsJSON(projects []HubProject, web bool) []byte {
+	type projEntry struct {
+		ID     string `json:"id"`
+		Title  string `json:"title"`
+		Accent string `json:"accent"`
+		Href   string `json:"href"`
+	}
+	out := struct {
+		Hub      string      `json:"hub"`
+		Projects []projEntry `json:"projects"`
+	}{Hub: "/"}
+	if !web {
+		out.Hub = "../../index.html"
+	}
+	for _, p := range projects {
+		title := p.Store.Config.Title
+		if title == "" {
+			title = p.ID
+		}
+		href := "/p/" + p.ID + "/"
+		if !web {
+			href = "../" + p.ID + "/index.html"
+		}
+		out.Projects = append(out.Projects, projEntry{
+			ID: p.ID, Title: title, Accent: projAccent(p), Href: href,
+		})
+	}
+	b, _ := json.MarshalIndent(out, "", "  ")
+	return b
+}
 
 // HubProject is one katra served by the hub under /p/<ID>/.
 type HubProject struct {
@@ -68,6 +105,11 @@ func ServeHub(projects []HubProject, port int) error {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.Header().Set("Cache-Control", "no-cache")
 			_, _ = w.Write(b)
+		case sub == "projects.json":
+			// Feeds the viewer's project switcher — every sibling katra.
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-cache")
+			_, _ = w.Write(projectsJSON(projects, true))
 		case strings.HasPrefix(sub, "media/"):
 			relPath := strings.TrimPrefix(sub, "media/")
 			p := filepath.Join(store.MediaDir(), filepath.Clean("/"+relPath))
@@ -689,8 +731,13 @@ func BuildHub(projects []HubProject, outDir string) error {
 		}
 	}
 	for _, p := range projects {
-		if err := Build(p.Store, filepath.Join(outDir, "p", p.ID)); err != nil {
+		dir := filepath.Join(outDir, "p", p.ID)
+		if err := Build(p.Store, dir); err != nil {
 			return fmt.Errorf("%s: %w", p.ID, err)
+		}
+		// Sibling list for the viewer's project switcher (relative hrefs).
+		if err := os.WriteFile(filepath.Join(dir, "projects.json"), projectsJSON(projects, false), 0o644); err != nil {
+			return fmt.Errorf("%s: projects.json: %w", p.ID, err)
 		}
 	}
 	return nil
