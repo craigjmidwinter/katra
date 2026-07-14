@@ -480,7 +480,7 @@ func (s *Store) EvaluateReconcileForSession(sessionID string) ReconcileReport {
 	if err != nil {
 		return r // not a git repo → not applicable → allow
 	}
-	dirty, err := s.DirtyPaths()
+	dirty, err := s.DirtyEntries()
 	if err != nil {
 		return r
 	}
@@ -491,13 +491,24 @@ func (s *Store) EvaluateReconcileForSession(sessionID string) ReconcileReport {
 	}
 	r.Applicable = true
 
-	dirtyCode := map[string]bool{}
-	for _, p := range dirty {
-		if !s.IsStorePath(p) {
-			dirtyCode[p] = true
+	// Two views of "dirty". dirtyAll is everything the agent plausibly authored —
+	// used when we can attribute the unit to observed Edit/Write calls, where a
+	// newly written (still untracked) source file is genuinely work. dirtyTracked
+	// excludes untracked files and backs the repo-wide fallback, so a large
+	// untracked scratch tree (build artifacts, caches, media) is never mistaken
+	// for the agent's work.
+	dirtyAll := map[string]bool{}
+	dirtyTracked := map[string]bool{}
+	for _, e := range dirty {
+		if !s.IsWorkProduct(e.Path) {
+			continue
+		}
+		dirtyAll[e.Path] = true
+		if !e.Untracked {
+			dirtyTracked[e.Path] = true
 		}
 	}
-	r.TouchedPaths = s.unitForSession(sessionID, dirtyCode)
+	r.TouchedPaths = s.unitForSession(sessionID, dirtyAll, dirtyTracked)
 	sort.Strings(r.TouchedPaths)
 	r.WorkGenerationID = s.workGenIDWorkingTree(root, r.TouchedPaths)
 
@@ -594,11 +605,18 @@ func (s *Store) workGenIDWorkingTree(root string, paths []string) string {
 // most-recently-active session's unit so the standalone reconcile command agrees
 // with Stop; with no touched session at all it falls back to the repo-wide dirty
 // set (legacy/direct callers).
-func (s *Store) unitForSession(sessionID string, dirtyCode map[string]bool) []string {
+// maxUntrackedFallback bounds how many untracked files the repo-wide fallback
+// will treat as a unit of work. Above this, the untracked set is assumed to be a
+// scratch/artifact tree rather than something the agent just authored.
+const maxUntrackedFallback = 50
+
+func (s *Store) unitForSession(sessionID string, dirtyAll, dirtyTracked map[string]bool) []string {
+	// Attributed to observed Edit/Write calls: keep untracked files — a newly
+	// written source file is untracked but is real work.
 	intersect := func(touched []string) []string {
 		out := make([]string, 0, len(touched))
 		for _, p := range touched {
-			if dirtyCode[p] {
+			if dirtyAll[p] {
 				out = append(out, p)
 			}
 		}
@@ -611,10 +629,25 @@ func (s *Store) unitForSession(sessionID string, dirtyCode map[string]bool) []st
 	if sess := s.mostRecentTouchedSession(); sess != nil {
 		return intersect(touchedCodePaths(s, sess))
 	}
-	// No session context at all: fall back to the repo-wide dirty code set.
-	out := make([]string, 0, len(dirtyCode))
-	for p := range dirtyCode {
+	// No session context at all: we cannot attribute anything, so guess from the
+	// repo. Tracked changes always count. Untracked files are ambiguous — a newly
+	// written source file is real work, but a repo may also carry a large
+	// untracked scratch tree (build artifacts, caches, media). Include them only
+	// when there are few enough to plausibly BE a unit of work; a repo sitting on
+	// thousands of untracked artifacts is not "work the agent just did", and
+	// hashing them would be both meaningless and slow.
+	var untracked []string
+	for p := range dirtyAll {
+		if !dirtyTracked[p] {
+			untracked = append(untracked, p)
+		}
+	}
+	out := make([]string, 0, len(dirtyTracked)+len(untracked))
+	for p := range dirtyTracked {
 		out = append(out, p)
+	}
+	if len(untracked) <= maxUntrackedFallback {
+		out = append(out, untracked...)
 	}
 	return out
 }

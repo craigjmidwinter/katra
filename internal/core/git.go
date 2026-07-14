@@ -70,20 +70,34 @@ func (s *Store) HeadHash() (string, error) {
 	return s.git("rev-parse", "--short", "HEAD")
 }
 
-// DirtyPaths returns the repo-root-relative paths that currently differ from the
-// index/HEAD in the working tree: staged, unstaged, and untracked. Reverted
-// files (identical to HEAD again) do not appear, so an edit-then-revert nets
-// nothing. It is the coverage-verification counterpart to StagedFiles.
-func (s *Store) DirtyPaths() ([]string, error) {
+// DirtyEntry is one working-tree change: its repo-relative path and whether git
+// considers it untracked ("??").
+type DirtyEntry struct {
+	Path      string
+	Untracked bool
+}
+
+// DirtyEntries returns the repo-root-relative paths that currently differ from
+// the index/HEAD in the working tree — staged, unstaged, and untracked — each
+// tagged with its untracked-ness. Reverted files (identical to HEAD again) do
+// not appear, so an edit-then-revert nets nothing.
+//
+// Untracked-ness matters because a repo may carry a large untracked scratch tree
+// (build artifacts, caches, media) that is emphatically not "work the agent did".
+// Callers reconstructing a unit of work from an agent's *observed* edits keep
+// untracked files (a newly written source file is untracked but is real work);
+// callers falling back to a repo-wide guess must not (see reconcile).
+func (s *Store) DirtyEntries() ([]DirtyEntry, error) {
 	out, err := s.git("status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		return nil, err
 	}
-	var files []string
+	var entries []DirtyEntry
 	for _, l := range strings.Split(out, "\n") {
 		if len(l) < 4 {
 			continue
 		}
+		untracked := strings.HasPrefix(l, "??")
 		// Porcelain v1: "XY <path>" or "XY <old> -> <new>" for renames.
 		path := strings.TrimSpace(l[3:])
 		if i := strings.Index(path, " -> "); i >= 0 {
@@ -91,10 +105,35 @@ func (s *Store) DirtyPaths() ([]string, error) {
 		}
 		path = strings.Trim(path, "\"")
 		if path != "" {
-			files = append(files, path)
+			entries = append(entries, DirtyEntry{Path: path, Untracked: untracked})
 		}
 	}
+	return entries, nil
+}
+
+// DirtyPaths returns every dirty path (see DirtyEntries), untracked included.
+// It is the coverage-verification counterpart to StagedFiles.
+func (s *Store) DirtyPaths() ([]string, error) {
+	entries, err := s.DirtyEntries()
+	if err != nil {
+		return nil, err
+	}
+	files := make([]string, 0, len(entries))
+	for _, e := range entries {
+		files = append(files, e.Path)
+	}
 	return files, nil
+}
+
+// IsWorkProduct reports whether a dirty path is plausibly the work being logged.
+// It excludes the katra store itself (bookkeeping) and the agent's own local
+// config (.claude/ — hooks and skills churn on `katra setup`, and are not work).
+func (s *Store) IsWorkProduct(repoRel string) bool {
+	p := filepath.ToSlash(repoRel)
+	if s.IsStorePath(p) {
+		return false
+	}
+	return !strings.HasPrefix(p, ".claude/")
 }
 
 // StoreRelPrefix returns the store directory's path relative to the repo root,
