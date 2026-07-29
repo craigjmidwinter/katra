@@ -277,10 +277,9 @@ func (s *Store) repoDirOr(fallback string) string {
 
 const hookMarker = "# >>> katra post-commit >>>"
 
-// InstallHook writes (or refreshes) a post-commit hook that auto-stamps the
-// active draft. It appends to any existing hook, guarded by a marker block so
-// it can be cleanly removed again.
-func (s *Store) InstallHook() (string, error) {
+// hookPath resolves where the post-commit hook belongs, honouring
+// core.hooksPath (husky and friends) as well as stores that live in a subdir.
+func (s *Store) hookPath() (string, error) {
 	root, err := s.RepoRoot()
 	if err != nil {
 		return "", err
@@ -295,10 +294,46 @@ func (s *Store) InstallHook() (string, error) {
 		// stores in a subdir and for custom core.hooksPath (e.g. husky).
 		gitDir = filepath.Join(s.Dir, gitDir)
 	}
-	if err := os.MkdirAll(gitDir, 0o755); err != nil {
+	gitDir = huskyHookDir(gitDir)
+	return filepath.Join(gitDir, "post-commit"), nil
+}
+
+// huskyHookDir redirects husky's generated shim directory to the tracked one
+// beside it. husky points core.hooksPath at `.husky/_`, which it *regenerates*
+// on every `husky install` (i.e. every `npm install`) — anything we append
+// there is silently wiped. The shims in `_` exec the same-named script in the
+// parent `.husky/`, which is user-owned and committed, so that's where our
+// block has to live to survive. If the layout doesn't look like husky, the
+// directory is returned unchanged.
+func huskyHookDir(dir string) string {
+	if filepath.Base(dir) != "_" {
+		return dir
+	}
+	parent := filepath.Dir(dir)
+	if filepath.Base(parent) != ".husky" {
+		return dir
+	}
+	// The shim runner (`h` in husky v9, `husky.sh` in v8) confirms it's really
+	// husky's directory and not a coincidentally-named one.
+	for _, marker := range []string{"h", "husky.sh"} {
+		if _, err := os.Stat(filepath.Join(dir, marker)); err == nil {
+			return parent
+		}
+	}
+	return dir
+}
+
+// InstallHook writes (or refreshes) a post-commit hook that auto-stamps the
+// active draft. It appends to any existing hook, guarded by a marker block so
+// it can be cleanly removed again.
+func (s *Store) InstallHook() (string, error) {
+	hookPath, err := s.hookPath()
+	if err != nil {
 		return "", err
 	}
-	hookPath := filepath.Join(gitDir, "post-commit")
+	if err := os.MkdirAll(filepath.Dir(hookPath), 0o755); err != nil {
+		return "", err
+	}
 	block := hookBlock()
 
 	existing, _ := os.ReadFile(hookPath)
@@ -317,11 +352,10 @@ func (s *Store) InstallHook() (string, error) {
 
 // UninstallHook removes the katra block from the post-commit hook.
 func (s *Store) UninstallHook() (string, error) {
-	root, err := s.RepoRoot()
+	hookPath, err := s.hookPath()
 	if err != nil {
 		return "", err
 	}
-	hookPath := filepath.Join(root, ".git", "hooks", "post-commit")
 	existing, err := os.ReadFile(hookPath)
 	if err != nil {
 		return hookPath, nil // nothing to do

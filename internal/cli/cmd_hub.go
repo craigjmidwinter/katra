@@ -229,7 +229,9 @@ func hubServeCmd() *cobra.Command {
 			if len(projects) == 0 {
 				return fmt.Errorf("no katras registered — run `katra init` in a repo first")
 			}
-			return viewer.ServeHub(projects, port)
+			// Pass the loader, not the snapshot: the hub re-reads the registry
+			// while it runs so katras created later show up on their own.
+			return viewer.ServeHub(hubProjects, port)
 		},
 	}
 	cmd.Flags().IntVar(&port, "port", 4200, "port to serve on")

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/craigjmidwinter/katra/internal/core"
@@ -56,19 +57,99 @@ type HubProject struct {
 	Store *core.Store
 }
 
-// ServeHub runs the multi-tenant hub: one server, an index of every registered
-// katra at /, and each project's viewer at /p/<id>/. data.json is generated per
-// request; any change in any store reloads open tabs (one global livereload).
-func ServeHub(projects []HubProject, port int) error {
+// hubSet holds the hub's current project set. The hub normally runs as a
+// login-time daemon, so the registry it was started with goes stale the moment
+// a new katra is created — `katra init` in a fresh repo would not show up on
+// the board until the machine was rebooted. The set is therefore re-read on an
+// interval rather than snapshotted at boot, and every handler reads through
+// snapshot() instead of closing over a fixed slice.
+type hubSet struct {
+	mu       sync.RWMutex
+	projects []HubProject
+	byID     map[string]*core.Store
+
+	load     func() ([]HubProject, error)
+	hub      *reloadHub
+	watching map[string]bool
+}
+
+// snapshot returns the current project set. The slice is not copied — handlers
+// only read it, and refresh always installs a freshly built one.
+func (h *hubSet) snapshot() ([]HubProject, map[string]*core.Store) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.projects, h.byID
+}
+
+// refresh re-reads the registry and swaps in the new set, starting a watcher
+// for any store we haven't seen before. A load error leaves the previous set in
+// place — a transient unreadable registry must not empty the board. It reports
+// whether the set of project ids changed.
+func (h *hubSet) refresh() bool {
+	projects, err := h.load()
+	if err != nil {
+		return false
+	}
 	byID := make(map[string]*core.Store, len(projects))
 	for _, p := range projects {
 		byID[p.ID] = p.Store
 	}
 
-	hub := &reloadHub{clients: map[chan string]struct{}{}}
-	for _, p := range projects {
-		go watch(p.Store.Dir, hub)
+	h.mu.Lock()
+	changed := len(projects) != len(h.projects)
+	if !changed {
+		for _, p := range projects {
+			if _, ok := h.byID[p.ID]; !ok {
+				changed = true
+				break
+			}
+		}
 	}
+	h.projects, h.byID = projects, byID
+	var fresh []string
+	for _, p := range projects {
+		if !h.watching[p.Store.Dir] {
+			h.watching[p.Store.Dir] = true
+			fresh = append(fresh, p.Store.Dir)
+		}
+	}
+	h.mu.Unlock()
+
+	for _, dir := range fresh {
+		go watch(dir, h.hub)
+	}
+	return changed
+}
+
+// hubRefreshInterval is how often the hub re-reads the registry. Creating a
+// katra is a human-scale event, so this only has to beat "notice it's missing
+// and restart the daemon".
+const hubRefreshInterval = 10 * time.Second
+
+// ServeHub runs the multi-tenant hub: one server, an index of every registered
+// katra at /, and each project's viewer at /p/<id>/. data.json is generated per
+// request; any change in any store reloads open tabs (one global livereload).
+// load supplies the project set and is re-consulted periodically, so katras
+// created after the daemon started appear without a restart.
+func ServeHub(load func() ([]HubProject, error), port int) error {
+	set := &hubSet{
+		load:     load,
+		hub:      &reloadHub{clients: map[chan string]struct{}{}},
+		watching: map[string]bool{},
+	}
+	hub := set.hub
+	set.refresh()
+	projects, _ := set.snapshot()
+
+	// Pick up katras registered after the daemon started, and nudge open tabs
+	// when the roster itself changes (not just a store's contents).
+	go func() {
+		for range time.Tick(hubRefreshInterval) {
+			if set.refresh() {
+				hub.broadcast("reload")
+			}
+		}
+	}()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/__livereload", sseHandler(hub))
@@ -76,6 +157,7 @@ func ServeHub(projects []HubProject, port int) error {
 	mux.HandleFunc("/p/", func(w http.ResponseWriter, r *http.Request) {
 		rest := strings.TrimPrefix(r.URL.Path, "/p/")
 		id, sub, hasSlash := strings.Cut(rest, "/")
+		projects, byID := set.snapshot()
 		store, ok := byID[id]
 		if !ok {
 			http.NotFound(w, r)
@@ -131,6 +213,20 @@ func ServeHub(projects []HubProject, port int) error {
 		}
 	})
 
+	// Portfolio snapshot as data — what native clients (the menu bar app) read
+	// instead of scraping the HTML pages.
+	mux.HandleFunc("/api/hub.json", func(w http.ResponseWriter, r *http.Request) {
+		projects, _ := set.snapshot()
+		b, err := hubAPIJSON(projects)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = w.Write(b)
+	})
+
 	page := func(html string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -139,12 +235,15 @@ func ServeHub(projects []HubProject, port int) error {
 		}
 	}
 	mux.HandleFunc("/board", func(w http.ResponseWriter, r *http.Request) {
+		projects, _ := set.snapshot()
 		page(hubBoardHTML(projects, true))(w, r)
 	})
 	mux.HandleFunc("/roadmap", func(w http.ResponseWriter, r *http.Request) {
+		projects, _ := set.snapshot()
 		page(hubRoadmapHTML(projects, true))(w, r)
 	})
 	mux.HandleFunc("/log", func(w http.ResponseWriter, r *http.Request) {
+		projects, _ := set.snapshot()
 		page(hubLogHTML(projects, true))(w, r)
 	})
 
@@ -153,6 +252,7 @@ func ServeHub(projects []HubProject, port int) error {
 			http.NotFound(w, r)
 			return
 		}
+		projects, _ := set.snapshot()
 		page(hubIndexHTML(projects, true))(w, r)
 	})
 
