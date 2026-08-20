@@ -268,13 +268,6 @@ func (s *Store) CommitStamp(e *Entry, paths []string) error {
 	return err
 }
 
-func (s *Store) repoDirOr(fallback string) string {
-	if r, err := s.RepoRoot(); err == nil {
-		return r
-	}
-	return fallback
-}
-
 const hookMarker = "# >>> katra post-commit >>>"
 
 // hookPath resolves where the post-commit hook belongs, honouring
@@ -440,7 +433,9 @@ func (s *Store) HookShouldSkip() (bool, error) {
 // agree.
 func gitBlobID(content []byte) string {
 	h := sha1.New()
-	fmt.Fprintf(h, "blob %d", len(content))
+	// hash.Hash.Write never returns an error (io.Writer contract note in the
+	// hash package docs), so the write error here is safe to ignore.
+	_, _ = fmt.Fprintf(h, "blob %d", len(content))
 	h.Write([]byte{0})
 	h.Write(content)
 	return fmt.Sprintf("%x", h.Sum(nil))

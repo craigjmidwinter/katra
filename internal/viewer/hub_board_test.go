@@ -39,7 +39,7 @@ func TestHubBoardShowsSpeccedColumnAndKeepsSpeccedTasks(t *testing.T) {
 	doingIdx := strings.Index(html, "<h2>Doing")
 	speccedIdx := strings.Index(html, "<h2>Specced")
 	todoIdx := strings.Index(html, "<h2>Todo")
-	if doingIdx < 0 || speccedIdx < 0 || todoIdx < 0 || !(doingIdx < speccedIdx && speccedIdx < todoIdx) {
+	if doingIdx < 0 || speccedIdx < 0 || todoIdx < 0 || doingIdx >= speccedIdx || speccedIdx >= todoIdx {
 		t.Fatalf("Specced column not between Doing and Todo: doing=%d specced=%d todo=%d", doingIdx, speccedIdx, todoIdx)
 	}
 	speccedSection := html[speccedIdx:todoIdx]

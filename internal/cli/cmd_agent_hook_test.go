@@ -181,10 +181,15 @@ func withStdin(t *testing.T, content string) {
 	if _, err := w.WriteString(content); err != nil {
 		t.Fatal(err)
 	}
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
 	old := os.Stdin
 	os.Stdin = r
-	t.Cleanup(func() { os.Stdin = old; r.Close() })
+	t.Cleanup(func() {
+		os.Stdin = old
+		_ = r.Close()
+	})
 }
 
 // TestStopRealEditBlocksOnce: real Edit/Write with an unresolved unit blocks

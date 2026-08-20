@@ -618,7 +618,7 @@ Command names and flags may still move.
 - **The hub's launchd agent is macOS-only** as a first-class install.
   [`contrib/systemd/`](contrib/systemd/) covers Linux, but there is no
   `katra hub install` for it.
-- **`katra serve` binds all interfaces**, so a headset or a phone on the LAN can
+- **`katra serve` and `katra hub serve` bind all interfaces**, so a headset or a phone on the LAN can
   reach it. There is no auth. Do not run it on a network you do not trust.
 - **A slug change breaks inbound `[[wikilinks]]`.** The file path is the
   identity; `katra doctor` reports the resulting missing links, but nothing

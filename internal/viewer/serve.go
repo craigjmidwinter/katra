@@ -46,14 +46,16 @@ func Serve(s *core.Store, port int) error {
 		w.Header().Set("Connection", "keep-alive")
 		ch := hub.add()
 		defer hub.remove(ch)
-		fmt.Fprint(w, "retry: 1000\n\n")
+		// Best-effort SSE writes: a write error here just means the client
+		// disconnected, which r.Context().Done() below handles either way.
+		_, _ = fmt.Fprint(w, "retry: 1000\n\n")
 		fl.Flush()
 		for {
 			select {
 			case <-r.Context().Done():
 				return
 			case msg := <-ch:
-				fmt.Fprintf(w, "data: %s\n\n", msg)
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", msg)
 				fl.Flush()
 			}
 		}

@@ -359,7 +359,7 @@ func isHex(s string) bool {
 		return false
 	}
 	for _, c := range s {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			return false
 		}
 	}
@@ -466,12 +466,12 @@ func (s *Store) saveLedger(l *memoryLedger) error {
 	}
 	tmpName := tmp.Name()
 	if _, err := tmp.Write(b); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
+		_ = os.Remove(tmpName)
 		return err
 	}
 	return os.Rename(tmpName, s.ledgerPath())

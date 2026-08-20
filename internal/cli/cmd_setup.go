@@ -46,7 +46,7 @@ func setupCmd() *cobra.Command {
 					base = root
 				}
 				dir := filepath.Join(base, core.DefaultDirName)
-				title := strings.Title(filepath.Base(base))
+				title := titleCase(filepath.Base(base))
 				s, err = core.InitStore(dir, title)
 				if err != nil {
 					return fmt.Errorf("init store: %w", err)

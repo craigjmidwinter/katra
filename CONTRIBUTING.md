@@ -50,6 +50,11 @@ fallback is the supported path — do not add a hard dependency on golangci-lint
 and do not commit a change whose only justification is a linter you have locally
 and nobody else does. `go vet` and `gofmt` are the floor.
 
+When it *is* installed, `make lint` reads the committed `.golangci.yml`:
+golangci-lint's standard bundle (`errcheck`, `govet`, `ineffassign`,
+`staticcheck`, `unused`) plus `gofmt` as a formatter. Nothing exotic, nothing
+suppressed without a comment in the config explaining why.
+
 Run these before you push:
 
 ```bash

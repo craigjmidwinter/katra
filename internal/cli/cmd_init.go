@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/craigjmidwinter/katra/internal/core"
 	"github.com/spf13/cobra"
@@ -30,7 +31,7 @@ func initCmd() *cobra.Command {
 				dir = wd
 			}
 			if title == "" {
-				title = strings.Title(filepath.Base(base)) + " Dev Log"
+				title = titleCase(filepath.Base(base)) + " Dev Log"
 			}
 			s, err := core.InitStore(dir, title)
 			if err != nil {
@@ -88,6 +89,26 @@ func rel(from, p string) string {
 		return r
 	}
 	return p
+}
+
+// titleCase title-cases s the way the now-deprecated strings.Title did: every
+// letter that begins a word (follows a non-letter, or starts the string) is
+// upper-cased. Good enough for a directory-basename title; not meant as a
+// general Unicode text transform.
+func titleCase(s string) string {
+	prevLetter := false
+	out := []rune(s)
+	for i, r := range out {
+		if unicode.IsLetter(r) {
+			if !prevLetter {
+				out[i] = unicode.ToTitle(r)
+			}
+			prevLetter = true
+		} else {
+			prevLetter = false
+		}
+	}
+	return string(out)
 }
 
 const sampleBody = `Welcome to your dev log. **Write entries as you work** — this file is a *draft*

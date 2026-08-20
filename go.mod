@@ -1,11 +1,11 @@
 module github.com/craigjmidwinter/katra
 
-go 1.25.1
+go 1.25.13
 
 require (
 	github.com/mark3labs/mcp-go v0.20.1
 	github.com/spf13/cobra v1.8.1
-	github.com/yuin/goldmark v1.7.8
+	github.com/yuin/goldmark v1.7.17
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -1,0 +1,15 @@
+# golangci-lint config (v2 schema, golangci-lint >= 2.0).
+#
+# Standard tier only, per CONTRIBUTING.md: govet, staticcheck, errcheck,
+# unused, plus gofmt as a formatter. "default: standard" is golangci-lint's
+# own standard bundle (errcheck, govet, ineffassign, staticcheck, unused) —
+# ineffassign rides along with the bundle; it's not exotic, so it stays.
+# Nothing here is suppressed without a reason recorded inline.
+version: "2"
+
+linters:
+  default: standard
+
+formatters:
+  enable:
+    - gofmt

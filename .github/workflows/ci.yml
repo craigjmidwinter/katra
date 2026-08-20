@@ -53,6 +53,27 @@ jobs:
       - name: Test
         run: go test -race ./...
 
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+
+      # Version pinned to match the golangci-lint installed locally and the
+      # v2 schema .golangci.yml commits to. Bump both together.
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.0
+
   # katra's own output is the thing it promises, so exercise it end to end
   # rather than trusting unit tests: scaffold a katra in a scratch repo, write
   # an entry through the CLI, stamp it against a real commit, and build the

@@ -163,7 +163,7 @@ func (s *Store) withStateLock(fn func() error) error {
 	if err != nil {
 		return fn()
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
 		return fn()
 	}
@@ -239,12 +239,12 @@ func (s *Store) writeStateJSON(path, pattern string, v any) error {
 	}
 	tmpName := tmp.Name()
 	if _, err := tmp.Write(b); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
+		_ = os.Remove(tmpName)
 		return err
 	}
 	return os.Rename(tmpName, path)
