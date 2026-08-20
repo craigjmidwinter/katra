@@ -253,7 +253,7 @@ func (s *Store) GetNode(slug string) (*Entry, error) {
 			return &all[i], nil
 		}
 	}
-	return nil, fmt.Errorf("no node with slug %q", slug)
+	return nil, fmt.Errorf("no node with slug %q — check it with `katra task list` or `katra list`", slug)
 }
 
 // CloseTasks marks each given task slug done and links it to the entry that
@@ -287,7 +287,8 @@ func (s *Store) CloseTasks(entrySlug string, taskSlugs []string) ([]string, erro
 // (tasks whose FM.Epic == epicSlug), given the full set of nodes. Cut tasks are
 // ignored. It returns "" when the epic has no non-cut child tasks — meaning
 // "no basis; keep the stored status". Otherwise: all done -> "done"; any work
-// started (a done or doing child) -> "active"; all still todo -> "planned".
+// started (a done or doing child) -> "active"; all still todo (or specced —
+// a spec is thinking, not work) -> "planned".
 func EpicRollupStatus(nodes []Entry, epicSlug string) string {
 	var total, done, started int
 	for _, n := range nodes {
@@ -314,6 +315,73 @@ func EpicRollupStatus(nodes []Entry, epicSlug string) string {
 	default:
 		return "planned"
 	}
+}
+
+// EpicDisplayStatus returns the status to *show* for a node: for an epic, the
+// status computed from its child tasks when there is a basis for one, else the
+// stored field; for anything else, the stored field unchanged.
+//
+// The stored epic status is a cache — RollupEpic writes it at stamp time, so
+// between stamps it drifts from the tasks it claims to summarize (this repo's
+// own board sat three weeks stale). A view can't drift, so every read path that
+// displays epic status computes it here instead of trusting the cache. Writers
+// still use RollupEpic; EpicStatusDrift is what reports the two disagreeing.
+func EpicDisplayStatus(nodes []Entry, e Entry) string {
+	if e.Kind() != "epic" {
+		return e.FM.Status
+	}
+	if want := EpicRollupStatus(nodes, e.Slug); want != "" {
+		return want
+	}
+	return e.FM.Status
+}
+
+// EpicDrift is one epic whose stored status disagrees with the status its child
+// tasks compute to.
+type EpicDrift struct {
+	Slug     string
+	Stored   string
+	Computed string
+}
+
+// EpicStatusDrift returns every epic in nodes whose stored status differs from
+// its computed rollup. Epics with no basis for a rollup (no non-cut child
+// tasks) never drift, because there is nothing to disagree with.
+func EpicStatusDrift(nodes []Entry) []EpicDrift {
+	var out []EpicDrift
+	for _, e := range nodes {
+		if e.Kind() != "epic" {
+			continue
+		}
+		want := EpicRollupStatus(nodes, e.Slug)
+		if want == "" || want == e.FM.Status {
+			continue
+		}
+		out = append(out, EpicDrift{Slug: e.Slug, Stored: e.FM.Status, Computed: want})
+	}
+	return out
+}
+
+// ResolveSpec resolves a task's `spec:` reference, in the order the format
+// contract specifies: first as a node slug in the katra (the same identity
+// rule as a `[[wikilink]]` — normalized and matched against nodes), otherwise
+// as a path relative to repoRoot. It returns the kind of match ("node" or
+// "file") and, for a node match, the resolved slug (which may differ from ref
+// itself, e.g. a filename-shaped ref normalizes the same way a wikilink
+// target does). An empty kind means ref resolved to neither — the doctor and
+// viewer share this so the two agree on what counts as a dangling spec.
+func ResolveSpec(nodes []Entry, repoRoot, ref string) (kind, slug string) {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return "", ""
+	}
+	if s := normalizeRef(ref); s != "" && KnownSlugs(nodes)[s] {
+		return "node", s
+	}
+	if repoRoot != "" && fileExists(filepath.Join(repoRoot, filepath.FromSlash(ref))) {
+		return "file", ""
+	}
+	return "", ""
 }
 
 func fileExists(p string) bool {

@@ -95,6 +95,7 @@ func hookRunCmd() *cobra.Command {
 				if len(res.Epics) > 0 {
 					fmt.Printf("katra: rolled up epic(s): %v\n", res.Epics)
 				}
+				warnNoVisual(*e)
 			}
 			if s.Config.AutoCommit {
 				_ = s.CommitStamp(e, res.Mutated)

@@ -1,0 +1,126 @@
+# Jekyll configuration for the katra documentation site.
+#
+# Served by GitHub Pages from the /docs directory on the default branch:
+#   https://craigjmidwinter.github.io/katra/
+#
+# This is a project page, so `url` is the user domain and `baseurl` is the
+# repository name. Getting `baseurl` wrong breaks every link on the site.
+
+title: katra
+description: >-
+  A committed, rich-component dev log you write as you build — markdown entries
+  with embedded interactive components, stamped automatically with the commit
+  and diffstat they describe, and served as a live, auto-reloading page.
+url: "https://craigjmidwinter.github.io"
+baseurl: "/katra"
+
+repository: craigjmidwinter/katra
+lang: en_US
+
+# Theme. `remote_theme` is supported by the plain GitHub Pages build, so no
+# custom Actions workflow is needed. Pinned to a tag so an upstream release
+# cannot change the site without a commit here.
+remote_theme: just-the-docs/just-the-docs@v0.12.0
+
+# jekyll-include-cache is required by just-the-docs and must be declared
+# explicitly when the theme is loaded remotely. jekyll-seo-tag emits <title>,
+# meta description, canonical URL and Open Graph tags; jekyll-sitemap emits
+# sitemap.xml. Both are supported natively by GitHub Pages.
+plugins:
+  - jekyll-include-cache
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# GitHub Pages also always enables jekyll-optional-front-matter,
+# jekyll-titles-from-headings and jekyll-relative-links, which is what lets the
+# design notes render and cross-link without hand-written front matter.
+relative_links:
+  enabled: true
+  collections: false
+
+titles_from_headings:
+  enabled: true
+  strip_title: true
+  collections: false
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+      # Picked up by jekyll-seo-tag for og:image and twitter:image. Relative
+      # paths are resolved against url + baseurl, so links unfurl with the mark.
+      image: /assets/brand/social-preview.png
+
+# --- just-the-docs options -------------------------------------------------
+
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 2
+  preview_words_before: 5
+  preview_words_after: 10
+  tokenizer_separator: /[\s/]+/
+  rel_url: true
+  button: false
+
+heading_anchors: true
+
+# The custom scheme in _sass/color_schemes/katra.scss — the same Field Notebook
+# palette the viewer itself uses, so the docs and the product do not disagree
+# about what katra looks like.
+color_scheme: katra
+
+# Replaces the sidebar title text with the lockup (mark + wordmark). The theme
+# renders it as a background image on a div carrying aria-label="{{ site.title }}",
+# so the accessible name is unchanged.
+logo: "/assets/brand/lockup.svg"
+
+callouts_level: quiet
+callouts:
+  note:
+    title: Note
+    color: grey-dk
+  warning:
+    title: Warning
+    color: red
+
+aux_links:
+  "GitHub":
+    - "https://github.com/craigjmidwinter/katra"
+aux_links_new_tab: true
+
+back_to_top: true
+back_to_top_text: "Back to top"
+
+footer_content: >-
+  katra is MIT licensed. Your log is markdown in your repo — nothing is stored
+  anywhere else, and uninstalling leaves every entry readable.
+
+nav_external_links:
+  - title: katra on GitHub
+    url: https://github.com/craigjmidwinter/katra
+
+# --- SEO -------------------------------------------------------------------
+
+author: Craig Midwinter
+
+social:
+  name: katra
+  links:
+    - https://github.com/craigjmidwinter/katra
+
+twitter:
+  card: summary_large_image
+
+# --- Build -----------------------------------------------------------------
+
+# Both colour schemes live in one stylesheet, so it is worth minifying.
+sass:
+  style: compressed
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - .jekyll-cache

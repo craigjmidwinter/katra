@@ -25,7 +25,7 @@ func newCmd() *cobra.Command {
 			}
 			title := strings.Join(args, " ")
 			if body == "" {
-				body = "Start writing here.\n"
+				body = core.DraftPlaceholderBody
 			}
 			e, err := s.NewEntry(core.Frontmatter{
 				Title:    title,

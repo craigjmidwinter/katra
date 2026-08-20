@@ -11,10 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "0.1.0"
-
-// Execute runs the katra CLI.
-func Execute() {
+// Execute runs the katra CLI. version is stamped at link time by the release
+// build (see the Makefile and .goreleaser.yml); a plain `go build` or
+// `go install` leaves it "dev", which is why bug reports ask for a commit.
+func Execute(version string) {
 	root := &cobra.Command{
 		Use:           "katra",
 		Short:         "A committed, rich-component dev log you write as you build",

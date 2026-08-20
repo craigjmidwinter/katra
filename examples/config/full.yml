@@ -1,0 +1,52 @@
+# Every katra config key, with the defaults spelled out.
+#
+# Nothing here is required — this file exists to show the whole surface in one
+# place. Reference: https://craigjmidwinter.github.io/katra/configuration
+
+# --- Presentation -----------------------------------------------------------
+
+title: HellHole Country Club
+description: Night golf, in VR, on a course that hates you
+
+# The viewer's accent colour, and the tint on this project's card in the hub.
+# QUOTE IT. Unquoted, "#e0533d" is a YAML comment and the key silently empties.
+accent: "#e0533d"
+
+# --- The git hook -----------------------------------------------------------
+#
+# The post-commit hook stamps the active draft with the commit you just made.
+# The stamp is a change to a tracked file, so something has to decide its fate.
+
+# false (default): the stamp is left in the working tree for your next commit.
+# true:            the hook commits it itself, as a second commit.
+#
+# Leave this false until you trust the hook. A hook that creates commits behind
+# you interacts badly with interactive rebase, git bisect, and any CI script
+# that asserts a clean tree.
+autoCommit: false
+
+# Prefix for the hook's own stamp commits, when autoCommit is true.
+commitPrefix: "katra:"
+
+# --- Memory ingest ----------------------------------------------------------
+#
+# katra can read Claude Code's own project memory and fold it into a private
+# ledger, so the log gets the play-by-play without anyone re-typing it.
+
+memory:
+  # Default true. Set false to turn the whole thing off — nothing is read and
+  # no ledger is written.
+  enabled: true
+
+  # Which memory metadata.type values are admitted. The default is [project]:
+  # the type that describes ongoing work. `user` (who you are) and `feedback`
+  # (how you like to be worked with) are deliberately excluded, because neither
+  # belongs in a log you commit.
+  types: [project]
+
+  # Extra strings that quarantine a memory generation on match, case-insensitive,
+  # layered on top of the built-in secret detectors. Use for project-specific
+  # things that are not shaped like a credential but should not be committed.
+  sensitiveTerms:
+    - acme-internal
+    - staging-key

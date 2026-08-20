@@ -171,3 +171,97 @@ func TestTaskListFiltersByStatus(t *testing.T) {
 		t.Errorf("task list leaked an epic:\n%s", out)
 	}
 }
+
+// TestTaskSpecCommand drives `task spec`: a todo task advances to specced, a
+// doing task is left alone (setting spec never moves status backwards), and a
+// ref that resolves to neither a node nor a file warns but still writes.
+func TestTaskSpecCommand(t *testing.T) {
+	store, err := core.InitStore(t.TempDir(), "CLI Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "decide", "Some Decision"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "new", "Needs A Spec"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "new", "Already Moving"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "start", "already-moving"); err != nil {
+		t.Fatal(err)
+	}
+
+	// todo -> specced, with the ref resolving to the decision node.
+	out, err := runNodeCmd(t, store.Dir, "task", "spec", "needs-a-spec", "some-decision")
+	if err != nil {
+		t.Fatalf("task spec: %v", err)
+	}
+	if bytes.Contains([]byte(out), []byte("⚠")) {
+		t.Errorf("a ref that resolves should not warn:\n%s", out)
+	}
+	node, err := store.GetNode("needs-a-spec")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.FM.Spec != "some-decision" {
+		t.Errorf("Spec = %q, want some-decision", node.FM.Spec)
+	}
+	if node.FM.Status != "specced" {
+		t.Errorf("Status = %q, want specced", node.FM.Status)
+	}
+
+	// doing stays doing — setting spec never moves status backwards.
+	if _, err := runNodeCmd(t, store.Dir, "task", "spec", "already-moving", "some-decision"); err != nil {
+		t.Fatalf("task spec: %v", err)
+	}
+	node, err = store.GetNode("already-moving")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.FM.Status != "doing" {
+		t.Errorf("Status = %q, want doing (unchanged)", node.FM.Status)
+	}
+	if node.FM.Spec != "some-decision" {
+		t.Errorf("Spec = %q, want some-decision", node.FM.Spec)
+	}
+
+	// A ref that resolves to neither a node nor a file warns but still writes.
+	out, err = runNodeCmd(t, store.Dir, "task", "spec", "needs-a-spec", "docs/design/does-not-exist.md")
+	if err != nil {
+		t.Fatalf("task spec with unresolved ref: want no error (warn but write), got %v", err)
+	}
+	if !bytes.Contains([]byte(out), []byte("⚠")) {
+		t.Errorf("expected a warning for an unresolved ref:\n%s", out)
+	}
+	node, err = store.GetNode("needs-a-spec")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.FM.Spec != "docs/design/does-not-exist.md" {
+		t.Errorf("Spec = %q, want the unresolved ref written anyway", node.FM.Spec)
+	}
+}
+
+// TestTaskNewWithSpecFlag verifies `task new --spec` creates the task already
+// specced with the ref recorded.
+func TestTaskNewWithSpecFlag(t *testing.T) {
+	store, err := core.InitStore(t.TempDir(), "CLI Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "new", "Pre-Specced", "--spec", "docs/design/foo.md"); err != nil {
+		t.Fatal(err)
+	}
+	node, err := store.GetNode("pre-specced")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.FM.Status != "specced" {
+		t.Errorf("Status = %q, want specced", node.FM.Status)
+	}
+	if node.FM.Spec != "docs/design/foo.md" {
+		t.Errorf("Spec = %q, want docs/design/foo.md", node.FM.Spec)
+	}
+}

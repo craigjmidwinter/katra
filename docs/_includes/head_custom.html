@@ -1,0 +1,64 @@
+<!--
+  Overrides the empty head_custom.html that just-the-docs ships, which its
+  _includes/head.html includes on every page, after the jekyll-seo-tag output,
+  so everything here is additive to it rather than a replacement for it.
+
+  robots.txt is only honoured at the domain root. This is a project page, so
+  ours is served at /katra/robots.txt and crawlers never read it — the
+  Sitemap: line in it cannot be discovered that way. Advertising the sitemap
+  here gives it a second, path-independent route.
+-->
+<link rel="sitemap" type="application/xml" title="Sitemap" href="{{ '/sitemap.xml' | relative_url }}">
+
+<!--
+  Favicons. The theme's own favicon.html only ever emits a /favicon.ico, which
+  this site does not ship; these are the modern set. The 16 and 32 rasters come
+  off the *small* mark grid, not the full one — the 24-unit mark does not divide
+  into 16, so a 16px raster of it resamples the page keyline away completely and
+  leaves a grey smudge. The SVG is that same small mark, so a browser that
+  prefers it gets the identical drawing at any size.
+-->
+<link rel="icon" href="{{ '/assets/brand/mark-small.svg' | relative_url }}" type="image/svg+xml">
+<link rel="icon" href="{{ '/assets/brand/favicon-32.png' | relative_url }}" sizes="32x32" type="image/png">
+<link rel="icon" href="{{ '/assets/brand/favicon-16.png' | relative_url }}" sizes="16x16" type="image/png">
+<link rel="apple-touch-icon" href="{{ '/assets/brand/apple-touch-icon.png' | relative_url }}" sizes="180x180">
+
+<!--
+  Match the browser chrome to the scheme the stylesheet is about to resolve to.
+  The two values are Paper and Ink dark from _sass/custom/custom.scss.
+-->
+<meta name="theme-color" content="#f4efe4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1a17" media="(prefers-color-scheme: dark)">
+
+<!--
+  jekyll-seo-tag emits og:image and twitter:image from the `image` default in
+  _config.yml. It does not emit the dimensions or the alt text, and unfurls are
+  noticeably better with them.
+-->
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:alt" content="katra — a committed, rich-component dev log you write as you build">
+<meta name="twitter:image:alt" content="katra — a committed, rich-component dev log you write as you build">
+
+<!--
+  just-the-docs compiles the sidebar logo as a plain stylesheet rule -
+  `.site-logo { background-image: url($logo); }` in its _sass/layout.scss,
+  built from the single `logo:` value in _config.yml (lockup.svg, the light
+  variant: ink #2c2823 on a transparent ground). That file is Sass-imported,
+  not Liquid-included, so it can never see `prefers-color-scheme` or resolve
+  a second `relative_url` itself - which is why the swap has to happen here,
+  in the one place downstream of the theme's stylesheet <link> that both
+  runs through Liquid and lands later in the cascade.
+
+  Per BRAND.md's usage rules, the dark lockup variant belongs behind
+  prefers-color-scheme: dark; without this the sidebar would keep rendering
+  light-mode ink on the dark surface all night.
+-->
+<style>
+  @media (prefers-color-scheme: dark) {
+    .site-logo {
+      background-image: url("{{ '/assets/brand/lockup-dark.svg' | relative_url }}");
+    }
+  }
+</style>

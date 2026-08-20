@@ -3,11 +3,10 @@ title: 'Hooks and hub stop drifting silently: live registry + tracked husky hook
 date: "2026-07-29"
 time: "08:18:22"
 type: task
-status: todo
+status: done
 effort: S
+entry: the-placeholder-that-ate-every-entry-and-why-nine-katras-had-no-pictures
 ---
-
-
 
 Two defects that made katra's automation fail invisibly across 11 projects.
 

@@ -9,8 +9,12 @@ import (
 	"github.com/craigjmidwinter/katra/internal/mcpserver"
 )
 
+// version is stamped at link time, exactly as in cmd/katra. It is reported to
+// the MCP client in the initialize handshake, so a client log names the build.
+var version = "dev"
+
 func main() {
-	if err := mcpserver.Run("0.1.0"); err != nil {
+	if err := mcpserver.Run(version); err != nil {
 		fmt.Fprintln(os.Stderr, "katra-mcp:", err)
 		os.Exit(1)
 	}

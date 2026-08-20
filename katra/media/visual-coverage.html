@@ -1,0 +1,115 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Visual coverage across katras</title>
+<style>
+  /* The figure carries its own surface. `prefers-color-scheme` tracks the OS,
+     not the host page's theme, so a transparent background can strand dark ink
+     on a light host (or the reverse). Owning both keeps them in agreement. */
+  :root {
+    --bg: #fbf9f5;
+    --fg: #1c1e21;
+    --muted: #6b7280;
+    --grid: #d8dce2;
+    --bar: #9aa4b2;
+    --bar-good: #1f9d76;
+    --zero: #c8323c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --fg: #e6e8eb;
+      --muted: #9aa4b2;
+      --grid: #333a44;
+      --bar: #58616e;
+      --bar-good: #35c99b;
+      --zero: #e4626f;
+    }
+  }
+  html, body { margin: 0; background: var(--bg); }
+  body {
+    font: 13px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--fg);
+    padding: 4px 2px 10px;
+  }
+  svg { width: 100%; height: auto; display: block; }
+  .lbl   { fill: var(--fg); font-size: 13px; }
+  .val   { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .tick  { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .axis  { stroke: var(--grid); stroke-width: 1; }
+  .bar   { fill: var(--bar); }
+  .good  { fill: var(--bar-good); }
+  .zero  { fill: var(--zero); font-size: 12px; font-weight: 600; }
+  .cap   { fill: var(--muted); font-size: 11.5px; }
+</style>
+<svg viewBox="0 0 720 420" role="img"
+     aria-label="Share of dev-log entries containing at least one visual, by project. skyhawk 82 percent; gta-vr 27; Pod-Tool 19; caststudio, chesscast, holo-top, NightGolf, fitness and devlog all zero.">
+  <!-- x gridlines + ticks: 0..100% -->
+  <g>
+    <line class="axis" x1="150" y1="46" x2="150" y2="378"/>
+    <line class="axis" x1="272" y1="46" x2="272" y2="370" stroke-dasharray="2 4"/>
+    <line class="axis" x1="394" y1="46" x2="394" y2="370" stroke-dasharray="2 4"/>
+    <line class="axis" x1="516" y1="46" x2="516" y2="370" stroke-dasharray="2 4"/>
+    <line class="axis" x1="638" y1="46" x2="638" y2="370" stroke-dasharray="2 4"/>
+    <text class="tick" x="150" y="392" text-anchor="middle">0%</text>
+    <text class="tick" x="272" y="392" text-anchor="middle">25%</text>
+    <text class="tick" x="394" y="392" text-anchor="middle">50%</text>
+    <text class="tick" x="516" y="392" text-anchor="middle">75%</text>
+    <text class="tick" x="638" y="392" text-anchor="middle">100%</text>
+    <text class="cap" x="394" y="412" text-anchor="middle">share of entries containing at least one image, gallery, embed, video or compare block</text>
+  </g>
+
+  <!-- rows: 488px of bar track = 100%. x = 150 + pct * 4.88 -->
+  <!-- skyhawk 45/55 = 82% -->
+  <g>
+    <text class="lbl" x="140" y="70" text-anchor="end">skyhawk</text>
+    <rect class="bar good" x="150" y="58" width="400" height="18" rx="2"/>
+    <text class="val" x="560" y="70">82%  ·  45 of 55</text>
+  </g>
+  <!-- gta-vr 7/26 = 27% -->
+  <g>
+    <text class="lbl" x="140" y="106" text-anchor="end">gta-vr</text>
+    <rect class="bar" x="150" y="94" width="131" height="18" rx="2"/>
+    <text class="val" x="291" y="106">27%  ·  7 of 26</text>
+  </g>
+  <!-- Pod-Tool 6/32 = 19% -->
+  <g>
+    <text class="lbl" x="140" y="142" text-anchor="end">Pod-Tool</text>
+    <rect class="bar" x="150" y="130" width="92" height="18" rx="2"/>
+    <text class="val" x="252" y="142">19%  ·  6 of 32</text>
+  </g>
+  <!-- zeros -->
+  <g>
+    <text class="lbl" x="140" y="178" text-anchor="end">chesscast</text>
+    <rect class="bar" x="150" y="166" width="2" height="18"/>
+    <text class="val" x="162" y="178"><tspan class="zero">0%</tspan>  ·  0 of 16</text>
+  </g>
+  <g>
+    <text class="lbl" x="140" y="214" text-anchor="end">caststudio</text>
+    <rect class="bar" x="150" y="202" width="2" height="18"/>
+    <text class="val" x="162" y="214"><tspan class="zero">0%</tspan>  ·  0 of 13</text>
+  </g>
+  <g>
+    <text class="lbl" x="140" y="250" text-anchor="end">holo-top</text>
+    <rect class="bar" x="150" y="238" width="2" height="18"/>
+    <text class="val" x="162" y="250"><tspan class="zero">0%</tspan>  ·  0 of 7</text>
+  </g>
+  <g>
+    <text class="lbl" x="140" y="286" text-anchor="end">NightGolf</text>
+    <rect class="bar" x="150" y="274" width="2" height="18"/>
+    <text class="val" x="162" y="286"><tspan class="zero">0%</tspan>  ·  0 of 6</text>
+  </g>
+  <g>
+    <text class="lbl" x="140" y="322" text-anchor="end">fitness</text>
+    <rect class="bar" x="150" y="310" width="2" height="18"/>
+    <text class="val" x="162" y="322"><tspan class="zero">0%</tspan>  ·  0 of 3</text>
+  </g>
+  <g>
+    <text class="lbl" x="140" y="358" text-anchor="end">devlog</text>
+    <rect class="bar" x="150" y="346" width="2" height="18"/>
+    <text class="val" x="162" y="358"><tspan class="zero">0%</tspan>  ·  0 of 1</text>
+  </g>
+
+  <!-- title -->
+  <text class="lbl" x="0" y="20" style="font-size:15px;font-weight:600">Visual coverage across nine katras</text>
+  <text class="cap" x="0" y="38">skyhawk was already doing it right — everywhere else the habit never formed</text>
+</svg>

@@ -5,8 +5,29 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+// mediaRefRe matches a reference to a file under the store's media/ dir, in any
+// of the forms a body can carry one: a markdown image, a `src:` line inside a
+// video/embed/compare fence, or a bare path.
+var mediaRefRe = regexp.MustCompile(`media/[A-Za-z0-9._\-/]+`)
+
+// MediaRefs returns every media/ reference in a body, in order of appearance
+// (duplicates included). It is the one place the reference syntax is known, so
+// doctor, the visual-coverage check and any future consumer agree on what
+// counts as a reference.
+func MediaRefs(body string) []string {
+	return mediaRefRe.FindAllString(body, -1)
+}
+
+// HasVisual reports whether an entry ships at least one visual: a cover image
+// or any media/ reference in its body. The skill asks every entry for one, so
+// this is the check behind the doctor report and the stamp-time nudge.
+func HasVisual(e Entry) bool {
+	return e.FM.Cover != "" || len(MediaRefs(e.Body)) > 0
+}
 
 // MediaKind classifies an imported artifact so it renders with the right block.
 type MediaKind string
@@ -83,9 +104,14 @@ func CompareBlock(before, after, caption string) string {
 	return b + "```\n"
 }
 
-// AppendBody appends a markdown chunk to an entry's body and saves it.
+// AppendBody appends a markdown chunk to an entry's body and saves it. A body
+// that is still nothing but the `katra new` placeholder counts as empty, so the
+// first append replaces the prompt instead of writing underneath it.
 func (s *Store) AppendBody(e *Entry, chunk string) error {
 	body := strings.TrimRight(e.Body, "\n")
+	if IsDraftPlaceholder(body) {
+		body = ""
+	}
 	if body != "" {
 		body += "\n\n"
 	}

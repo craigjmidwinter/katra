@@ -1,0 +1,22 @@
+{
+  "name": "katra",
+  "version": "0.1.0",
+  "description": "A committed, rich-component dev log you write as you build. Markdown entries with embedded before/after sliders, galleries, video and self-contained HTML figures, stamped automatically with the commit and diffstat they describe, and served as a live, auto-reloading page. Hooks make the draft exist while the work does, so the log records what happened rather than a summary reconstructed from the diff.",
+  "author": {
+    "name": "Craig Midwinter",
+    "url": "https://github.com/craigjmidwinter"
+  },
+  "homepage": "https://craigjmidwinter.github.io/katra/",
+  "repository": "https://github.com/craigjmidwinter/katra",
+  "license": "MIT",
+  "keywords": [
+    "devlog",
+    "changelog",
+    "documentation",
+    "mcp",
+    "markdown",
+    "screenshots",
+    "engineering-journal",
+    "agent"
+  ]
+}

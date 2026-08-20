@@ -1,0 +1,108 @@
+name: Bug report
+description: Something behaves differently from what the docs say
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **A katra is source you commit.** Entries, task specs and decision
+        records may quote private code, hostnames or customer names. Redact
+        before pasting, and prefer a minimal reproduction in a scratch repo
+        over a paste from a real project.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: >-
+        Output of `katra --version`. A `go install` build reports `dev` — if
+        that is what you have, give the commit you installed instead.
+      placeholder: "v0.1.0, or dev @ 761027b"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How you installed it
+      description: >-
+        This matters more than it looks: `go install` builds always report
+        `dev` for `--version` (the version is stamped at link time and the
+        `go` tool doesn't do it), so this is often the only way to tell
+        whether you're on a stale build.
+      options:
+        - Homebrew (brew install craigjmidwinter/tap/katra)
+        - Downloaded release binary
+        - go install
+        - Built from source (make install)
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: OS and architecture
+      placeholder: "macOS 15 arm64 / Ubuntu 24.04 amd64"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface
+      description: Where you hit it. The same operation exists in more than one place.
+      options:
+        - The katra CLI
+        - The git post-commit auto-stamp hook
+        - The Claude Code hooks (katra agent-hook / the commit gate)
+        - katra serve / build (the viewer)
+        - katra hub (the cross-project daemon)
+        - The MCP server (katra-mcp)
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: >-
+        The exact commands you ran. A reproduction that starts from
+        `git init` and `katra init` in an empty directory is worth far more
+        than one that starts from your repo.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: entry
+    attributes:
+      label: The entry or config involved
+      description: >-
+        The frontmatter and the fenced component, or the `katra/config.yml`
+        block. Redact paths and names.
+      render: markdown
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `katra doctor`
+      description: It reports dangling media and entries that fail to parse.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I have redacted anything private from the entries and paths above
+        - label: I can reproduce this in a fresh repo, or have said why it only happens in mine

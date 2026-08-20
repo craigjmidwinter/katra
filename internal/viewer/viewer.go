@@ -48,6 +48,7 @@ type entryData struct {
 	Type         string   `json:"type"`
 	Status       string   `json:"status,omitempty"`
 	Rollup       string   `json:"rollup,omitempty"` // epics: status computed from child tasks (suggestion)
+	Spec         string   `json:"spec,omitempty"`   // task -> spec ref, resolved to a node slug when it is one (see ResolveSpec)
 	Effort       string   `json:"effort,omitempty"`
 	Horizon      string   `json:"horizon,omitempty"`
 	Epic         string   `json:"epic,omitempty"`
@@ -95,14 +96,31 @@ func BuildData(s *core.Store) ([]byte, error) {
 	known := core.KnownSlugs(entries)
 	renderer := core.NewRenderer(func(slug string) bool { return known[slug] })
 	graph := core.BuildLinkGraph(entries)
+	// Best-effort: outside a git repo (or a static-build sandbox), path-style
+	// specs just never resolve — they still render, as plain code text.
+	repoRoot, _ := s.RepoRoot()
 	for _, e := range entries {
 		htmlBody, err := renderer.Render(e.Body)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", e.Slug, err)
 		}
+		// Epic status is served computed, not stored: the stored field is a
+		// cache written at stamp time and drifts between stamps, and a view
+		// can't drift. Rollup stays alongside it so a client can still tell
+		// the two apart.
 		var rollup string
 		if e.Kind() == "epic" {
 			rollup = core.EpicRollupStatus(entries, e.Slug)
+		}
+		status := core.EpicDisplayStatus(entries, e)
+		// A node ref resolves to its canonical slug (a filename-shaped spec
+		// value normalizes the same way a [[wikilink]] does) so the client's
+		// plain bySlug lookup finds it; anything else is left as-is and the
+		// client renders it as plain code text — it cannot serve arbitrary
+		// repo files, and must not try.
+		spec := e.FM.Spec
+		if kind, slug := core.ResolveSpec(entries, repoRoot, spec); kind == "node" {
+			spec = slug
 		}
 		data.Entries = append(data.Entries, entryData{
 			Slug:     e.Slug,
@@ -119,8 +137,9 @@ func BuildData(s *core.Store) ([]byte, error) {
 			HTML:     htmlBody,
 
 			Type:         e.Kind(),
-			Status:       e.FM.Status,
+			Status:       status,
 			Rollup:       rollup,
+			Spec:         spec,
 			Effort:       e.FM.Effort,
 			Horizon:      e.FM.Horizon,
 			Epic:         e.FM.Epic,

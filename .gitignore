@@ -1,13 +1,37 @@
-# compiled binaries (this repo builds `katra` and `katra-mcp`)
-# NOTE: `/katra` matches both the built binary AND the `katra/` data dir that
-# `katra init` creates here (we dogfood). Re-include the directory so the log
-# gets committed; only the bare binary file stays ignored.
+# Built binaries.
+#
+# `make build` writes into bin/ rather than the repo root, because katra
+# dogfoods itself: ./katra is the *store directory* this project keeps its own
+# log in, so `go build -o katra` would be writing over a directory.
+#
+# The two bare-name rules are kept for anyone who builds to the root by hand.
+# `/katra` would also match the data directory, so it is re-included
+# immediately — only the binary file stays ignored.
 /katra
 /katra-mcp
 !/katra/
+# A build run *inside* the data directory drops the binary at katra/katra.
+/katra/katra
 /bin/
 /dist/
-*.test
 
-# OS / editor
+# Go build/test artifacts
+*.test
+*.out
+coverage.*
+
+# The static site, when built locally for a look
+/site/
+
+# Local scratch / working files
+/tmp/
+/scratch/
+/.scratch/
+*.local
+*.local.*
+
+# Editor / OS noise
 .DS_Store
+.idea/
+.vscode/
+*.swp

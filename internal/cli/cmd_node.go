@@ -14,25 +14,30 @@ func taskCmd() *cobra.Command {
 		Use:   "task",
 		Short: "Work with tasks",
 	}
-	cmd.AddCommand(taskNewCmd(), taskListCmd(), taskStartCmd(), taskDoneCmd())
+	cmd.AddCommand(taskNewCmd(), taskListCmd(), taskStartCmd(), taskDoneCmd(), taskSpecCmd())
 	return cmd
 }
 
 func taskNewCmd() *cobra.Command {
 	var tags []string
-	var effort, epic, summary, body string
+	var effort, epic, summary, body, spec string
 	cmd := &cobra.Command{
 		Use:   "new \"Title\"",
-		Short: "Create a new task (status: todo)",
+		Short: "Create a new task (status: todo, or specced with --spec)",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, err := resolveStore()
 			if err != nil {
 				return err
 			}
+			status := "todo"
+			if spec != "" {
+				status = "specced"
+			}
 			e, err := s.NewNode("task", core.Frontmatter{
 				Title:   strings.Join(args, " "),
-				Status:  "todo",
+				Status:  status,
+				Spec:    spec,
 				Effort:  effort,
 				Epic:    epic,
 				Tags:    tags,
@@ -51,7 +56,46 @@ func taskNewCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags")
 	cmd.Flags().StringVar(&summary, "summary", "", "one-line summary")
 	cmd.Flags().StringVar(&body, "body", "", "initial body markdown")
+	cmd.Flags().StringVar(&spec, "spec", "", "spec artifact ref (node slug, or a path relative to the repo root); creates the task already specced")
 	return cmd
+}
+
+// taskSpecCmd attaches a spec artifact to a task. Setting spec never moves a
+// status backwards: todo/empty advances to specced; doing/done/cut are left
+// alone (§ design/task-spec-phase — spec may be recorded retroactively).
+func taskSpecCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "spec <slug> <ref>",
+		Short: "Attach a spec artifact to a task (advances todo → specced)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := resolveStore()
+			if err != nil {
+				return err
+			}
+			slug, ref := args[0], args[1]
+			e, err := s.GetNode(slug)
+			if err != nil {
+				return err
+			}
+			e.FM.Spec = ref
+			if e.FM.Status == "" || e.FM.Status == "todo" {
+				e.FM.Status = "specced"
+			}
+			if err := e.Save(); err != nil {
+				return err
+			}
+			// A ref that doesn't resolve warns but writes — the spec may be
+			// authored in the same change; `katra doctor` is the blocking check.
+			nodes, _ := s.ListNodes()
+			root, _ := s.RepoRoot()
+			if kind, _ := core.ResolveSpec(nodes, root, ref); kind == "" {
+				fmt.Printf("⚠ %s: spec %q resolves to neither a node nor a file yet — `katra doctor` will flag it until it does\n", e.Slug, ref)
+			}
+			fmt.Printf("✓ %s spec → %s (status: %s)\n", e.Slug, ref, e.FM.Status)
+			return nil
+		},
+	}
 }
 
 func taskListCmd() *cobra.Command {
@@ -90,7 +134,7 @@ func taskListCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringSliceVar(&status, "status", nil, "filter by status (todo|doing|done|cut)")
+	cmd.Flags().StringSliceVar(&status, "status", nil, "filter by status (todo|specced|doing|done|cut)")
 	return cmd
 }
 

@@ -1,3 +1,15 @@
+---
+title: The wiki-shaped model
+layout: default
+parent: Design notes
+nav_order: 2
+description: >-
+  Proposed 2026-07-10 as the founding spec for katra's evolution from a dev log into a committed project wiki.
+---
+
+{: .warning }
+**Historical design note.** Proposed 2026-07-10 as the founding spec for katra's evolution from a dev log into a committed project wiki. Largely implemented; see [On-disk format](../format).
+
 # Design: the wiki-shaped model — tasks, epics, decisions, articles
 
 **Status:** proposed (2026-07-10)

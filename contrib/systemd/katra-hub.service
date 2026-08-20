@@ -1,0 +1,46 @@
+# systemd user unit for the katra hub — the Linux counterpart of
+# contrib/launchd/com.katra.hub.plist.
+#
+# There is no `katra hub install` for systemd; the CLI only writes the launchd
+# agent. This file is the whole Linux story, and it is short enough that a
+# generator would not earn its keep.
+#
+# To install:
+#
+#   1. Replace /usr/local/bin/katra below with the output of `which katra`.
+#      It must be absolute — systemd does not read your shell profile.
+#   2. mkdir -p ~/.config/systemd/user
+#      cp contrib/systemd/katra-hub.service ~/.config/systemd/user/
+#   3. systemctl --user daemon-reload
+#      systemctl --user enable --now katra-hub.service
+#
+# Then http://localhost:4200/ is the hub.
+#
+# To have it run without you being logged in:  sudo loginctl enable-linger $USER
+# To pick up a rebuilt binary:                 systemctl --user restart katra-hub
+# To read the log:                             journalctl --user -u katra-hub -f
+
+[Unit]
+Description=katra hub — every registered katra from one URL
+Documentation=https://craigjmidwinter.github.io/katra/hub
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/katra hub serve --port 4200
+Restart=always
+RestartSec=5
+
+# The hub reads every registered katra and writes nothing outside them. It does
+# not need to reach the network beyond binding its own port, and it should not
+# be able to write anywhere new.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=default.target

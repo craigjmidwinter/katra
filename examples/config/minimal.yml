@@ -1,0 +1,9 @@
+# The smallest useful katra config.
+#
+# Every key has a default, so an empty file is valid too — this one only sets
+# the two things worth setting per project.
+#
+# Copy to katra/config.yml, or let `katra init` write one for you.
+
+title: My Project
+description: What this repository is, in one line.

@@ -105,10 +105,11 @@ func (s *Store) RollupEpic(epicSlug string) (changed bool, err error) {
 	return false, nil
 }
 
-// ReconcileAdvance marks a task doing when it is still todo and rolls up its
-// epic. Declaring `advance` also records the edge on the active draft (if any)
-// as `advances:` frontmatter, so the linkage survives independently of the
-// private receipt. It errors if the slug is not a task.
+// ReconcileAdvance marks a task doing when it is still todo or specced (a spec
+// existing doesn't mean work has started) and rolls up its epic. Declaring
+// `advance` also records the edge on the active draft (if any) as `advances:`
+// frontmatter, so the linkage survives independently of the private receipt.
+// It errors if the slug is not a task.
 func (s *Store) ReconcileAdvance(slug string) error {
 	n, err := s.GetNode(slug)
 	if err != nil {
@@ -117,7 +118,7 @@ func (s *Store) ReconcileAdvance(slug string) error {
 	if n.Kind() != "task" {
 		return errNotATask(slug, n.Kind())
 	}
-	if n.FM.Status == "" || n.FM.Status == "todo" {
+	if n.FM.Status == "" || n.FM.Status == "todo" || n.FM.Status == "specced" {
 		n.FM.Status = "doing"
 		if err := n.Save(); err != nil {
 			return err

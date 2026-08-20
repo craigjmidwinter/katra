@@ -13,7 +13,8 @@ The five-node evolution of devlog → Almanac: **entry** (past, exists), **task*
 structured edges + `[[wikilinks]]` and surfaced as generated board/roadmap views.
 Full spec in `docs/design/wiki-model.md`.
 
-MVP foundation shipped ([[node-model-mvp-foundation]]); remaining:
-[[rename-devlog-to-almanac-compat-shim]], [[stamp-closes-the-linked-task]],
+All four passes shipped: [[node-model-mvp-foundation]] laid the foundation, then
+[[rename-devlog-to-almanac-compat-shim]], [[stamp-closes-the-linked-task]] and
 [[epic-status-rollup-from-child-tasks]]. Naming settled in
-[[name-the-tool-almanac]].
+[[name-the-tool-almanac]], then again in
+[[name-the-tool-katra-almanac-was-taken]] when that name turned out to be taken.

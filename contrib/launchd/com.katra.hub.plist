@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd agent for the katra hub — one page across every registered katra.
+
+  `katra hub install` writes this file for you, with the paths already filled
+  in. This copy exists for the case where you would rather do it by hand, or
+  need to adapt it (a different port, a wrapper, a non-standard install).
+
+  To install by hand:
+
+    1. Replace /usr/local/bin/katra below with the output of `which katra`.
+       It MUST be an absolute path — launchd does not read your shell profile,
+       so a bare `katra` will not resolve.
+    2. Replace USERNAME in the two log paths with your short user name.
+    3. cp contrib/launchd/com.katra.hub.plist ~/Library/LaunchAgents/
+    4. launchctl load -w ~/Library/LaunchAgents/com.katra.hub.plist
+
+  Then http://localhost:4200/ is the hub, and it starts again at every login.
+
+  To pick up a rebuilt binary, restart the agent — it holds the old one open:
+
+    launchctl kickstart -k "gui/$(id -u)/com.katra.hub"
+
+  To remove it:
+
+    launchctl unload ~/Library/LaunchAgents/com.katra.hub.plist
+    rm ~/Library/LaunchAgents/com.katra.hub.plist
+
+  (or just `katra hub uninstall`)
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.katra.hub</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/katra</string>
+    <string>hub</string>
+    <string>serve</string>
+    <string>--port</string>
+    <string>4200</string>
+  </array>
+
+  <!-- Start at login, and restart if it dies. -->
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+
+  <!-- The hub logs the URLs it is serving on at startup, so this is the file
+       to read when the port is not answering. -->
+  <key>StandardOutPath</key><string>/Users/USERNAME/Library/Logs/katra-hub.log</string>
+  <key>StandardErrorPath</key><string>/Users/USERNAME/Library/Logs/katra-hub.log</string>
+</dict>
+</plist>

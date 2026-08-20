@@ -1,0 +1,104 @@
+<!--
+A worked example of the chart recipe from docs/components.md: a self-contained
+HTML figure, embedded with a ```embed``` block.
+
+The four rules it demonstrates:
+  1. No external requests. Everything is inline; there is no script at all.
+  2. Sized for the column — an explicit viewBox, scaling to 100% width.
+  3. Its own background in BOTH colour schemes, because prefers-color-scheme
+     follows the OS and the iframe cannot see its host. Without this, the
+     figure eventually renders dark ink on a light page.
+  4. Labelled axes and units. An unlabelled chart is decoration.
+-->
+<style>
+  :root {
+    --paper: #f4efe4;
+    --ink: #2c2823;
+    --dim: #6f6656;
+    --line: #e0d5bf;
+    --accent: #b5502f;
+    --accent-2: #c86a3f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #1c1a17;
+      --ink: #ece5d8;
+      --dim: #a99a80;
+      --line: #3a352d;
+      --accent: #e08a5c;
+      --accent-2: #d8a33a;
+    }
+  }
+  html, body { margin: 0; background: var(--paper); }
+  body {
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+  }
+  svg { display: block; width: 100%; height: auto; }
+  .axis { stroke: var(--ink); stroke-width: 1.5; }
+  .grid { stroke: var(--line); stroke-width: 1; }
+  .lbl  { fill: var(--dim); font-size: 11px; }
+  .val  { fill: var(--ink); font-size: 11px; font-weight: 600; }
+  .ttl  { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  .budget { stroke: var(--accent-2); stroke-width: 1.5; stroke-dasharray: 4 3; }
+</style>
+
+<svg viewBox="0 0 560 300" role="img"
+     aria-label="Frame time in milliseconds by district count, before and after the streaming fix. Before rises from 9.1 to 22.4 ms; after stays between 8.9 and 12.6 ms. The 11.1 ms budget for 90 Hz is marked.">
+  <text class="ttl" x="8" y="18">Frame time by district count — Quest 3</text>
+  <text class="lbl" x="8" y="34">milliseconds, p95 over 600 frames. Lower is better.</text>
+
+  <!-- gridlines + y labels: 0, 8, 16, 24 ms mapped onto y 250..70 -->
+  <g>
+    <line class="grid" x1="46" y1="250" x2="548" y2="250"/>
+    <line class="grid" x1="46" y1="190" x2="548" y2="190"/>
+    <line class="grid" x1="46" y1="130" x2="548" y2="130"/>
+    <line class="grid" x1="46" y1="70"  x2="548" y2="70"/>
+    <text class="lbl" x="14" y="254">0</text>
+    <text class="lbl" x="14" y="194">8</text>
+    <text class="lbl" x="14" y="134">16</text>
+    <text class="lbl" x="14" y="74">24</text>
+  </g>
+
+  <!-- 11.1 ms budget for 90 Hz -->
+  <line class="budget" x1="46" y1="167" x2="548" y2="167"/>
+  <text class="lbl" x="452" y="163">11.1 ms (90 Hz)</text>
+
+  <!-- before: 9.1, 13.4, 18.0, 22.4 ms -->
+  <g fill="var(--accent)" opacity="0.35">
+    <rect x="78"  y="182" width="38" height="68"/>
+    <rect x="198" y="150" width="38" height="100"/>
+    <rect x="318" y="115" width="38" height="135"/>
+    <rect x="438" y="82"  width="38" height="168"/>
+  </g>
+  <!-- after: 8.9, 9.8, 11.2, 12.6 ms -->
+  <g fill="var(--accent)">
+    <rect x="120" y="183" width="38" height="67"/>
+    <rect x="240" y="176" width="38" height="74"/>
+    <rect x="360" y="166" width="38" height="84"/>
+    <rect x="480" y="156" width="38" height="94"/>
+  </g>
+
+  <g class="val">
+    <text x="80"  y="176">9.1</text><text x="122" y="177">8.9</text>
+    <text x="200" y="144">13.4</text><text x="242" y="170">9.8</text>
+    <text x="320" y="109">18.0</text><text x="362" y="160">11.2</text>
+    <text x="440" y="76">22.4</text><text x="482" y="150">12.6</text>
+  </g>
+
+  <line class="axis" x1="46" y1="250" x2="548" y2="250"/>
+  <g class="lbl" text-anchor="middle">
+    <text x="118" y="268">4</text>
+    <text x="238" y="268">8</text>
+    <text x="358" y="268">12</text>
+    <text x="478" y="268">16</text>
+    <text x="297" y="288">districts loaded</text>
+  </g>
+
+  <g class="lbl">
+    <rect x="46" y="278" width="10" height="10" fill="var(--accent)" opacity="0.35"/>
+    <text x="61" y="287">before</text>
+    <rect x="106" y="278" width="10" height="10" fill="var(--accent)"/>
+    <text x="121" y="287">after</text>
+  </g>
+</svg>

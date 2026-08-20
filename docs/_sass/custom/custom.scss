@@ -1,0 +1,165 @@
+// Imported by just-the-docs last, so this file gets the final word.
+//
+// Two jobs: the dark side of the palette, and the handful of typographic
+// choices that make the docs feel like the product.
+
+// --- Dark side --------------------------------------------------------------
+//
+// The viewer itself is light-only on purpose - it is a field notebook, and a
+// notebook is paper. Documentation is read in more places than the app is,
+// though, including at night and inside a dark IDE preview, so the site does
+// honour prefers-color-scheme.
+//
+// This is a media block rather than a second just-the-docs colour scheme
+// because a scheme is selected at build time and swapped by a toggle. Shipping
+// both sides in one stylesheet means the correct one applies on first paint:
+// no flash of light-mode colour, and no toggle state to get wrong.
+//
+// Contrast ratios, measured, all >= 4.5:1 for body-size text:
+//
+//   #ece5d8 Paper  on #1c1a17 Ink dark   13.86:1  body text
+//   #ece5d8 Paper  on #26231e Surface    12.50:1  code, sidebar
+//   #a99a80 Faint  on #1c1a17 Ink dark    6.30:1  secondary text
+//   #a99a80 Faint  on #26231e Surface     5.68:1  secondary text on surface
+//   #e08a5c Warm   on #1c1a17 Ink dark    6.58:1  LINKS
+//   #e08a5c Warm   on #26231e Surface     5.93:1  links in code/sidebar
+//
+// The relationship inverts from the light side: there the accent had to be
+// darkened to #8a3d24 to be readable, here it has to be lightened to #e08a5c.
+// The mid accent #b5502f is 3.43:1 on the dark background and is not used as
+// text on either side.
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dark-paper: #1c1a17;
+    --dark-surface: #26231e;
+    --dark-ink: #ece5d8;
+    --dark-faint: #a99a80;
+    --dark-link: #e08a5c;
+    --dark-line: #3a352d;
+  }
+
+  body {
+    background-color: var(--dark-paper);
+    color: var(--dark-ink);
+  }
+
+  .side-bar,
+  .site-header,
+  .search-input-wrap,
+  .search-input {
+    background-color: var(--dark-surface);
+    border-color: var(--dark-line);
+  }
+
+  .main-header,
+  .site-footer,
+  .site-button,
+  hr,
+  table th,
+  table td,
+  .table-wrapper {
+    border-color: var(--dark-line);
+  }
+
+  h1, h2, h3, h4, h5, h6,
+  .site-title {
+    color: var(--dark-ink);
+  }
+
+  a,
+  .nav-list .nav-list-item .nav-list-link:hover,
+  .site-title:hover {
+    color: var(--dark-link);
+  }
+
+  .nav-list .nav-list-item .nav-list-link {
+    color: var(--dark-ink);
+  }
+
+  .nav-list .nav-list-item .nav-list-link.active {
+    background-color: var(--dark-paper);
+    color: var(--dark-link);
+  }
+
+  code,
+  pre.highlight,
+  .highlight,
+  .code-example {
+    background-color: var(--dark-surface);
+    color: var(--dark-ink);
+  }
+
+  table tr:nth-child(even) td {
+    background-color: var(--dark-surface);
+  }
+
+  blockquote {
+    border-left-color: var(--dark-line);
+    color: var(--dark-faint);
+  }
+
+  .search-result-preview,
+  .text-grey-dk-000 {
+    color: var(--dark-faint);
+  }
+
+  .search-result {
+    background-color: var(--dark-surface);
+    color: var(--dark-ink);
+  }
+
+  .search-result:hover,
+  .search-result.active {
+    background-color: var(--dark-paper);
+  }
+}
+
+// --- Typography -------------------------------------------------------------
+//
+// The viewer sets body copy in a serif because entries are prose meant to be
+// read, not scanned. The docs follow, with the same system-font fallbacks the
+// app uses so neither ships a webfont: an offline `katra build` has to look
+// right from a USB stick, and a docs site that needs a CDN would be a different
+// promise from the one the tool makes.
+
+$serif: Newsreader, Georgia, "Times New Roman", serif;
+$sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+$mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+.main-content {
+  p, li, blockquote {
+    font-family: $serif;
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  // Tables stay in the sans face. They are reference material to look things
+  // up in rather than prose to read through, and a serif at table density
+  // reads as cramped.
+  table {
+    font-family: $sans;
+    font-size: 0.8125rem;
+  }
+
+  code, pre, kbd {
+    font-family: $mono;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: $sans;
+    letter-spacing: -0.01em;
+  }
+
+  // A component fence in the docs is showing you literal file content, so give
+  // it a little more room than an inline snippet.
+  pre.highlight {
+    padding: 0.9rem 1rem;
+    line-height: 1.5;
+  }
+}
+
+.side-bar,
+.site-header {
+  font-family: $sans;
+}

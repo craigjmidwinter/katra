@@ -1,0 +1,63 @@
+<style>
+  :root { --paper:#f4efe4; --ink:#2c2823; --dim:#6f6656; --line:#e0d5bf; --pass:#4a8a5c; --fail:#b5502f; }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper:#1c1a17; --ink:#ece5d8; --dim:#a99a80; --line:#3a352d; --pass:#5aa877; --fail:#e08a5c; }
+  }
+  html,body { margin:0; background:var(--paper); }
+  body { font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); }
+  svg { display:block; width:100%; height:auto; }
+  .ttl { fill:var(--ink); font-size:13px; font-weight:600; }
+  .lbl { fill:var(--dim); font-size:10.5px; }
+  .val { font-size:10.5px; font-weight:600; }
+  .grid { stroke:var(--line); stroke-width:1; }
+  .aa { stroke:var(--ink); stroke-width:1.5; stroke-dasharray:5 3; }
+</style>
+
+<svg viewBox="0 0 620 344" role="img"
+     aria-label="Measured WCAG contrast ratios for the katra palette. Ink on paper 12.76 to 1, muted 4.94, accent deep 6.60, plain accent 4.41 which fails the 4.5 to 1 minimum, and on the dark side paper 13.86, muted 6.30, warm 6.58, plain accent 3.43 which also fails.">
+  <text class="ttl" x="8" y="17">Contrast against its own background — WCAG 2.1, body-size text</text>
+  <text class="lbl" x="8" y="33">The 4.5:1 minimum is marked. Bars are measured, not estimated.</text>
+
+  <!-- x scale: 0..15 maps to 210..600 -->
+  <g>
+    <line class="grid" x1="210" y1="52" x2="210" y2="282"/>
+    <line class="grid" x1="340" y1="52" x2="340" y2="282"/>
+    <line class="grid" x1="470" y1="52" x2="470" y2="282"/>
+    <line class="grid" x1="600" y1="52" x2="600" y2="282"/>
+    <text class="lbl" x="207" y="298">0</text>
+    <text class="lbl" x="335" y="298">5</text>
+    <text class="lbl" x="463" y="298">10</text>
+    <text class="lbl" x="591" y="298">15</text>
+  </g>
+
+  <!-- AA threshold at 4.5 -> 210 + 4.5*26 = 327 -->
+  <line class="aa" x1="327" y1="46" x2="327" y2="282"/>
+  <text class="lbl" x="331" y="46">4.5:1 — AA minimum</text>
+
+  <text class="lbl" x="8" y="66" font-weight="600">On paper #f4efe4</text>
+  <g>
+    <rect x="210" y="72"  width="332" height="16" fill="#2c2823"/>
+    <text class="lbl" x="8" y="84">Ink #2c2823</text>              <text class="val" x="548" y="84" fill="var(--pass)">12.76</text>
+    <rect x="210" y="94"  width="128" height="16" fill="#6f6656"/>
+    <text class="lbl" x="8" y="106">Muted #6f6656</text>           <text class="val" x="344" y="106" fill="var(--pass)">4.94</text>
+    <rect x="210" y="116" width="172" height="16" fill="#8a3d24"/>
+    <text class="lbl" x="8" y="128">Accent deep #8a3d24</text>     <text class="val" x="388" y="128" fill="var(--pass)">6.60</text>
+    <rect x="210" y="138" width="115" height="16" fill="#b5502f"/>
+    <text class="lbl" x="8" y="150">Accent #b5502f</text>          <text class="val" x="333" y="150" fill="var(--fail)">4.41 ✕</text>
+  </g>
+
+  <text class="lbl" x="8" y="184" font-weight="600">On ink dark #1c1a17</text>
+  <g>
+    <rect x="210" y="190" width="360" height="16" fill="#ece5d8"/>
+    <text class="lbl" x="8" y="202">Paper #ece5d8</text>           <text class="val" x="576" y="202" fill="var(--pass)">13.86</text>
+    <rect x="210" y="212" width="164" height="16" fill="#a99a80"/>
+    <text class="lbl" x="8" y="224">Muted #a99a80</text>           <text class="val" x="380" y="224" fill="var(--pass)">6.30</text>
+    <rect x="210" y="234" width="171" height="16" fill="#e08a5c"/>
+    <text class="lbl" x="8" y="246">Warm #e08a5c</text>            <text class="val" x="387" y="246" fill="var(--pass)">6.58</text>
+    <rect x="210" y="256" width="89"  height="16" fill="#b5502f"/>
+    <text class="lbl" x="8" y="268">Accent #b5502f</text>          <text class="val" x="333" y="268" fill="var(--fail)">3.43 ✕</text>
+  </g>
+
+  <text class="lbl" x="8" y="324">The same mid accent fails on both sides — too light on paper, too dark on ink.</text>
+  <text class="lbl" x="8" y="338">It is a UI accent, never a text colour.</text>
+</svg>

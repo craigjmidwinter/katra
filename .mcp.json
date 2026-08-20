@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "katra": {
+      "command": "katra-mcp"
+    }
+  }
+}

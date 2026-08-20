@@ -2,9 +2,22 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/craigjmidwinter/katra/internal/core"
 	"github.com/spf13/cobra"
 )
+
+// warnNoVisual nudges when an entry lands with nothing to look at. The skill
+// asks every entry for one visual, and an entry is easiest to fix in the moment
+// it is stamped — so this is a note on stderr, never a failure: the entry is
+// already written and the commit already made.
+func warnNoVisual(e core.Entry) {
+	if core.HasVisual(e) {
+		return
+	}
+	fmt.Fprintln(os.Stderr, "⚠ no visual in this entry — `katra capture <file>` adds a screenshot, chart or diagram")
+}
 
 func stampCmd() *cobra.Command {
 	var hashes []string
@@ -52,6 +65,7 @@ func stampCmd() *cobra.Command {
 			if len(res.Epics) > 0 {
 				fmt.Printf("✓ rolled up %d epic(s): %v\n", len(res.Epics), res.Epics)
 			}
+			warnNoVisual(*e)
 			if commit {
 				if err := s.CommitStamp(e, res.Mutated); err != nil {
 					return fmt.Errorf("stamped but commit failed: %w", err)

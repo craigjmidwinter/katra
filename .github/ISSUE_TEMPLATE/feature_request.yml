@@ -1,0 +1,49 @@
+name: Feature request
+description: Something katra should be able to do and cannot
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: the README has a **Deliberately out of scope** section.
+        Several obvious-sounding features are absent on purpose, and the
+        reasoning there is worth arguing with rather than around.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >-
+        What you were trying to log, and where the tool got in the way. Lead
+        with the situation, not the proposed API.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like it to do
+      description: If you have a shape in mind, sketch the command or the fenced block.
+      render: markdown
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do instead today
+      description: >-
+        A workaround that is merely ugly is useful information — it tells us
+        how much the gap actually costs.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of katra
+      options:
+        - A new rich component
+        - The CLI
+        - The viewer / hub
+        - Agent integration (the skill, the hooks, MCP)
+        - The on-disk format
+        - Something else
+    validations:
+      required: true

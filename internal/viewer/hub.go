@@ -730,10 +730,12 @@ func hubTaskCard(pid, title, effort, slug string, web bool) string {
 		projHref(pid, slug, web), html.EscapeString(title), eff, html.EscapeString(pid))
 }
 
-// hubBoardHTML renders one board of Doing + Todo tasks across every project.
+// hubBoardHTML renders one board of Doing + Specced + Todo tasks across every
+// project. Specced sits between Doing and Todo — a task there has a design but
+// no work started yet.
 func hubBoardHTML(projects []HubProject, web bool) string {
-	var doing, todo strings.Builder
-	nDoing, nTodo := 0, 0
+	var doing, specced, todo strings.Builder
+	nDoing, nSpecced, nTodo := 0, 0, 0
 	for _, p := range projects {
 		tasks, _ := p.Store.ListNodes("task")
 		for _, t := range tasks {
@@ -742,6 +744,9 @@ func hubBoardHTML(projects []HubProject, web bool) string {
 			case "doing":
 				doing.WriteString(card)
 				nDoing++
+			case "specced":
+				specced.WriteString(card)
+				nSpecced++
 			case "todo", "":
 				todo.WriteString(card)
 				nTodo++
@@ -749,6 +754,7 @@ func hubBoardHTML(projects []HubProject, web bool) string {
 		}
 	}
 	inner := fmt.Sprintf(`<h2>Doing — %d</h2>`, nDoing) + orEmpty(doing.String(), "Nothing in progress.") +
+		fmt.Sprintf(`<h2>Specced — %d</h2>`, nSpecced) + orEmpty(specced.String(), "Nothing specced.") +
 		fmt.Sprintf(`<h2>Todo — %d</h2>`, nTodo) + orEmpty(todo.String(), "Nothing queued.")
 	return hubShell("board", inner, web, projects)
 }
@@ -758,6 +764,9 @@ func hubRoadmapHTML(projects []HubProject, web bool) string {
 	buckets := map[string]*strings.Builder{"now": {}, "next": {}, "later": {}, "": {}}
 	for _, p := range projects {
 		epics, _ := p.Store.ListNodes("epic")
+		// Tasks, because the status shown is the one computed from them — the
+		// stored epic field is a stamp-time cache and drifts between stamps.
+		tasks, _ := p.Store.ListNodes("task")
 		for _, e := range epics {
 			h := e.FM.Horizon
 			if _, ok := buckets[h]; !ok {
@@ -765,7 +774,7 @@ func hubRoadmapHTML(projects []HubProject, web bool) string {
 			}
 			fmt.Fprintf(buckets[h], `<a class="card" href="%s"><div class="t">%s <span class="eff">%s</span></div><div class="proj">%s</div></a>`,
 				projHref(p.ID, e.Slug, web), html.EscapeString(e.FM.Title),
-				html.EscapeString(orDash(e.FM.Status)), html.EscapeString(p.ID))
+				html.EscapeString(orDash(core.EpicDisplayStatus(tasks, e))), html.EscapeString(p.ID))
 		}
 	}
 	var b strings.Builder

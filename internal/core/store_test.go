@@ -283,6 +283,7 @@ func TestFrontmatterRoundTrip(t *testing.T) {
 			Summary:      "a summary",
 			Type:         "decision",
 			Status:       "accepted",
+			Spec:         "docs/design/full-node.md",
 			Effort:       "M",
 			Horizon:      "next",
 			Epic:         "some-epic",
@@ -416,6 +417,8 @@ func TestEpicRollupStatus(t *testing.T) {
 	}{
 		{"no children", nil, ""},
 		{"all todo", []Entry{mk("todo"), mk("todo")}, "planned"},
+		{"specced counts as not started", []Entry{mk("todo"), mk("specced")}, "planned"},
+		{"all specced", []Entry{mk("specced"), mk("specced")}, "planned"},
 		{"one doing", []Entry{mk("todo"), mk("doing")}, "active"},
 		{"some done", []Entry{mk("done"), mk("todo")}, "active"},
 		{"all done", []Entry{mk("done"), mk("done")}, "done"},
@@ -428,6 +431,84 @@ func TestEpicRollupStatus(t *testing.T) {
 			nodes := append([]Entry{{FM: Frontmatter{Type: "task", Status: "todo", Epic: "other"}}}, c.tasks...)
 			if got := EpicRollupStatus(nodes, "e"); got != c.want {
 				t.Errorf("EpicRollupStatus = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// TestEpicDisplayStatusPrefersComputed pins the anti-drift rule: what a view
+// shows is computed from the child tasks, and the stored field only stands in
+// when there is nothing to compute from.
+func TestEpicDisplayStatusPrefersComputed(t *testing.T) {
+	epic := Entry{Slug: "e", FM: Frontmatter{Type: "epic", Status: "planned"}}
+	task := Entry{Slug: "t", FM: Frontmatter{Type: "task", Status: "doing", Epic: "e"}}
+
+	// Stale cache: stored says planned, the tasks say active.
+	if got := EpicDisplayStatus([]Entry{epic, task}, epic); got != "active" {
+		t.Errorf("EpicDisplayStatus = %q, want the computed %q", got, "active")
+	}
+	// No basis to compute from → the stored field is all there is.
+	if got := EpicDisplayStatus([]Entry{epic}, epic); got != "planned" {
+		t.Errorf("EpicDisplayStatus with no child tasks = %q, want the stored %q", got, "planned")
+	}
+	// Non-epics pass their stored status straight through.
+	if got := EpicDisplayStatus([]Entry{epic, task}, task); got != "doing" {
+		t.Errorf("EpicDisplayStatus(task) = %q, want %q", got, "doing")
+	}
+}
+
+// TestEpicStatusDrift covers what doctor reports: stored-vs-computed
+// disagreement, and only that.
+func TestEpicStatusDrift(t *testing.T) {
+	nodes := []Entry{
+		{Slug: "stale", FM: Frontmatter{Type: "epic", Status: "planned"}},
+		{Slug: "t1", FM: Frontmatter{Type: "task", Status: "done", Epic: "stale"}},
+		{Slug: "fresh", FM: Frontmatter{Type: "epic", Status: "active"}},
+		{Slug: "t2", FM: Frontmatter{Type: "task", Status: "doing", Epic: "fresh"}},
+		{Slug: "childless", FM: Frontmatter{Type: "epic", Status: "planned"}},
+	}
+	drift := EpicStatusDrift(nodes)
+	if len(drift) != 1 {
+		t.Fatalf("EpicStatusDrift returned %d entries, want 1: %+v", len(drift), drift)
+	}
+	if drift[0].Slug != "stale" || drift[0].Stored != "planned" || drift[0].Computed != "done" {
+		t.Errorf("drift = %+v, want stale planned→done", drift[0])
+	}
+}
+
+// TestResolveSpec covers the three outcomes a task's spec: ref can resolve
+// to: a node slug (same identity rule as a [[wikilink]] — filename-shaped refs
+// normalize the same way), a repo-root-relative file, or neither.
+func TestResolveSpec(t *testing.T) {
+	repoRoot := t.TempDir()
+	specDir := filepath.Join(repoRoot, "docs", "design")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specDir, "foo.md"), []byte("spec"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	nodes := []Entry{
+		{Slug: "some-decision", FM: Frontmatter{Type: "decision"}},
+	}
+
+	cases := []struct {
+		name     string
+		ref      string
+		wantKind string
+		wantSlug string
+	}{
+		{"node slug", "some-decision", "node", "some-decision"},
+		{"filename-shaped node ref normalizes like a wikilink", "2026-07-10-some-decision.md", "node", "some-decision"},
+		{"repo-root-relative file", "docs/design/foo.md", "file", ""},
+		{"neither resolves", "docs/design/does-not-exist.md", "", ""},
+		{"empty ref", "", "", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			kind, slug := ResolveSpec(nodes, repoRoot, c.ref)
+			if kind != c.wantKind || slug != c.wantSlug {
+				t.Errorf("ResolveSpec(%q) = (%q, %q), want (%q, %q)", c.ref, kind, slug, c.wantKind, c.wantSlug)
 			}
 		})
 	}

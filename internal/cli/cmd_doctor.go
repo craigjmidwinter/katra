@@ -4,19 +4,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/craigjmidwinter/katra/internal/core"
 	"github.com/spf13/cobra"
 )
 
-var mediaRefRe = regexp.MustCompile(`media/[A-Za-z0-9._\-/]+`)
+// visualOffenders caps how many zero-visual entries doctor names; the count is
+// the finding, the list is just enough to start on.
+const visualOffenders = 5
 
 func doctorCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
-		Short: "Check the katra for problems (dangling media, parse errors)",
+		Short: "Check the katra for problems (dangling media, parse errors, stale epics)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, err := resolveStore()
 			if err != nil {
@@ -30,15 +31,18 @@ func doctorCmd() *cobra.Command {
 				return err
 			}
 			drafts := 0
+			var blind []core.Entry // published entries carrying no visual
 			for _, e := range entries {
 				if e.IsDraft() {
 					drafts++
+				} else if !core.HasVisual(e) {
+					blind = append(blind, e)
 				}
 				if _, err := core.RenderMarkdown(e.Body); err != nil {
 					fmt.Printf("  ✗ %s: render error: %v\n", e.Slug, err)
 					problems++
 				}
-				for _, ref := range mediaRefRe.FindAllString(e.Body, -1) {
+				for _, ref := range core.MediaRefs(e.Body) {
 					p := filepath.Join(s.Dir, ref)
 					if _, err := os.Stat(p); err != nil {
 						fmt.Printf("  ✗ %s: missing media %s\n", e.Slug, ref)
@@ -51,9 +55,46 @@ func doctorCmd() *cobra.Command {
 				fmt.Printf("  ⚠ %d drafts open — `katra stamp` targets the newest\n", drafts)
 			}
 
+			// Zero-visual entries are a habit problem, not a broken file: a
+			// warning with names, never an error.
+			if published := len(entries) - drafts; published > 0 && len(blind) > 0 {
+				fmt.Printf("  ⚠ no visual in %d of %d published entries (%d%% coverage)\n",
+					len(blind), published, (published-len(blind))*100/published)
+				for i, e := range blind {
+					if i >= visualOffenders {
+						fmt.Printf("      … and %d more\n", len(blind)-visualOffenders)
+						break
+					}
+					fmt.Printf("      %s  %s\n", e.FM.Date, e.Slug)
+				}
+			}
+
+			// Epic status is a cache the viewer no longer trusts; report the
+			// drift so `katra epic rollup --write` has something to act on.
+			if nodes, err := s.ListNodes(); err == nil {
+				for _, d := range core.EpicStatusDrift(nodes) {
+					fmt.Printf("  ⚠ epic %s: stored %s, its tasks say %s — `katra epic rollup --write`\n",
+						d.Slug, orUnset(d.Stored), d.Computed)
+				}
+			}
+
+			// `katra task spec` writes a dangling ref regardless (the spec may land
+			// in the same change), so doctor is where it actually gets reported.
+			if nodes, err := s.ListNodes(); err == nil {
+				root, _ := s.RepoRoot()
+				for _, n := range nodes {
+					if n.Kind() != "task" || n.FM.Spec == "" {
+						continue
+					}
+					if kind, _ := core.ResolveSpec(nodes, root, n.FM.Spec); kind == "" {
+						fmt.Printf("  ⚠ %s: spec %q resolves to neither a node nor a file\n", n.Slug, n.FM.Spec)
+					}
+				}
+			}
+
 			used := map[string]bool{}
 			for _, e := range entries {
-				for _, ref := range mediaRefRe.FindAllString(e.Body, -1) {
+				for _, ref := range core.MediaRefs(e.Body) {
 					used[strings.TrimPrefix(ref, "media/")] = true
 				}
 				if e.FM.Cover != "" {
@@ -85,4 +126,12 @@ func doctorCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// orUnset labels an empty status readably in doctor output.
+func orUnset(s string) string {
+	if s == "" {
+		return "(unset)"
+	}
+	return s
 }

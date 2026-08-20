@@ -1,0 +1,26 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "katra",
+  "description": "katra — a committed, rich-component dev log you write as you build, stamped by the commit it describes and served as a live page.",
+  "owner": {
+    "name": "Craig Midwinter",
+    "url": "https://github.com/craigjmidwinter"
+  },
+  "plugins": [
+    {
+      "name": "katra",
+      "source": "./",
+      "description": "Chronicle development work as it happens, in markdown committed beside the code. A draft is an entry with no commit hash, so there is no scratch file and no promote step to forget: start one when you start working, capture screenshots and before/after comparisons into it as you go, and the commit you were making anyway stamps it with its hash and diffstat. Entries embed compare sliders, galleries, video, callouts and self-contained HTML figures. Bundles a stdio MCP server exposing katra_new, katra_append, katra_capture, katra_compare, katra_stamp and the task/epic/decision node model.",
+      "author": {
+        "name": "Craig Midwinter",
+        "url": "https://github.com/craigjmidwinter"
+      },
+      "homepage": "https://craigjmidwinter.github.io/katra/",
+      "repository": "https://github.com/craigjmidwinter/katra",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": ["devlog", "changelog", "documentation", "mcp", "markdown", "screenshots", "agent"],
+      "tags": ["devlog", "changelog", "documentation", "mcp", "engineering-journal"]
+    }
+  ]
+}

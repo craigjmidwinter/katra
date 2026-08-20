@@ -1,3 +1,15 @@
+---
+title: The global hub
+layout: default
+parent: Design notes
+nav_order: 1
+description: >-
+  Sketched 2026-07-10 as an uncommitted proposal.
+---
+
+{: .warning }
+**Historical design note.** Sketched 2026-07-10 as an uncommitted proposal. The hub was subsequently built; see [The hub](../hub) for what it actually does.
+
 # Design sketch: a global katra hub (`katrad`)
 
 **Status:** sketch (2026-07-10) — spit-balling, not yet a committed plan

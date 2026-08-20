@@ -3,7 +3,7 @@
 // A persistent app shell rendered client-side from data.json (nodes pre-rendered
 // to HTML in Go). A hash router swaps the canvas between views:
 //   #/overview  — a Future→Now→Past time spine (the landing screen)
-//   #/board     — tasks by status (todo · doing · done · cut)
+//   #/board     — tasks by status (todo · specced · doing · done · cut)
 //   #/roadmap   — epics & loose tasks by horizon (now · next · later)
 //   #/timeline  — every entry, newest first
 //   #/entries · #/decisions · #/reference — the Library lists
@@ -498,7 +498,7 @@
       tasks = tasks.filter(function (t) { return t.epic === es; });
     }
 
-    var cols = ["todo", "doing", "done"];
+    var cols = ["todo", "specced", "doing", "done"];
     if (tasks.some(function (t) { return t.status === "cut"; })) cols.push("cut");
     var grid = el("div", "kv-cols board");
     cols.forEach(function (status) {
@@ -541,7 +541,28 @@
       } else meta.appendChild(el("span", null, "unassigned"));
       c.appendChild(meta);
     }
+    var spec = specEl(t);
+    if (spec) c.appendChild(spec);
     return c;
+  }
+
+  // specEl renders a task's spec: reference, when set — a link to the node's
+  // page when it resolved to one (BuildData swaps a node ref for its slug
+  // server-side), otherwise plain code text. The viewer cannot serve arbitrary
+  // repo files, and must not try.
+  function specEl(t) {
+    if (!t.spec) return null;
+    var wrap = el("div", "kv-task-spec");
+    var target = state.bySlug[t.spec];
+    if (target) {
+      var a = el("a", null, "spec: " + esc(target.title));
+      a.onclick = function (ev) { ev.stopPropagation(); go("/node/" + target.slug); };
+      wrap.appendChild(a);
+    } else {
+      wrap.appendChild(document.createTextNode("spec: "));
+      wrap.appendChild(el("code", null, esc(t.spec)));
+    }
+    return wrap;
   }
 
   // ==========================================================================
@@ -727,6 +748,9 @@
       e.tags.forEach(function (t) { tags.appendChild(el("span", "kv-read-tag", esc(t))); });
       read.appendChild(tags);
     }
+
+    var specRow = specEl(e);
+    if (specRow) read.appendChild(specRow);
 
     if (e.draft) read.appendChild(el("div", "kv-draft-banner", "✎ Draft entry — committed work in flight, awaiting a commit stamp."));
 

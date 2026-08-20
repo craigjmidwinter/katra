@@ -1,3 +1,15 @@
+---
+title: Memory ingest
+layout: default
+parent: Design notes
+nav_order: 3
+description: >-
+  The design of the three-stage memory pipeline.
+---
+
+{: .warning }
+**Historical design note.** The design of the three-stage memory pipeline. See [Agents](agents#memory-ingest) for the current behaviour and [Configuration](configuration#memory-ingest) for the keys.
+
 # Memory-consume: ingesting agent project-memory into katra
 
 ## The problem

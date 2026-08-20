@@ -1,0 +1,21 @@
+// Imported by just-the-docs before its own colour schemes, so anything set
+// here wins over the theme's `!default` values.
+//
+// The theme derives callout borders and the .text-*/.bg-* utility classes from
+// its own colour ramp rather than from the scheme variables. Retinting the two
+// ramps this site actually uses keeps a callout from introducing a colour that
+// is not in katra's palette. Every value below comes from the viewer's
+// stylesheet (internal/viewer/assets/styles.css).
+
+// Accent ramp - used by `color: red` callouts (the `warning` callout, which is
+// also a real katra component, so the two should look related).
+$red-000: #e08a5c; // Accent, dark-side readable
+$red-100: #c86a3f; // --accent-2
+$red-200: #b5502f; // --accent
+$red-300: #8a3d24; // --brand-b, the AA-safe text weight
+
+// Neutral ramp - used by `color: grey-dk` callouts (the `note` component).
+$grey-dk-000: #a99a80; // --ink-faint
+$grey-dk-100: #8a7f6d; // --ink-soft
+$grey-dk-200: #4a4239; // --ink-2
+$grey-dk-300: #2c2823; // --ink

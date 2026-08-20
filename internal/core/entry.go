@@ -11,6 +11,28 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DraftPlaceholder is the body `katra new` writes so a freshly created draft
+// isn't an empty file staring back at you. It is a prompt, not content: every
+// writer treats a body that is only this as "no body yet", and the first
+// AppendBody overwrites it rather than appending below it.
+const DraftPlaceholder = "Start writing here."
+
+// DraftPlaceholderBody is DraftPlaceholder as a complete entry body.
+const DraftPlaceholderBody = DraftPlaceholder + "\n"
+
+// IsDraftPlaceholder reports whether a body is still just the new-draft prompt.
+func IsDraftPlaceholder(body string) bool {
+	return strings.TrimSpace(body) == DraftPlaceholder
+}
+
+// IsUnwrittenBody reports whether a body carries no writing yet — either empty
+// or still just the prompt. IsDraftPlaceholder answers the narrow question ("is
+// this exactly the prompt"); this is the question a gate asks, because a draft
+// nobody has typed into is not a record of anything.
+func IsUnwrittenBody(body string) bool {
+	return strings.TrimSpace(body) == "" || IsDraftPlaceholder(body)
+}
+
 // Stat is a commit diffstat: files changed, lines added, lines deleted.
 type Stat struct {
 	F int `yaml:"f" json:"f"`
@@ -41,7 +63,8 @@ type Frontmatter struct {
 
 	// Node-model fields (Katra). Empty Type means "entry" for back-compat.
 	Type         string   `yaml:"type,omitempty"`          // "" or "entry" = entry; else task|epic|decision|article
-	Status       string   `yaml:"status,omitempty"`        // task: todo|doing|done|cut ; epic: planned|active|done|cut ; decision: proposed|accepted|superseded|deprecated
+	Status       string   `yaml:"status,omitempty"`        // task: todo|specced|doing|done|cut ; epic: planned|active|done|cut ; decision: proposed|accepted|superseded|deprecated
+	Spec         string   `yaml:"spec,omitempty"`          // task -> spec artifact ref: a node slug in the katra, else a path relative to the repo root
 	Effort       string   `yaml:"effort,omitempty"`        // S|M|L
 	Horizon      string   `yaml:"horizon,omitempty"`       // now|next|later
 	Epic         string   `yaml:"epic,omitempty"`          // task -> parent epic slug

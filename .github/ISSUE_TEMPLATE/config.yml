@@ -1,0 +1,14 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://craigjmidwinter.github.io/katra/
+    about: Commands, config keys, the component reference, and the agent integration.
+  - name: Component reference
+    url: https://craigjmidwinter.github.io/katra/components
+    about: Every fenced block katra renders, with a worked example of each.
+  - name: Agent integration
+    url: https://craigjmidwinter.github.io/katra/agents
+    about: The skill, the Claude Code hooks, the commit gate, and the MCP tools.
+  - name: Questions and ideas
+    url: https://github.com/craigjmidwinter/katra/discussions
+    about: Ask about usage or float an idea before filing an issue.

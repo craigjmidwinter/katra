@@ -176,6 +176,23 @@ func TestReconcileAdvanceRollsUpEpic(t *testing.T) {
 	}
 }
 
+// TestReconcileAdvanceFromSpecced checks a specced task (a spec exists but
+// implementation hasn't started) also advances to doing — the design's
+// "" | todo | specced -> doing rule.
+func TestReconcileAdvanceFromSpecced(t *testing.T) {
+	s := newTestStore(t)
+	if _, err := s.NewNode("task", Frontmatter{Title: "Specced Thing", Status: "specced", Spec: "docs/design/x.md"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReconcileAdvance("specced-thing"); err != nil {
+		t.Fatalf("ReconcileAdvance: %v", err)
+	}
+	task, _ := s.GetNode("specced-thing")
+	if task.FM.Status != "doing" {
+		t.Errorf("task status = %q, want doing", task.FM.Status)
+	}
+}
+
 // TestPublishEntryClosesAndRollsUp verifies the shared publish op stamps, closes
 // declared tasks, links them, and rolls up their epic — all in one call.
 func TestPublishEntryClosesAndRollsUp(t *testing.T) {

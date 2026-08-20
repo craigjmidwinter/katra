@@ -1,0 +1,48 @@
+// The katra colour scheme - light side.
+//
+// Selected by `color_scheme: katra` in _config.yml. just-the-docs always
+// imports its own `light` scheme first, so this file only has to state the
+// values that differ; everything it does not name keeps a theme default.
+//
+// The palette is the viewer's own "Field Notebook" set, lifted from
+// internal/viewer/assets/styles.css so the docs and the product do not disagree
+// about what katra looks like. If you change one, change both.
+//
+// The dark side is NOT a second scheme file. It lives in
+// _sass/custom/custom.scss as a `prefers-color-scheme: dark` block, so both
+// sides ship in one stylesheet and a dark-mode reader never sees a flash of
+// light-mode colour.
+//
+// Contrast ratios, measured, all >= 4.5:1 for body-size text:
+//
+//   #2c2823 Ink       on #f4efe4 Paper    12.76:1  body text
+//   #2c2823 Ink       on #efe7d6 Surface  11.90:1  code, sidebar, table stripes
+//   #6f6656 Ink dim   on #f4efe4 Paper     4.94:1  secondary text
+//   #6f6656 Ink dim   on #efe7d6 Surface   4.60:1  secondary text on surface
+//   #8a3d24 Accent deep on #f4efe4 Paper   6.60:1  LINKS
+//   #8a3d24 Accent deep on #efe7d6 Surface 6.15:1  links in code/sidebar
+//
+// The viewer's plain --accent #b5502f is only 4.41:1 on Paper and 4.11:1 on
+// Surface, so it fails AA for body-size text and is never used as one here.
+// It stays what it is in the product - a UI accent on larger type and on
+// component boundaries - and $link-color takes the deeper #8a3d24 instead.
+
+$color-scheme: light;
+
+$body-background-color: #f4efe4; // Paper
+$body-text-color: #2c2823; // Ink
+$body-heading-color: #2c2823; // Ink
+$link-color: #8a3d24; // Accent deep - NOT --accent; see above
+$nav-child-link-color: #6f6656; // Ink dim
+$sidebar-color: #efe7d6; // Paper side
+$feedback-color: #efe7d6; // Paper side
+$base-button-color: #efe7d6; // Paper side
+$btn-primary-color: #8a3d24; // Accent deep
+$code-background-color: #f1ebdd; // Paper sunk
+$table-background-color: #f4efe4; // Paper
+$search-background-color: #fbf8f1; // Paper card
+$search-result-preview-color: #6f6656; // Ink dim
+
+// Borders are the viewer's own rule colour rather than a tinted grey, so a
+// table in the docs and a card in the app draw the same line.
+$border-color: #e0d5bf; // --line-2

@@ -1,0 +1,222 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build / vet / test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-clean:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Verify go.mod is tidy
+        run: |
+          go mod download
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      # -race matters more here than in most projects: the hub daemon refreshes
+      # its project set on a ticker while HTTP handlers read it.
+      - name: Test
+        run: go test -race ./...
+
+  # katra's own output is the thing it promises, so exercise it end to end
+  # rather than trusting unit tests: scaffold a katra in a scratch repo, write
+  # an entry through the CLI, stamp it against a real commit, and build the
+  # static site. This is the path every README example takes.
+  smoke:
+    name: scaffold / stamp / build
+    runs-on: ubuntu-latest
+    # `katra init` registers the new store with the machine-global hub registry.
+    # These jobs scaffold throwaway katras, so without this they would leave a
+    # trail of dead entries in whatever registry the runner has — and, more to
+    # the point, in a contributor's real one when they run the same commands
+    # locally from CONTRIBUTING.md. Point it at a scratch file instead.
+    env:
+      KATRA_REGISTRY: ${{ runner.temp }}/katra-registry.yml
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+
+      - name: Build
+        run: make build
+
+      - name: Scaffold, write, stamp, build
+        run: |
+          set -euxo pipefail
+          repo="$(mktemp -d)"
+          katra="$PWD/bin/katra"
+          cd "$repo"
+          git init -q .
+          git config user.email ci@example.com
+          git config user.name CI
+
+          "$katra" init --title "CI Probe"
+          "$katra" new "An entry written by CI" --tags ci,smoke
+          "$katra" append "The body, appended after the fact."
+          echo "code" > code.txt
+          git add -A
+          git commit -qm "add code"
+
+          # Name the entry explicitly. `katra init` seeds its own "hello katra"
+          # draft, so "the active draft" is ambiguous here in a way it is not in
+          # a real repo, and an implicit stamp could take the wrong one.
+          slug=an-entry-written-by-ci
+          "$katra" stamp --entry "$slug"
+
+          entry="$(ls katra/entries/*-$slug.md)"
+          # A stamped entry carries the hash and the computed diffstat...
+          grep -q '^hash: ' "$entry"
+          grep -q '^stat:' "$entry"
+          # ...and stops being a draft. The seeded hello entry is still one, so
+          # assert this slug is absent rather than that the list is empty.
+          # (`grep -v` would be wrong here: it succeeds whenever *any* line
+          # fails to match, which a JSON array always has.)
+          if "$katra" list --drafts --json | grep -q "\"slug\": \"$slug\""; then
+            echo "stamped entry is still listed as a draft"
+            exit 1
+          fi
+
+          "$katra" doctor
+          "$katra" build --out ./site
+          test -f ./site/index.html
+          test -f ./site/data.json
+
+      # Every shipped example config has to load in the real thing. Dropping it
+      # into a scaffolded katra and rendering the site puts it through the same
+      # loader a user's config goes through, so a stale key in an example fails
+      # here rather than in someone's terminal.
+      - name: Check the shipped example configs
+        run: |
+          set -euxo pipefail
+          katra="$PWD/bin/katra"
+          for f in examples/config/*.yml; do
+            repo="$(mktemp -d)"
+            cp "$f" /tmp/example.yml
+            cd "$repo"
+            git init -q .
+            git config user.email ci@example.com
+            git config user.name CI
+            "$katra" init --title "Example check"
+            cp /tmp/example.yml katra/config.yml
+            "$katra" new "Renders under $(basename "$f")"
+            "$katra" doctor
+            "$katra" build --out ./site
+            test -s ./site/data.json
+            cd - >/dev/null
+          done
+
+      # The component reference in the docs is only true if the components
+      # actually render. examples/entry.md exercises every fenced component
+      # katra registers; a component renamed without updating it fails here.
+      - name: Every documented component still renders
+        run: |
+          set -euxo pipefail
+          katra="$PWD/bin/katra"
+          example="$PWD/examples/entry.md"
+          media="$PWD/examples/media"
+          repo="$(mktemp -d)"
+          cd "$repo"
+          git init -q .
+          git config user.email ci@example.com
+          git config user.name CI
+          "$katra" init --title "Component check"
+          cp "$example" katra/entries/2026-01-01-components.md
+          cp "$media"/* katra/media/
+          # doctor exits non-zero on a dangling media reference or a body that
+          # fails to render, so this asserts every fence was recognised and
+          # every asset the example names is really shipped.
+          "$katra" doctor
+          "$katra" build --out ./site
+          test -s ./site/data.json
+
+  # Cross-compiles every release target *through* the release config, so a
+  # broken .goreleaser.yml fails here on every push rather than at tag time.
+  release-dry-run:
+    name: release dry run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+
+      - name: Validate release config
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: check
+        env:
+          HOMEBREW_TAP_GITHUB_TOKEN: ""
+
+      - name: Build a snapshot release
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean --skip=publish,sign,announce
+        env:
+          # Empty on purpose: exercises the "no tap token" path, which must
+          # skip the Homebrew update rather than fail the release.
+          HOMEBREW_TAP_GITHUB_TOKEN: ""
+
+      - name: Show what a release would contain
+        run: ls -l dist/*.tar.gz dist/checksums.txt
+
+      # Both binaries have to be in every archive. The skill, the git hooks and
+      # the MCP wiring all assume katra-mcp sits beside katra, so an archive
+      # carrying one of them is a broken install that unit tests cannot catch.
+      - name: Both binaries are in the archive
+        run: |
+          set -euo pipefail
+          archive="$(ls dist/katra_*_linux_amd64.tar.gz | head -1)"
+          contents="$(tar tzf "$archive")"
+          echo "$contents"
+          echo "$contents" | grep -qx katra
+          echo "$contents" | grep -qx katra-mcp

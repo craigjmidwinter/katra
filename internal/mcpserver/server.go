@@ -75,24 +75,31 @@ func Run(version string) error {
 	), handleNodes)
 
 	s.AddTool(mcp.NewTool("katra_task_new",
-		mcp.WithDescription("Create a new task node (status defaults to todo). Returns its slug."),
+		mcp.WithDescription("Create a new task node (status defaults to todo, or specced when spec is given). Returns its slug."),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Task title.")),
 		mcp.WithString("body", mcp.Description("Initial markdown body.")),
 		mcp.WithString("effort", mcp.Description("Effort estimate: S|M|L.")),
 		mcp.WithString("epic", mcp.Description("Parent epic slug.")),
 		mcp.WithString("tags", mcp.Description("Comma-separated tags.")),
+		mcp.WithString("spec", mcp.Description("Spec artifact ref (a node slug in the katra, or a path relative to the repo root); creates the task already specced.")),
 	), handleTaskNew)
 
 	s.AddTool(mcp.NewTool("katra_task_list",
 		mcp.WithDescription("List task nodes (newest first). Optionally filter by status."),
-		mcp.WithString("status", mcp.Description("Filter to this status: todo|doing|done|cut.")),
+		mcp.WithString("status", mcp.Description("Filter to this status: todo|specced|doing|done|cut.")),
 	), handleTaskList)
 
 	s.AddTool(mcp.NewTool("katra_task_set_status",
-		mcp.WithDescription("Set a task's status (todo|doing|done|cut)."),
+		mcp.WithDescription("Set a task's status (todo|specced|doing|done|cut)."),
 		mcp.WithString("slug", mcp.Required(), mcp.Description("Task slug.")),
-		mcp.WithString("status", mcp.Required(), mcp.Description("New status: todo|doing|done|cut.")),
+		mcp.WithString("status", mcp.Required(), mcp.Description("New status: todo|specced|doing|done|cut.")),
 	), handleTaskSetStatus)
+
+	s.AddTool(mcp.NewTool("katra_task_spec",
+		mcp.WithDescription("Attach a spec artifact to a task. Advances todo/empty status to specced; leaves doing/done/cut alone (setting spec never moves status backwards). A ref that resolves to neither a node nor a file warns but still writes — `katra doctor` is the blocking check, not this."),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Task slug.")),
+		mcp.WithString("ref", mcp.Required(), mcp.Description("Spec ref: a node slug in the katra, or a path relative to the repo root.")),
+	), handleTaskSpec)
 
 	s.AddTool(mcp.NewTool("katra_epic_new",
 		mcp.WithDescription("Create a new epic node. Returns its slug."),
@@ -213,7 +220,7 @@ func handleNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResul
 	}
 	body := argString(req, "body")
 	if body == "" {
-		body = "Start writing here.\n"
+		body = core.DraftPlaceholderBody
 	}
 	e, err := s.NewEntry(core.Frontmatter{
 		Title:    argString(req, "title"),
@@ -329,6 +336,7 @@ type nodeRow struct {
 	Date    string   `json:"date"`
 	Time    string   `json:"time,omitempty"`
 	Status  string   `json:"status,omitempty"`
+	Spec    string   `json:"spec,omitempty"`
 	Effort  string   `json:"effort,omitempty"`
 	Horizon string   `json:"horizon,omitempty"`
 	Epic    string   `json:"epic,omitempty"`
@@ -344,6 +352,7 @@ func toNodeRow(e core.Entry) nodeRow {
 		Date:    e.FM.Date,
 		Time:    e.FM.Time,
 		Status:  e.FM.Status,
+		Spec:    e.FM.Spec,
 		Effort:  e.FM.Effort,
 		Horizon: e.FM.Horizon,
 		Epic:    e.FM.Epic,
@@ -378,9 +387,15 @@ func handleTaskNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+	spec := argString(req, "spec")
+	status := "todo"
+	if spec != "" {
+		status = "specced"
+	}
 	e, err := s.NewNode("task", core.Frontmatter{
 		Title:  argString(req, "title"),
-		Status: "todo",
+		Status: status,
+		Spec:   spec,
 		Effort: argString(req, "effort"),
 		Epic:   argString(req, "epic"),
 		Tags:   splitCSV(argString(req, "tags")),
@@ -389,6 +404,39 @@ func handleTaskNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	return mcp.NewToolResultText(fmt.Sprintf("created task %q (%s)", e.Slug, e.Path)), nil
+}
+
+// handleTaskSpec mirrors `katra task spec`: it attaches a spec ref to a task,
+// advancing todo/empty status to specced (setting spec never moves status
+// backwards), and warns — but still writes — when the ref resolves to neither
+// a node nor a file. `katra doctor` is the blocking check, not this.
+func handleTaskSpec(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	ref := argString(req, "ref")
+	if ref == "" {
+		return mcp.NewToolResultError("ref is required"), nil
+	}
+	e, err := s.GetNode(argString(req, "slug"))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	e.FM.Spec = ref
+	if e.FM.Status == "" || e.FM.Status == "todo" {
+		e.FM.Status = "specced"
+	}
+	if err := e.Save(); err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	msg := fmt.Sprintf("set %s spec → %s (status: %s)", e.Slug, ref, e.FM.Status)
+	nodes, _ := s.ListNodes()
+	root, _ := s.RepoRoot()
+	if kind, _ := core.ResolveSpec(nodes, root, ref); kind == "" {
+		msg += "; warning: ref resolves to neither a node nor a file yet — `katra doctor` will flag it until it does"
+	}
+	return mcp.NewToolResultText(msg), nil
 }
 
 func handleTaskList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
