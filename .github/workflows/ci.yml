@@ -86,8 +86,7 @@ jobs:
     # trail of dead entries in whatever registry the runner has — and, more to
     # the point, in a contributor's real one when they run the same commands
     # locally from CONTRIBUTING.md. Point it at a scratch file instead.
-    env:
-      KATRA_REGISTRY: ${{ runner.temp }}/katra-registry.yml
+    # (Set per-step: the `runner` context is not available in job-level env.)
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -103,6 +102,8 @@ jobs:
         run: make build
 
       - name: Scaffold, write, stamp, build
+        env:
+          KATRA_REGISTRY: ${{ runner.temp }}/katra-registry.yml
         run: |
           set -euxo pipefail
           repo="$(mktemp -d)"
@@ -148,6 +149,8 @@ jobs:
       # loader a user's config goes through, so a stale key in an example fails
       # here rather than in someone's terminal.
       - name: Check the shipped example configs
+        env:
+          KATRA_REGISTRY: ${{ runner.temp }}/katra-registry.yml
         run: |
           set -euxo pipefail
           katra="$PWD/bin/katra"
@@ -171,6 +174,8 @@ jobs:
       # actually render. examples/entry.md exercises every fenced component
       # katra registers; a component renamed without updating it fails here.
       - name: Every documented component still renders
+        env:
+          KATRA_REGISTRY: ${{ runner.temp }}/katra-registry.yml
         run: |
           set -euxo pipefail
           katra="$PWD/bin/katra"
