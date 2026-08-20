@@ -6,6 +6,11 @@ tags:
     - branding
     - docs
     - release
+hash: e40b89e
+stat:
+    f: 126
+    a: 9513
+    d: 245
 summary: OSS scaffolding for katra, and the four bugs that only surfaced once someone had to write them down
 closes:
     - bring-the-repo-up-to-the-open-source-scaffolding-standard

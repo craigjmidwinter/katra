@@ -3,8 +3,9 @@ title: Bring the repo up to the open-source scaffolding standard
 date: "2026-08-03"
 time: "12:12:01"
 type: task
-status: todo
+status: done
 effort: L
+entry: the-fold-was-on-the-wrong-side-and-other-things-writing-the-docs-found
 ---
 
 Match the pattern established in `../mail-muncher`, which was already carrying
@@ -42,4 +43,3 @@ and no MCP-registry listing. katra operates on the working tree, git history and
 hooks, so a container means mounting all three for a worse local install — and
 the registry indexes by distributable package, so with no image there is nothing
 to list.
-

@@ -35,3 +35,6 @@ coverage.*
 .idea/
 .vscode/
 *.swp
+
+# Python build cache (branding/build.py)
+__pycache__/
