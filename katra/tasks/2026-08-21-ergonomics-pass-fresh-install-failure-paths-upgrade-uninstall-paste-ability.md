@@ -4,9 +4,10 @@ date: "2026-08-21"
 time: "07:49:35"
 summary: Leg G of the standards pass, per the new ERGONOMICS section
 type: task
-status: doing
+status: done
 effort: M
 epic: fleet-standards-pass-hygiene-sweep
+entry: the-ergonomics-pass-installing-your-own-tool-like-a-stranger
 ---
 
 

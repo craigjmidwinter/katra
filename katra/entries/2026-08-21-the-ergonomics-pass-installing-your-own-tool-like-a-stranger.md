@@ -5,6 +5,11 @@ time: "07:52:40"
 tags:
     - standards
     - ergonomics
+hash: ff82859
+stat:
+    f: 13
+    a: 382
+    d: 69
 closes:
     - ergonomics-pass-fresh-install-failure-paths-upgrade-uninstall-paste-ability
 advances:
