@@ -13,11 +13,8 @@ About five minutes. No account, no service, nothing leaves your machine.
 
 ## 1. Install
 
-```bash
-brew install craigjmidwinter/tap/katra
-```
-
-Or, with Go 1.25+:
+With Go 1.25+ — the primary channel, and the only one that works before the
+first release ships:
 
 ```bash
 go install github.com/craigjmidwinter/katra/cmd/katra@latest
@@ -31,6 +28,17 @@ assumes it sits beside `katra` on your `PATH`.
 A `go install` build reports `dev` for `katra --version`, because the version is
 stamped at link time and the `go` tool does not do it. Released binaries and
 `make build` report the real tag.
+
+Once a release exists (v0.1.0 — see [RELEASING.md](https://github.com/craigjmidwinter/katra/blob/main/RELEASING.md)
+in the repo), Homebrew is the other option:
+
+```bash
+brew install craigjmidwinter/tap/katra
+```
+
+[The full Install section](https://github.com/craigjmidwinter/katra#install)
+in the README also covers building from source, downloading a binary directly,
+upgrading, and uninstalling.
 
 ## 2. Set up a repo
 
@@ -76,7 +84,10 @@ katra append "The magnus model was fighting the animation, not the physics."
 ## 4. Show the thing
 
 An entry with no visual is the most common way a log stops being read. Capture
-one:
+one — optional for this walkthrough, since it needs a file that exists on
+*your* machine, but worth doing for real once you have something to show.
+Swap in any image, gif or `.html` chart you already have (`screencapture -x
+shot.png` grabs one on macOS if you don't):
 
 ```bash
 katra capture ~/Desktop/swing.png --caption "after the fix"

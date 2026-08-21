@@ -78,7 +78,8 @@ A purely conversational turn never blocks. Neither does a turn that only
 touched files someone else had already dirtied. And a blocked turn never blocks
 twice for the same unchanged work — the block records a watermark.
 
-To satisfy it, declare the work:
+To satisfy it, declare the work — `<task-slug>` comes from `katra task list`
+(or create one with `katra task new`):
 
 ```bash
 katra reconcile --advance <task-slug>   # this moves a task forward

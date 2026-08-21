@@ -180,17 +180,81 @@ An entry is one kind of node. Tasks, epics, decisions and articles are the
 others; they share the frontmatter schema and the `[[wikilink]]` graph. See
 [On-disk format](format).
 
-| Command | What it does |
+### `katra task new "Title"`
+
+Create a task (status `todo`, or `specced` if `--spec` is given).
+
+| Flag | Meaning |
 | --- | --- |
-| `katra task new "Title" [--spec REF]` | Create a task (status `todo`, or `specced` if `--spec` is given). |
-| `katra task spec SLUG REF` | Point an existing task at a committed spec. `todo`/empty → `specced`; `doing`/`done`/`cut` is left alone. |
-| `katra task start SLUG` | Mark it `doing`. Legal from `specced`. |
-| `katra task done SLUG` | Mark it `done`. |
-| `katra task list [--status S]` | List tasks, optionally filtered by status — `todo`, `specced`, `doing`, `done`, `cut`. |
-| `katra epic new "Title"` | Create an epic (status `planned`). |
-| `katra epic rollup [slug]` | Show each epic's status computed from its child tasks; `--write` applies it. A `specced`-only epic counts as not started, same as `planned`. |
-| `katra decide "Title"` | Record a decision (status `accepted`). |
-| `katra article new "Title"` | Longer-form writing that is not tied to a commit. |
+| `--spec REF` | Spec artifact ref (node slug, or a path relative to the repo root); creates the task already `specced`. |
+| `--effort S\|M\|L` | Effort estimate. |
+| `--epic SLUG` | Parent epic slug. |
+| `--tags a,b` | Comma-separated tags. |
+| `--summary S` | One-line summary. |
+| `--body M` | Initial body markdown. |
+
+### `katra task spec SLUG REF`
+
+Point an existing task at a committed spec. `todo`/empty → `specced`;
+`doing`/`done`/`cut` is left alone.
+
+### `katra task start SLUG`
+
+Mark it `doing`. Legal from `specced`.
+
+### `katra task done SLUG`
+
+Mark it `done`.
+
+### `katra task list`
+
+List tasks, newest first.
+
+| Flag | Meaning |
+| --- | --- |
+| `--status S` | Filter by status — `todo`, `specced`, `doing`, `done`, `cut`. Comma-separate for more than one. |
+
+### `katra epic new "Title"`
+
+Create an epic (status `planned`).
+
+| Flag | Meaning |
+| --- | --- |
+| `--horizon now\|next\|later` | Planning horizon. |
+| `--tags a,b` | Comma-separated tags. |
+| `--summary S` | One-line summary. |
+| `--body M` | Initial body markdown. |
+
+### `katra epic rollup [slug]`
+
+Show each epic's status computed from its child tasks. A `specced`-only epic
+counts as not started, same as `planned`.
+
+| Flag | Meaning |
+| --- | --- |
+| `--write` | Apply the computed status instead of only displaying it. |
+
+### `katra decide "Title"`
+
+Record a decision (status `accepted`).
+
+| Flag | Meaning |
+| --- | --- |
+| `--entry SLUG` | Entry slug that occasioned this decision. |
+| `--supersedes a,b` | Slug(s) of decision(s) this replaces. |
+| `--tags a,b` | Comma-separated tags. |
+| `--summary S` | One-line summary. |
+| `--body M` | Initial body markdown. |
+
+### `katra article new "Title"`
+
+Longer-form writing that is not tied to a commit.
+
+| Flag | Meaning |
+| --- | --- |
+| `--tags a,b` | Comma-separated tags. |
+| `--summary S` | One-line summary. |
+| `--body M` | Initial body markdown. |
 
 `REF`, on `task spec` and `task new --spec`, resolves first against a node
 slug in the katra (a decision, article or entry — the same rule as a

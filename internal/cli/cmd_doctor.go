@@ -114,7 +114,11 @@ func doctorCmd() *cobra.Command {
 			}
 
 			if _, err := s.RepoRoot(); err != nil {
-				fmt.Printf("  ⚠ not a git repo — stamping/hook unavailable\n")
+				if core.IsGitNotFound(err) {
+					fmt.Printf("  ⚠ git not found on PATH — install git to enable stamping/hook\n")
+				} else {
+					fmt.Printf("  ⚠ not a git repo — stamping/hook unavailable\n")
+				}
 			}
 
 			if problems == 0 {

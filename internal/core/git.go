@@ -3,6 +3,7 @@ package core
 import (
 	"bufio"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,18 +12,40 @@ import (
 	"strings"
 )
 
-// git runs a git command inside the store's repo and returns trimmed stdout.
-func (s *Store) git(args ...string) (string, error) {
+// execGit is the shared git-invocation site: every git call in the package goes
+// through here, so the "git isn't even on PATH" case is diagnosed once, not
+// re-derived (or missed) at each call site.
+func execGit(dir string, args []string) (string, error) {
 	cmd := exec.Command("git", args...)
-	cmd.Dir = s.Dir
+	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			// Distinct from "not a git repository": git itself can't be found,
+			// so no git command — including `rev-parse --show-toplevel` — can
+			// tell us anything about whether dir is a repo.
+			return "", fmt.Errorf("git not found on PATH — install git: %w", err)
+		}
 		if ee, ok := err.(*exec.ExitError); ok {
 			return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(string(ee.Stderr)))
 		}
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// IsGitNotFound reports whether err means the git executable itself could not
+// be located on PATH, as opposed to dir simply not being a git repository.
+// Callers that currently treat any RepoRoot/git error as "not a git repo"
+// (e.g. `katra doctor`) should check this first — the fix is "install git",
+// not "run git init".
+func IsGitNotFound(err error) bool {
+	return errors.Is(err, exec.ErrNotFound)
+}
+
+// git runs a git command inside the store's repo and returns trimmed stdout.
+func (s *Store) git(args ...string) (string, error) {
+	return execGit(s.Dir, args)
 }
 
 // gitRoot runs a git command with cwd = the repo root, so repo-relative
@@ -33,16 +56,7 @@ func (s *Store) gitRoot(args ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cmd := exec.Command("git", args...)
-	cmd.Dir = root
-	out, err := cmd.Output()
-	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
-			return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(string(ee.Stderr)))
-		}
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
+	return execGit(root, args)
 }
 
 // RepoRoot returns the git working-tree root containing the katra.
@@ -67,7 +81,17 @@ func (s *Store) StagedFiles() ([]string, error) {
 
 // HeadHash returns the short hash of HEAD.
 func (s *Store) HeadHash() (string, error) {
-	return s.git("rev-parse", "--short", "HEAD")
+	h, err := s.git("rev-parse", "--short", "HEAD")
+	if err != nil {
+		// A repo with no commits yet fails this exact rev-parse with git's own
+		// "Needed a single revision" — accurate but not a sentence anyone would
+		// know how to act on. Name the fix instead.
+		if strings.Contains(err.Error(), "Needed a single revision") {
+			return "", fmt.Errorf("no commit to stamp against — make a commit first: %w", err)
+		}
+		return "", err
+	}
+	return h, nil
 }
 
 // DirtyEntry is one working-tree change: its repo-relative path and whether git

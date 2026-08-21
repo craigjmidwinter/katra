@@ -145,7 +145,8 @@ conversational turn never blocks. An edit-then-revert nets to nothing and never
 blocks. Someone else's pre-existing dirt is not your work and never blocks. A
 blocked turn never blocks twice for the same unchanged work.
 
-To satisfy it:
+To satisfy it — `<task>` is a slug from `katra task list` (or create one with
+`katra task new`):
 
 ```bash
 katra reconcile --advance <task>   # this moves a task forward
@@ -174,6 +175,7 @@ from `todo` (or empty) to a new status, `specced`: *a design exists, committed,
 and nobody has started building it.*
 
 ```bash
+katra task new "Cache swap"                           # todo, slug: cache-swap
 katra decide "Cache invalidation: TTL, not events"   # write the design
 katra task spec cache-swap cache-invalidation-ttl-not-events   # by node slug
 katra task start cache-swap                          # -> doing, implement from it
@@ -230,7 +232,45 @@ you better and has years more mileage.
 Binaries ship for macOS and Linux, amd64 and arm64. There is no Windows
 build; Windows is untested and unsupported.
 
+### `go install`
+
+The primary channel, and the only one that works before the first release
+ships (see Homebrew and Download a binary, below). The right path if you
+already have Go 1.25 or newer:
+
+```bash
+go install github.com/craigjmidwinter/katra/cmd/katra@latest
+go install github.com/craigjmidwinter/katra/cmd/katra-mcp@latest
+```
+
+Install both. `katra-mcp` is not optional extra tooling — the skill and every
+MCP client wiring assume it sits beside `katra` on your `PATH`.
+
+Note that `go install` builds report `dev` for `--version`, because the version
+is stamped at link time and the `go` tool does not do it. Released binaries and
+`make build` report the real tag. If you file a bug from a `go install` build,
+say which commit you installed.
+
+### Build from source
+
+```bash
+git clone https://github.com/craigjmidwinter/katra
+cd katra
+make install        # both binaries into GOBIN, version stamped
+```
+
+`make build` writes into `./bin/` rather than the repo root, because katra
+dogfoods itself and `./katra` is the directory its own log lives in.
+
+`make snapshot` builds the full set of release archives locally (requires
+[goreleaser](https://goreleaser.com)) if you want to check what a release would
+contain.
+
 ### Homebrew
+
+No release has shipped yet, so this tap has nothing to install until v0.1.0
+does — cutting one is what [RELEASING.md](RELEASING.md) walks through, and once
+it happens this becomes accurate:
 
 ```bash
 brew install craigjmidwinter/tap/katra
@@ -241,9 +281,16 @@ and installs prebuilt binaries. `brew upgrade katra` tracks new releases.
 
 ### Download a binary
 
-Every [release](https://github.com/craigjmidwinter/katra/releases/latest) ships
-archives for macOS and Linux on both amd64 and arm64, each containing **both**
-`katra` and `katra-mcp`, plus a `checksums.txt` and a signature over it.
+Same trigger as Homebrew — these archives are produced by the release
+workflow, so they exist starting with v0.1.0, not yet. Every
+[release](https://github.com/craigjmidwinter/katra/releases/latest), once one
+exists, ships archives for macOS and Linux on both amd64 and arm64, each
+containing **both** `katra` and `katra-mcp`, plus a `checksums.txt` and a
+signature over it.
+
+The snippet below is for a macOS/Linux shell (bash/zsh) — there is no Windows
+build, and the `uname` mapping it relies on would just produce a garbage URL
+on one.
 
 ```bash
 # Latest release, without the leading v. Set this by hand to pin a version.
@@ -292,37 +339,38 @@ cosign verify-blob \
   checksums.txt
 ```
 
-### `go install`
+### Upgrading
 
-The right path if you already have Go 1.25 or newer:
+Re-running the `go install ...@latest` commands above replaces the binaries in
+place — verified: the second run relinks both, same as the first. Once a
+release exists, `brew upgrade katra` does the equivalent for the Homebrew
+channel.
 
-```bash
-go install github.com/craigjmidwinter/katra/cmd/katra@latest
-go install github.com/craigjmidwinter/katra/cmd/katra-mcp@latest
-```
+### Uninstalling
 
-Install both. `katra-mcp` is not optional extra tooling — the skill and every
-MCP client wiring assume it sits beside `katra` on your `PATH`.
+`katra setup` creates five things; each has its own removal.
 
-Note that `go install` builds report `dev` for `--version`, because the version
-is stamped at link time and the `go` tool does not do it. Released binaries and
-`make build` report the real tag. If you file a bug from a `go install` build,
-say which commit you installed.
+1. **The git post-commit hook.** `katra hook uninstall`.
+2. **The hub launchd agent**, if you ran `katra hub install`. `katra hub
+   uninstall` reverses it — `launchctl unload` plus deleting the plist.
+3. **The Claude Code skill.** `rm -rf .claude/skills/katra/` (it holds one
+   file, `SKILL.md`).
+4. **The hooks block in `.claude/settings.json`.** Remove the `katra
+   agent-hook` entries under the `SessionStart`, `UserPromptSubmit`,
+   `PostToolUse`, `Stop`, `PreCompact`, `SessionEnd` keys, and `PreToolUse` too
+   if you installed the commit gate — then drop any of those keys left empty.
+   `katra setup` only ever added entries under those keys; anything else there
+   is yours.
+5. **The registry entry**, in `~/.config/katra/registry.yml`. There is no
+   explicit deregister command, and none of the above removes it — it lives as
+   long as `katra/config.yml` does, which is usually what you want, since
+   uninstalling the automation is not the same as abandoning the log. If you
+   do delete `katra/`, the entry self-prunes the next time `katra hub list` or
+   `katra hub serve` reads the registry — including a hub daemon already
+   running.
 
-### Build from source
-
-```bash
-git clone https://github.com/craigjmidwinter/katra
-cd katra
-make install        # both binaries into GOBIN, version stamped
-```
-
-`make build` writes into `./bin/` rather than the repo root, because katra
-dogfoods itself and `./katra` is the directory its own log lives in.
-
-`make snapshot` builds the full set of release archives locally (requires
-[goreleaser](https://goreleaser.com)) if you want to check what a release would
-contain.
+Nothing above touches `katra/` itself — the `katra/` directory is your data,
+and it stays.
 
 ## Quickstart
 
@@ -351,13 +399,23 @@ About five minutes, from inside a git repository.
    ```bash
    katra new "Reworked the swing arc" --tags physics,gameplay
    katra append "The magnus model was fighting the animation, not the physics."
-   katra capture ~/Desktop/swing.png --caption "after the fix"
    ```
 
    ```
    ✓ draft created: katra/entries/2026-08-20-reworked-the-swing-arc.md
      slug: reworked-the-swing-arc
    ✓ appended to reworked-the-swing-arc
+   ```
+
+   Optional, and worth doing for real once you have something to show: capture
+   any image on your machine (`screencapture -x shot.png` grabs one on macOS
+   if you don't).
+
+   ```bash
+   katra capture ~/Desktop/swing.png --caption "after the fix"   # swap in your own path
+   ```
+
+   ```
    ✓ imported media/swing.png
    ✓ added to reworked-the-swing-arc
    ```

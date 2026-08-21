@@ -148,6 +148,37 @@ func TestDoctorReportsEpicStatusDrift(t *testing.T) {
 	}
 }
 
+// TestDoctorReportsNotAGitRepo: a store with no .git anywhere above it (git
+// itself present) gets the plain "not a git repo" diagnosis.
+func TestDoctorReportsNotAGitRepo(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Doctor Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := runDoctor(t, s.Dir)
+	if !strings.Contains(out, "not a git repo — stamping/hook unavailable") {
+		t.Errorf("missing not-a-git-repo warning:\n%s", out)
+	}
+}
+
+// TestDoctorReportsGitNotFound covers Finding 5 from the ergonomics pass: a
+// real git repo, but the `git` binary is missing from PATH, must not be
+// misdiagnosed as "not a git repo" — that sends someone toward `git init`,
+// which is wrong (and destructive-ish) advice for a repo that already exists.
+func TestDoctorReportsGitNotFound(t *testing.T) {
+	s, _ := cliGitStore(t)
+	// PATH with no `git` on it — this repo is real, only the binary is gone.
+	t.Setenv("PATH", t.TempDir())
+
+	out := runDoctor(t, s.Dir)
+	if !strings.Contains(out, "git not found on PATH — install git") {
+		t.Errorf("missing git-not-found warning:\n%s", out)
+	}
+	if strings.Contains(out, "not a git repo") {
+		t.Errorf("misdiagnosed missing git as \"not a git repo\":\n%s", out)
+	}
+}
+
 // TestDoctorReportsDanglingSpec: a task's spec: ref that resolves to neither a
 // node nor a file is what doctor is for — `katra task spec` itself only warns
 // and writes, so this is where the dangling reference actually gets reported.
