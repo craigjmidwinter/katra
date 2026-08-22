@@ -9,6 +9,11 @@ Keep a living dev log while you work, using the `katra` CLI (or the
 `katra-mcp` MCP tools, if connected). The log is markdown entries with embedded
 rich components, served as a live page and committed alongside the code.
 
+The harness-neutral workflow is the public contract:
+<https://craigjmidwinter.github.io/katra/workflow>. This skill is a Claude Code
+delivery mechanism for the same task/epic/spec/entry/decision/stamp loop; it
+does not define behavior unavailable to a plain CLI or another coding harness.
+
 ## The model (read this first)
 
 - A katra lives in `katra/` at the repo root: `entries/` (one markdown file per
@@ -30,14 +35,15 @@ there next session.
 
 If you are the one writing the design, not just building from one already
 committed, and the task deserves it: write it (a decision, an article, or any
-other committed markdown), commit it, then attach it —
+other markdown), then attach it —
 
 ```
 katra task spec <task-slug> <ref>
 ```
 
-— which moves the task `todo`/empty → `specced` and leaves a further-along
-status alone. Then `katra task start <task-slug>` and implement from the spec.
+— and commit the artifact plus task pointer as one planning change. This moves
+the task `todo`/empty → `specced` and leaves a further-along status alone. Then
+`katra task start <task-slug>` and implement from the committed spec.
 Keep logging entries as you go, the same as any other work — and let them say
 where the build diverged from the plan and why. That comparison is what makes
 the entry worth more than the spec alone.
@@ -48,9 +54,11 @@ This is the part that goes wrong. Entries drift into flat technical documents �
 a wall of prose that reads like a handoff note to the next agent — and a log of
 those is one nobody, including you in a month, ever reads.
 
-Your project-memory already captures the play-by-play, and **katra ingests that
-memory into the log at commit time**. So don't re-type the transcript. Spend your
-effort on the two things a text memory can't hold:
+Claude Code project-memory may already capture the play-by-play, and Katra's
+optional Claude adapter can offer that memory for deliberate authoring. It
+never copies memory into the public log automatically. In Claude sessions,
+don't re-type the transcript; in every harness, explicitly append the reasoning
+worth publishing. Spend your effort on the two things a transcript can't hold:
 
 - **Show the thing.** Screenshots, renders, before/after sliders, diagrams,
   charts. A single capture is worth paragraphs.
@@ -169,11 +177,13 @@ one `<line>` for the baseline. Don't reach for a library.
 
 ## Notes
 
-- katra folds your project-memory into the draft at commit time — keep using
-  memory as you always do. Your job here is the assets and the *why*, not a
-  running transcript.
+- Claude memory ingest is optional and private. Resolve admitted memory only
+  after deliberately authoring what matters into the draft. Codex, MCP, and
+  plain-shell sessions use `katra append` directly and lose no Katra behavior.
 - One draft at a time is the happy path; `stamp` targets the newest draft. Use
   `--entry <slug>` to target a specific one.
-- If the MCP server is connected, the equivalents are `katra_new`,
-  `katra_append`, `katra_capture`, `katra_compare`, `katra_stamp`,
-  `katra_list`, `katra_get`.
+- If the MCP server is connected, it exposes all 15 operations: entry tools
+  `katra_list`, `katra_get`, `katra_new`, `katra_append`, `katra_capture`,
+  `katra_compare`, `katra_stamp`; and node tools `katra_nodes`,
+  `katra_task_new`, `katra_task_list`, `katra_task_set_status`,
+  `katra_task_spec`, `katra_epic_new`, `katra_decide`, `katra_article_new`.

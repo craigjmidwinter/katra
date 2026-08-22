@@ -19,7 +19,7 @@ func reconcileCmd() *cobra.Command {
 		Use:   "reconcile",
 		Short: "Declare how the just-finished work relates to a task (agent checkpoint)",
 		Long: "Records the agent's declaration for the current unit of work:\n" +
-			"  --advance <slug>   mark a task doing (if todo) and record it\n" +
+			"  --advance <slug>   mark a task doing (if todo or specced) and record it\n" +
 			"  --close   <slug>   declare the task closed (done+link applied at publish)\n" +
 			"  --no-task          this work advances no task (needs --reason)\n" +
 			"  --skip             resolve just this unit of work (needs --reason)\n" +
@@ -83,7 +83,7 @@ func reconcileCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&advance, "advance", "", "task slug this work advances (todo → doing)")
+	cmd.Flags().StringVar(&advance, "advance", "", "task slug this work advances (todo/specced → doing)")
 	cmd.Flags().StringVar(&closeSlug, "close", "", "task slug this work closes (applied at publish)")
 	cmd.Flags().BoolVar(&noTask, "no-task", false, "this work advances no task (with --reason)")
 	cmd.Flags().BoolVar(&skip, "skip", false, "resolve just this unit of work (with --reason)")

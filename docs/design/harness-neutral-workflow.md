@@ -27,6 +27,13 @@ harness supplied it, and its MCP equivalence note lists only the seven entry
 tools even though the server exposes fifteen tools, including task specs,
 epics, decisions, and articles.
 
+There is also a release boundary hidden by the current-source documentation:
+the installed v0.1.0 CLI has no `task spec` command, no `task new --spec` flag,
+and no `specced` value in `task list --help`. Current source has all three.
+Published docs must mark that workflow unreleased until the next tag, and the
+release process must test the packaged binary rather than inferring its surface
+from source tests.
+
 ## Decision
 
 Make a published, harness-neutral workflow page the common contract:
@@ -46,6 +53,11 @@ The root `AGENTS.md`, quickstart, agent guide, CLI reference, README, and
 embedded skill will point to or summarize the same flow. The skill remains a
 Claude-specific delivery mechanism, not the canonical source of shared
 behavior.
+
+A shared artifact check will assert `task spec`, `task new --spec`, and the
+`specced` list filter against current binaries and release archives. The next
+release cannot present the full published workflow as shipped until that check
+passes against its packaged `katra` executable.
 
 ## Acceptance
 

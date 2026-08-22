@@ -3,21 +3,22 @@ title: Agents
 layout: default
 nav_order: 7
 description: >-
-  How an agent keeps the log — the Claude Code skill, the seven hooks katra
-  setup installs, the blocking commit gate, memory ingest, and the MCP tools.
+  How any coding agent keeps the log through the common CLI workflow, plus
+  optional Claude Code hooks, memory ingest, and the fifteen MCP tools.
 ---
 
 # Agents
 
 katra was built to be written *by* an agent while it works, so the log records
-what happened rather than what someone reconstructed afterwards. There are three
-ways in, and they compose.
+what happened rather than what someone reconstructed afterwards. The complete,
+harness-neutral contract is [The Katra workflow](workflow). There are three
+ways into the same core, and they compose.
 
 | Surface | Use it when |
 | --- | --- |
-| **The skill + hooks** | You use Claude Code. This is the whole system, and the one `katra setup` installs. |
-| **The CLI** | Any agent that can run a shell command. `katra new`, `append`, `capture`, `stamp`. |
+| **The CLI** | The common surface for any agent that can run a shell command: planning, specs, entries, decisions, closure, and stamps. |
 | **MCP** | A client that speaks the Model Context Protocol and would rather call a tool than shell out. |
+| **The skill + hooks** | Optional Claude Code reminders, memory ingest, and a commit gate installed by `katra setup`. |
 
 ## The problem this solves
 
@@ -26,11 +27,20 @@ one thing the diff already tells you. What is lost is everything that happened
 before the final state: the approach that failed, the measurement that changed
 the plan, the screenshot of the bug.
 
-So katra's agent integration is built around a single rule — **the draft exists
-while the work does** — and the hooks exist to make that true without the agent
-having to remember.
+So katra's workflow is built around a single rule — **the draft exists while
+the work does**. The CLI makes that portable; hooks can make it harder to
+forget.
 
-## `katra setup`
+## Portable setup
+
+```bash
+katra init --install-hook
+```
+
+That creates the store and installs Git auto-stamp without writing harness
+configuration. An existing Katra can use `katra hook install`.
+
+## Claude Code setup
 
 ```bash
 katra setup            # with the commit gate
@@ -99,6 +109,12 @@ block, and you can turn the gate on later by re-running `katra setup`.
 
 ## Working from a spec
 
+{: .warning }
+The installed v0.1.0 CLI predates `task spec`, `task new --spec`, and the
+`specced` help value. Build current source with `make all` to use this phase
+until the next release. The release checklist tests these commands against the
+packaged binary.
+
 A task can point at a committed spec. `katra task spec <slug> <ref>` sets
 `spec:` on it and moves it from `todo` (or empty) to `specced` — a status
 meaning a design exists, committed, and nobody has started building it.
@@ -163,7 +179,7 @@ flat technical document — a wall of prose that reads like a handoff note to th
 next agent — and a log of those is one nobody, including you in a month, ever
 reads.
 
-The skill (`internal/cli/embed/SKILL.md`) is the full guidance. Its core:
+The public [Katra workflow](workflow) is the full guidance. Its core:
 
 - **Show the thing.** Treat a draft with zero visuals as unfinished. A
   screenshot, a before/after, a chart of the numbers you just measured.
@@ -226,8 +242,9 @@ corresponding core operation exists and wiring it up is a small change.
 
 ## Without Claude Code
 
-Nothing above is required. Any agent that can run a shell command can keep a
-katra with four of them:
+Claude integration is not required. Any agent that can run a shell command can
+drive the full workflow, including epics, specced tasks, spec pointers,
+decisions, closure, and rollup. The smallest entry loop is four commands:
 
 ```bash
 katra new "What you are about to do" --tags area,kind
@@ -237,3 +254,4 @@ katra stamp
 ```
 
 Install the git hook (`katra hook install`) and the last one happens on its own.
+For the complete plan-to-proof sequence, use [The Katra workflow](workflow).

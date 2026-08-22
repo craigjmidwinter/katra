@@ -38,9 +38,10 @@ Create a katra in this repository.
 
 ### `katra setup`
 
-Make this repo a katra project: store, skill, Claude Code hooks, git auto-stamp,
-and hub registration. **Idempotent** — re-run it after upgrading katra to pick
-up new hook wiring.
+Install the Claude Code integration on this repo: store, skill, Claude Code
+hooks, portable Git auto-stamp, and hub registration. **Idempotent** — re-run
+it after upgrading katra to pick up new hook wiring. Other harnesses use
+`katra init --install-hook` or `katra hook install` instead.
 
 | Flag | Meaning |
 | --- | --- |
@@ -175,6 +176,11 @@ do not affect the exit code:
 - more than one draft open, and unreferenced files in `media/`
 
 ## The node model
+
+{: .warning }
+The installed v0.1.0 CLI predates `task spec`, `task new --spec`, and the
+`specced` task-list help value. They are available in current source and are
+gated against release artifacts for the next tag.
 
 An entry is one kind of node. Tasks, epics, decisions and articles are the
 others; they share the frontmatter schema and the `[[wikilink]]` graph. See

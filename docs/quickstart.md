@@ -21,8 +21,8 @@ go install github.com/craigjmidwinter/katra/cmd/katra@latest
 go install github.com/craigjmidwinter/katra/cmd/katra-mcp@latest
 ```
 
-Both binaries matter. `katra-mcp` is what an MCP client talks to, and the skill
-assumes it sits beside `katra` on your `PATH`.
+Both binaries matter. `katra-mcp` is what an MCP client talks to, and the
+published workflow treats CLI and MCP as two surfaces over the same core.
 
 {: .note }
 A `go install` build reports `dev` for `katra --version`, because the version is
@@ -45,41 +45,39 @@ upgrading, and uninstalling.
 From inside a git repository:
 
 ```bash
-katra setup
+katra init --install-hook
 ```
 
-That is idempotent and does four things:
+That does two harness-neutral things:
 
 1. Creates `katra/` if it is not there — `config.yml`, `entries/`, `media/`.
-2. Installs the Claude Code skill into `.claude/skills/katra/`.
-3. Wires the Claude Code hooks in `.claude/settings.json`.
-4. Installs the git `post-commit` auto-stamp hook, and registers the project
-   with the [hub](hub).
+2. Installs the portable Git `post-commit` auto-stamp hook.
 
-If you do not use Claude Code, `katra init --install-hook` does just the first
-and last steps.
+`katra init` also registers the project with the [hub](hub). For an existing
+Katra, `katra hook install` adds only the portable hook.
+
+Claude Code users may instead run `katra setup`, which adds its skill, seven
+session hooks, memory adapter, and optional commit gate on top of the same
+store and Git hook. Those integrations are optional; see [Agents](agents).
 
 {: .warning }
-`katra setup` installs a **blocking commit gate** — a hook that refuses a
+Claude's `katra setup` installs a **blocking commit gate** — a hook that refuses a
 `git commit` whose staged code has not been reconciled against a task. That is
 the point of it, but it is a real change to your commit flow. Use
 `katra setup --no-gate` for the nudges without the block. See [Agents](agents).
 
-## 3. Start a draft
+## 3. Write the welcome draft
+
+`katra init` creates `hello-katra`, a real welcome draft so the first page has
+something visible. It has no `hash:`, so it is already in the *In Progress*
+panel. Replace its starter text in an editor, or append from the shell:
 
 ```bash
-katra new "Reworked the swing arc" --tags physics,gameplay
+katra append --entry hello-katra "The first reason this project needs a chronicle."
 ```
 
-That writes `katra/entries/2026-08-03-reworked-the-swing-arc.md` with
-frontmatter and an empty body. It has no `hash:`, so it is a draft, and it is
-already visible in the *In Progress* panel.
-
-Write the body in your editor, or append from the shell:
-
-```bash
-katra append "The magnus model was fighting the animation, not the physics."
-```
+After this first success, `katra new "A real headline" --tags area,kind`
+starts each new entry.
 
 ## 4. Show the thing
 
@@ -90,8 +88,8 @@ Swap in any image, gif or `.html` chart you already have (`screencapture -x
 shot.png` grabs one on macOS if you don't):
 
 ```bash
-katra capture ~/Desktop/swing.png --caption "after the fix"
-katra compare before.png after.png --caption "arc, before and after"
+katra capture ~/Desktop/swing.png --entry hello-katra --caption "first visible proof"
+katra compare before.png after.png --entry hello-katra --caption "before and after"
 ```
 
 `capture` copies the file into `katra/media/` and appends the right block for
@@ -141,6 +139,8 @@ GitHub Pages at it.
 ## Where to go next
 
 - [Components](components) — everything an entry can embed.
+- [The Katra workflow](workflow) — tasks, epics, specs, decisions, entries,
+  closure, and automation in any harness.
 - [Agents](agents) — hand the log to an agent so it writes from a committed
   spec instead of a conversation, and records how the work actually went.
 - [The hub](hub) — one page across every katra on your machine.

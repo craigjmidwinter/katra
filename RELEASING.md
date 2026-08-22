@@ -25,9 +25,11 @@ is [`.github/workflows/release.yml`](.github/workflows/release.yml) and
   `katra` and drives it through init → entry → stamp → doctor → build in a
   scratch repo), and
   `release dry run`, which already runs `goreleaser check`, validates
-  `server.json`, and performs a full `--snapshot` build including the
-  registry-only OCI image. If that job is green, the release config itself is
-  not going to be the thing that breaks step 3.
+  `server.json`, performs a full `--snapshot` build including the
+  registry-only OCI image, and runs `scripts/check-workflow-surface.sh` against
+  the extracted Linux archive. If that job is green, the packaged CLI contains
+  `task spec`, `task new --spec`, and the `specced` task-list status promised by
+  the public workflow; a stale installed v0.1.0 binary cannot mask drift.
 - There is something worth releasing — `git log <last tag>..HEAD --oneline`.
   If no tag exists yet, that's every commit; see "Pick the version" below for
   what that means for the first one.
@@ -77,10 +79,17 @@ release page.
 Locally, without publishing anything:
 
 ```bash
+make all             # build both current-source binaries
+scripts/check-workflow-surface.sh ./bin/katra
 make release-check   # `goreleaser check` — validates .goreleaser.yml only
 make snapshot         # full local build: both binaries × 4 platform archives,
                        # checksums + registry OCI image — no publish/signing
 ```
+
+Do not run the workflow-surface check against whichever `katra` happens to be
+first on `PATH`: the installed v0.1.0 CLI predates the spec phase. The command
+above deliberately tests the binary built from the candidate commit, while CI
+repeats it against an extracted release archive.
 
 `make snapshot` needs [goreleaser](https://goreleaser.com), Docker Buildx, and
 QEMU registered for the linux/arm64 image. It may pull the pinned Alpine base,

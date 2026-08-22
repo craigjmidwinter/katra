@@ -27,7 +27,7 @@ drops into the log. A live page serves the whole thing on your LAN and reloads
 as you type.
 
 ```bash
-katra setup                      # skill + hooks + auto-stamp, in this repo
+katra init --install-hook        # store + portable Git auto-stamp
 katra new "Reworked the swing"   # start a draft
 katra capture shot.png           # drop a screenshot into it
 katra serve                      # live page, reloads as you write
@@ -61,6 +61,7 @@ write — no build step in between.
 | If you want to | Read |
 | --- | --- |
 | Get it running in five minutes | [Quickstart](quickstart) |
+| Follow the complete spec-to-stamp loop in any coding harness | [The Katra workflow](workflow) |
 | See what an entry can contain | [Components](components) |
 | Look up a command or a flag | [CLI reference](cli) |
 | Change the title, accent, or hook behaviour | [Configuration](configuration) |
@@ -72,7 +73,7 @@ write — no build step in between.
 {: .note }
 This is [Diátaxis](https://diataxis.fr)-shaped but not Diátaxis-sized: a
 project this small folds its how-to recipes into the tutorial
-([Quickstart](quickstart)) and the workflow reference ([Agents](agents),
+([Quickstart](quickstart)) and the workflow reference ([The Katra workflow](workflow), [Agents](agents),
 [The hub](hub)) rather than maintaining a separate how-to section. Reference
 ([CLI](cli), [Configuration](configuration), [Components](components),
 [On-disk format](format)) and explanation ([Architecture](architecture),

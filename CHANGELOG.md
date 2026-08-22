@@ -11,6 +11,11 @@ first release, everything lands under `[Unreleased]`.
 
 ### Added
 
+- **One harness-neutral Katra workflow.** The complete epic → specced task →
+  committed spec → running entry → decision/evidence → stamp/closure loop now
+  lives in public docs and canonical `AGENTS.md`, rather than depending on the
+  Claude Code skill. Release CI checks the packaged CLI for all three spec-phase
+  surfaces that an installed v0.1.0 binary lacks.
 - **Official MCP Registry release packaging.** The existing 15-tool
   `katra-mcp` stdio server now has validated `server.json` metadata, a minimal
   registry-only OCI wrapper, and tag-gated GitHub OIDC publication with no

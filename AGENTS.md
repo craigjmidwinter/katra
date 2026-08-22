@@ -11,10 +11,42 @@ Written in Go; two binaries, `katra` (CLI) and `katra-mcp` (MCP server).
 All green on a clean checkout — if one isn't, that is a bug worth reporting.
 
 ```bash
-make build            # both binaries into ./bin/  (never `go build -o katra` — see below)
+make all              # both binaries into ./bin/  (never `go build -o katra` — see below)
 go test ./...         # full suite; CI runs it with -race
 golangci-lint run     # config in .golangci.yml; falls back to: go vet ./... && gofmt -l .
 ```
+
+`make build` builds only `./bin/katra`; `make build-mcp` builds only
+`./bin/katra-mcp`.
+
+## Harness-neutral Katra workflow
+
+The committed CLI workflow is canonical; a Claude skill or hook may automate
+it but must not be the only place it is taught. In every harness:
+
+1. Inspect durable work with `katra task list --status specced`,
+   `katra task list --status doing`, and `katra epic rollup`.
+2. For a larger outcome, create an epic, then a child task with
+   `katra epic new "…"` and `katra task new "…" --epic <slug>`.
+3. When design is warranted, author a spec artifact and attach it with
+   `katra task spec <task> <node-slug-or-repo-path>`. Commit the artifact and
+   task pointer together before implementation, verify the task is `specced`,
+   read the artifact, then run `katra task start <task>`.
+4. Before implementation edits, open the running chronicle with
+   `katra new "…"`. Use `katra append` for decisions and rejected alternatives,
+   `katra decide` for a durable choice, and `katra capture`/`compare` for at
+   least one visual whenever the work can be shown.
+5. Commit the bounded implementation. Publish with
+   `katra stamp --closes <task> --commit`; this closes and links the task and
+   rolls up its epic. If the portable post-commit hook is installed, run
+   `katra reconcile --close <task>` before the implementation commit so the
+   closure is already attached to the draft.
+6. Finish with `katra doctor`, task/epic status checks, `katra list`, and a
+   clean working tree.
+
+The full public contract and examples live in `docs/workflow.md`. Claude Code
+memory ingest is an optional adapter, not an assumption: Codex and plain-shell
+sessions must append the reasoning worth publishing themselves.
 
 ## Style
 
@@ -45,9 +77,11 @@ golangci-lint run     # config in .golangci.yml; falls back to: go vet ./... && 
 - **Task lifecycle** is `todo → specced → doing → done | cut`; `spec:` refs
   resolve as a node slug first, then a repo-root-relative path. Setting a
   spec never moves a status backwards.
-- **This repo runs its own commit gate.** The Claude Code hooks installed
-  here block a stop or a `git commit` until the work is declared:
-  `katra reconcile --advance|--close <task>` (slugs from `katra task list`).
+- **This repo has a portable post-commit stamp hook and may also have a
+  Claude-specific commit gate.** Declare closure durably on the active draft
+  with `katra reconcile --close <task>` before committing, or stamp explicitly
+  with `katra stamp --closes <task> --commit`. A Claude gate, when active, also
+  accepts `katra reconcile --advance|--close <task>` receipts.
 
 ## Security notes
 

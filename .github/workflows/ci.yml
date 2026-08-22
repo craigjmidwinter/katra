@@ -256,6 +256,12 @@ jobs:
           echo "$contents" | grep -qx katra
           echo "$contents" | grep -qx katra-mcp
 
+          # v0.1.0-era installed binaries predate the published spec phase.
+          # Check the archive itself so source tests cannot hide release drift.
+          smoke_dir="$(mktemp -d)"
+          tar -xzf "$archive" -C "$smoke_dir"
+          ./scripts/check-workflow-surface.sh "$smoke_dir/katra"
+
       # Publishing is deliberately tag-only, but malformed metadata must fail
       # on a pull request rather than after the release image already exists.
       - name: Validate server.json
