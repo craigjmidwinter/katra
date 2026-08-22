@@ -6,6 +6,11 @@ tags:
     - agents
     - workflow
     - parity
+hash: 5d3a3e9
+stat:
+    f: 22
+    a: 535
+    d: 103
 summary: Making Katra’s complete spec-to-stamp loop portable across Claude Code, Codex, MCP, and a plain shell
 closes:
     - close-the-codex-workflow-parity-gap
