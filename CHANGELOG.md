@@ -11,6 +11,11 @@ first release, everything lands under `[Unreleased]`.
 
 ### Added
 
+- **Official MCP Registry release packaging.** The existing 15-tool
+  `katra-mcp` stdio server now has validated `server.json` metadata, a minimal
+  registry-only OCI wrapper, and tag-gated GitHub OIDC publication with no
+  stored registry token. Native binaries remain the supported install path;
+  no image is published before the first tag.
 - **The core log workflow.** `katra new` starts a draft, `katra append` /
   `capture` / `compare` build it up while you work, and the commit you were
   already making stamps it with its hash and diffstat. A draft is an entry

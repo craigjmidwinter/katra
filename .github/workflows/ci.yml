@@ -222,6 +222,14 @@ jobs:
         env:
           HOMEBREW_TAP_GITHUB_TOKEN: ""
 
+      # The release snapshot includes the two-platform registry image, whose
+      # Alpine arm64 layer executes during the build on this amd64 runner.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build a snapshot release
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -241,8 +249,16 @@ jobs:
       - name: Both binaries are in the archive
         run: |
           set -euo pipefail
-          archive="$(ls dist/katra_*_linux_amd64.tar.gz | head -1)"
+          archive="$(find dist -maxdepth 1 -name 'katra_*_linux_amd64.tar.gz' -print -quit)"
+          test -n "$archive"
           contents="$(tar tzf "$archive")"
           echo "$contents"
           echo "$contents" | grep -qx katra
           echo "$contents" | grep -qx katra-mcp
+
+      # Publishing is deliberately tag-only, but malformed metadata must fail
+      # on a pull request rather than after the release image already exists.
+      - name: Validate server.json
+        run: |
+          ./scripts/install-mcp-publisher.sh
+          ./mcp-publisher validate

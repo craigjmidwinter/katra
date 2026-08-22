@@ -195,6 +195,13 @@ all.
 It resolves the katra from `$KATRA_DIR` (or the legacy `$DEVLOG_DIR`), falling
 back to discovery from the working directory.
 
+The native binary is the supported path because it can use the working tree
+directly. From the first release onward, the official MCP Registry will list a
+minimal OCI wrapper containing only `katra-mcp` and `git`. That wrapper is
+distribution metadata for registry clients, not a general Katra container: a
+client running it still has to expose the repository working tree. It does not
+contain `katra setup`, the viewer, the hub, or the CLI.
+
 | Tool | What it does |
 | --- | --- |
 | `katra_list` | List entries. |
@@ -207,7 +214,8 @@ back to discovery from the working directory.
 | `katra_nodes` | List nodes of any type. |
 | `katra_task_new` | Create a task. |
 | `katra_task_list` | List tasks. |
-| `katra_task_set_status` | Move a task between `todo`/`doing`/`done`/`cut`. |
+| `katra_task_set_status` | Move a task between `todo`/`specced`/`doing`/`done`/`cut`. |
+| `katra_task_spec` | Attach a spec and advance a todo task to `specced` without moving later statuses backwards. |
 | `katra_epic_new` | Create an epic. |
 | `katra_decide` | Record a decision. |
 | `katra_article_new` | Create an article. |

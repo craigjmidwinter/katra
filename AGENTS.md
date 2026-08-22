@@ -35,6 +35,13 @@ golangci-lint run     # config in .golangci.yml; falls back to: go vet ./... && 
   `make build` (outputs to `./bin/`).
 - **Viewer assets are `go:embed`ded.** Editing `internal/viewer/assets/*`
   does nothing until the binary is rebuilt — rebuild before `serve`/`build`.
+- **The OCI image is MCP Registry packaging, not a supported container install
+  path.** `server.json`, `Dockerfile.registry`, and the manifest annotation in
+  `.goreleaser.yml` must keep the server name
+  `io.github.craigjmidwinter/katra` in lockstep. Validate metadata with
+  `mcp-publisher validate`; never publish it outside a tagged release. Both
+  workflows install the publisher through `scripts/install-mcp-publisher.sh`,
+  whose pinned version and SHA-256 are the single source of truth.
 - **Task lifecycle** is `todo → specced → doing → done | cut`; `spec:` refs
   resolve as a node slug first, then a repo-root-relative path. Setting a
   spec never moves a status backwards.

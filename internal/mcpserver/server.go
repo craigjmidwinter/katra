@@ -18,6 +18,13 @@ import (
 
 // Run starts the MCP server over stdio.
 func Run(version string) error {
+	return server.ServeStdio(newServer(version))
+}
+
+// newServer keeps construction separate from transport so the protocol
+// surface can be tested without spawning a subprocess. The registry package
+// and the native binary both call Run, so they still use this exact server.
+func newServer(version string) *server.MCPServer {
 	s := server.NewMCPServer("katra", version)
 
 	s.AddTool(mcp.NewTool("katra_list",
@@ -123,7 +130,7 @@ func Run(version string) error {
 		mcp.WithString("tags", mcp.Description("Comma-separated tags.")),
 	), handleArticleNew)
 
-	return server.ServeStdio(s)
+	return s
 }
 
 func store() (*core.Store, error) {

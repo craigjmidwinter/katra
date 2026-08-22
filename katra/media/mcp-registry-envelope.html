@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Katra MCP distribution paths</title>
+<style>
+  :root { color-scheme: light dark; --paper:#f7f1e5; --ink:#27231f; --muted:#665f57; --rule:#b9aa98; --accent:#8a3d24; --card:#fffaf0; }
+  @media (prefers-color-scheme:dark) { :root { --paper:#1d1a17; --ink:#f4eadb; --muted:#c4b7a7; --rule:#655d54; --accent:#e08a5c; --card:#29241f; } }
+  * { box-sizing:border-box }
+  body { margin:0; padding:32px; background:var(--paper); color:var(--ink); font:16px/1.45 ui-sans-serif,system-ui,sans-serif }
+  h1 { margin:0 0 8px; font:700 28px/1.1 ui-serif,Georgia,serif }
+  .lede { margin:0 0 24px; color:var(--muted) }
+  .paths { display:grid; grid-template-columns:1fr auto 1fr; gap:18px; align-items:stretch }
+  .card { padding:20px; border:1px solid var(--rule); border-radius:10px; background:var(--card) }
+  .card strong { display:block; color:var(--accent); margin-bottom:8px; text-transform:uppercase; letter-spacing:.06em; font-size:12px }
+  .arrow { align-self:center; color:var(--muted); font-size:24px }
+  code { color:var(--ink) }
+  .metrics { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px }
+  .metric { border-left:3px solid var(--accent); padding:5px 12px }
+  .metric b { display:block; font-size:20px }
+  .metric span { color:var(--muted); font-size:13px }
+  @media (max-width:620px) { body { padding:20px } .paths { grid-template-columns:1fr } .arrow { transform:rotate(90deg); justify-self:center } }
+</style>
+<body>
+  <h1>One server, two distribution contexts</h1>
+  <p class="lede">The native binary stays the product path. OCI is the registry's package envelope.</p>
+  <div class="paths">
+    <section class="card">
+      <strong>Supported install</strong>
+      <code>katra + katra-mcp</code>
+      <p>Direct access to the working tree, Git history, hooks, viewer, and hub.</p>
+    </section>
+    <div class="arrow" aria-hidden="true">↔</div>
+    <section class="card">
+      <strong>Registry package</strong>
+      <code>katra-mcp + git</code>
+      <p>A stdio-only OCI wrapper for official MCP Registry discovery.</p>
+    </section>
+  </div>
+  <div class="metrics">
+    <div class="metric"><b>15</b><span>tools on the wire</span></div>
+    <div class="metric"><b>11.9 MB</b><span>compressed amd64 image save</span></div>
+    <div class="metric"><b>0</b><span>stored registry tokens</span></div>
+  </div>
+</body>
+</html>

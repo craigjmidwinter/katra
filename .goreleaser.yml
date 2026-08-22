@@ -70,6 +70,38 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 
+# The official MCP Registry indexes installable packages, not bare Go release
+# binaries. This image is deliberately narrower than katra's release archives:
+# it contains only katra-mcp and the git executable its tools invoke. It is a
+# registry transport wrapper, not a general-purpose container install; native
+# binaries remain the supported way to use katra on a working tree.
+dockers_v2:
+  - id: katra-mcp-registry
+    ids:
+      - katra-mcp
+    images:
+      - ghcr.io/craigjmidwinter/katra-mcp
+    dockerfile: Dockerfile.registry
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    labels:
+      org.opencontainers.image.title: "katra-mcp"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.source: "https://github.com/craigjmidwinter/katra"
+      org.opencontainers.image.licenses: MIT
+    # Ownership is checked on the manifest, not only the platform configs.
+    # This string, Dockerfile.registry's LABEL, and server.json's name move
+    # together or registry publication is rejected.
+    annotations:
+      io.modelcontextprotocol.server.name: "io.github.craigjmidwinter/katra"
+      org.opencontainers.image.source: "https://github.com/craigjmidwinter/katra"
+      org.opencontainers.image.description: "Katra's stdio MCP server, packaged only for official registry distribution."
+
 # Keyless signing with cosign + GitHub OIDC. No long-lived key to manage: the
 # signature is bound to this workflow's identity and logged in Rekor.
 signs:

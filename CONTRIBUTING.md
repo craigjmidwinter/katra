@@ -38,7 +38,7 @@ issue.
 | `make fmt` | `go fmt ./...` |
 | `make tidy` | `go mod tidy` |
 | `make release-check` | `goreleaser check` — validates `.goreleaser.yml` only, no build. |
-| `make snapshot` | A full local release build into `./dist` (needs goreleaser). |
+| `make snapshot` | A full local release build into `./dist`, including the registry-only OCI image (needs goreleaser, Docker Buildx, and QEMU for arm64). |
 | `make clean` | Removes `bin/` and `dist/`. |
 
 Cutting an actual release is a separate runbook, not a `make` target:
@@ -99,6 +99,7 @@ internal/
 docs/                    the documentation site (GitHub Pages, /docs on main)
 examples/                worked configs, and an entry exercising every component
 contrib/                 launchd agent and systemd unit for the hub daemon
+scripts/                 maintenance helpers, including the pinned MCP publisher installer
 skills/katra/SKILL.md    symlink to the embedded skill, at the plugin path
 .claude-plugin/          Claude Code plugin + marketplace manifests
 katra/                   this project's own dev log — do not edit by hand
@@ -254,6 +255,7 @@ documentation. If you change any of these, update the docs in the same PR:
 | A rich component | `docs/components.md`, `examples/entry.md`, and the README's component list |
 | The entry frontmatter or the on-disk layout | `docs/format.md` |
 | An MCP tool's name, arguments, or return shape | `docs/agents.md` |
+| MCP Registry metadata or packaging | `server.json`, `Dockerfile.registry`, `.goreleaser.yml`, `RELEASING.md`, and `AGENTS.md` |
 | The skill, the hooks, or the commit gate | `internal/cli/embed/SKILL.md` and `docs/agents.md` |
 | The hub, the registry, or the launchd agent | `docs/hub.md` and `contrib/` |
 | Anything about the seams | `docs/architecture.md` |

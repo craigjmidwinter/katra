@@ -24,6 +24,8 @@ jobs:
       # Mint the short-lived OIDC token cosign exchanges for a signing
       # certificate. Without this, keyless signing cannot work.
       id-token: write
+      # Push the registry-only katra-mcp image to GHCR.
+      packages: write
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -41,6 +43,23 @@ jobs:
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
+
+      # The registry image is a two-platform manifest. Its Alpine arm64 layer
+      # executes apk on this amd64 runner, so QEMU and a buildx builder are
+      # required even though the Go binary itself is cross-compiled.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # A missing tap token must be loud, not silent. The release still ships
       # binaries without it; only the Homebrew cask update is skipped.
@@ -92,6 +111,44 @@ jobs:
             dist/checksums.txt
           retention-days: 7
           if-no-files-found: error
+
+  # The image exists only to give the official MCP Registry an installable
+  # package for the existing stdio server. Publish metadata after the release
+  # job has pushed that exact image tag; a dry run never reaches this job.
+  mcp-registry:
+    name: mcp registry
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      # mcp-publisher exchanges the workflow identity for a short-lived token.
+      # There is no stored MCP Registry token or interactive device-code step.
+      id-token: write
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install mcp-publisher
+        run: ./scripts/install-mcp-publisher.sh
+
+      # server.json is a checked, readable template. The release tag is the
+      # source of truth, so stamp both fields that encode a version immediately
+      # before publishing rather than relying on a manual pre-tag bump.
+      - name: Stamp the tag into server.json
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          jq --arg v "$version" \
+             --arg image "ghcr.io/${{ github.repository_owner }}/katra-mcp:" \
+            '.version = $v | .packages[0].identifier = $image + $v' \
+            server.json > server.tmp && mv server.tmp server.json
+          cat server.json
+
+      - name: Authenticate to the MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish
+        run: ./mcp-publisher publish
 
   # The documentation site is plain GitHub Pages from /docs on the default
   # branch, so there is no build job for it here. This only pins the docs to

@@ -166,6 +166,13 @@ tool than shell out — and none of this is required. Any agent that can run
 `katra new`, `capture`, `append` and `stamp` can keep a katra. Full detail:
 [docs/agents.md](docs/agents.md).
 
+When the first release ships, the official MCP Registry will be able to
+discover the same stdio server through a narrow OCI package. That image
+contains only `katra-mcp` and `git`; it exists because the registry needs an
+installable package, not because a container is a better way to use Katra. A
+registry client still has to expose the repository working tree to it. For
+direct use, install the native binaries above.
+
 ### Spec-driven, not spec-derived
 
 A task can carry `spec:` — a node slug in the katra (a decision, an article, an
@@ -661,9 +668,12 @@ Command names and flags may still move.
 - **A hosted service.** Your log is markdown in your repo. There is nothing to
   sign into and nothing to migrate off, and adding a backend would trade that
   away for convenience.
-- **A container image.** katra operates on your working tree, your git history
-  and your hooks. Containerising it means mounting all three, at which point you
-  have a worse local install.
+- **A general-purpose container install.** katra operates on your working tree,
+  your git history and your hooks. Containerising the whole tool means mounting
+  all three, at which point you have a worse local install. The release workflow
+  does build a minimal `katra-mcp` OCI wrapper solely so the official MCP
+  Registry has a package to index; it is not an alternative to the install
+  paths above.
 - **A theme system.** The viewer is one design, with `accent` as the knob. The
   static build is a directory you can restyle yourself if you must.
 - **Feeds, comments, analytics.** It is a log for the people in the repo.
