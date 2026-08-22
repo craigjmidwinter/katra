@@ -6,6 +6,11 @@ tags:
     - registry
     - mcp
     - release
+hash: e4158d7
+stat:
+    f: 19
+    a: 469
+    d: 20
 summary: Packaging katra-mcp for official discovery without reversing Katra's native-first position
 closes:
     - publish-katra-mcp-through-the-official-mcp-registry
