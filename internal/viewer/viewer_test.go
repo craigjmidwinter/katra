@@ -26,7 +26,8 @@ type nodeJSON struct {
 
 type dataJSON struct {
 	Site struct {
-		Title string `json:"title"`
+		Title    string `json:"title"`
+		Colophon bool   `json:"colophon"`
 	} `json:"site"`
 	Entries []nodeJSON `json:"entries"`
 }
@@ -226,4 +227,69 @@ func keys(m map[string]nodeJSON) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+// TestColophonDefaultsOnAndSurvivesRebuild is the attribution's whole point in
+// test form: a fresh katra credits katra, and it does so because the answer is
+// recomputed from config on every build rather than being an edit to the output
+// that a rebuild would wipe.
+func TestColophonDefaultsOnAndSurvivesRebuild(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Test")
+	if err != nil {
+		t.Fatalf("InitStore: %v", err)
+	}
+
+	for i, label := range []string{"first build", "rebuild"} {
+		raw, err := viewer.BuildData(s)
+		if err != nil {
+			t.Fatalf("%s: BuildData: %v", label, err)
+		}
+		var d dataJSON
+		if err := json.Unmarshal(raw, &d); err != nil {
+			t.Fatalf("%s: unmarshal: %v", label, err)
+		}
+		if !d.Site.Colophon {
+			t.Errorf("%s (pass %d): site.colophon is false; a fresh katra should credit katra", label, i)
+		}
+	}
+}
+
+// TestColophonSuppressible is the other half, and the more important one: a
+// credit that cannot be removed is a reason to reject the tool. An explicit
+// `colophon: false` has to be distinguishable from an absent key, which is why
+// Config.Colophon is a *bool.
+func TestColophonSuppressible(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Test")
+	if err != nil {
+		t.Fatalf("InitStore: %v", err)
+	}
+
+	off := false
+	s.Config.Colophon = &off
+
+	raw, err := viewer.BuildData(s)
+	if err != nil {
+		t.Fatalf("BuildData: %v", err)
+	}
+	var d dataJSON
+	if err := json.Unmarshal(raw, &d); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if d.Site.Colophon {
+		t.Error("site.colophon is true after `colophon: false`; the credit is not suppressible")
+	}
+
+	// The field must still be emitted rather than omitted, so the viewer reads
+	// a definite false instead of an absent key it has to guess about.
+	var loose map[string]any
+	if err := json.Unmarshal(raw, &loose); err != nil {
+		t.Fatal(err)
+	}
+	site, ok := loose["site"].(map[string]any)
+	if !ok {
+		t.Fatal("site block missing from data.json")
+	}
+	if _, present := site["colophon"]; !present {
+		t.Error("site.colophon was omitted rather than emitted as false")
+	}
 }

@@ -128,11 +128,36 @@
       default:          view = viewOverview();
     }
     canvas.appendChild(view);
+    appendColophon(canvas);
     canvas.querySelector(".kv-main") && (canvas.querySelector(".kv-main").scrollTop = 0);
     wireInteractions(canvas);
   }
 
   function go(hash) { location.hash = hash; }
+
+  // ── colophon ──────────────────────────────────────────────────────────────
+  // One quiet line naming what produced this site, so a reader who likes a
+  // published devlog can find out it is a tool they could use. Appended to
+  // .kv-main rather than the sidebar because styles.css hides .kv-side below
+  // 860px, and a credit no phone reader ever sees is not a credit.
+  //
+  // Off when site.colophon is false (katra/config.yml: `colophon: false`).
+  function appendColophon(canvas) {
+    if (!state.data.site || !state.data.site.colophon) return;
+    var main = canvas.querySelector(".kv-main");
+    if (!main) return;
+
+    var foot = el("div", "kv-colophon");
+    foot.appendChild(document.createTextNode("Chronicled with "));
+    var a = el("a", "", "katra");
+    a.href = "https://midwinter.io/katra/";
+    // A published devlog is someone else's page; the credit opens away from it
+    // rather than navigating their reader off it.
+    a.target = "_blank";
+    a.rel = "noopener";
+    foot.appendChild(a);
+    main.appendChild(foot);
+  }
 
   // ── sidebar ───────────────────────────────────────────────────────────────
   function renderSide(r) {

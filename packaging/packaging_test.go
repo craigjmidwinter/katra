@@ -110,6 +110,24 @@ func TestManifestDescriptionMatchesServerJSON(t *testing.T) {
 	}
 }
 
+// TestManifestHomepageMatchesServerJSON keeps the two listings pointing at the
+// same page, and — because the check is parity rather than a hardcoded string —
+// makes moving that page a one-line edit in one file rather than a hunt.
+//
+// Both previously named https://craigjmidwinter.github.io/katra/, which 301s to
+// *http://* midwinter.io/katra/ — a redirect through plaintext on the way to the
+// page. A published listing is a link other people follow; it should be the
+// address, not a forwarding note.
+func TestManifestHomepageMatchesServerJSON(t *testing.T) {
+	manifest := renderManifest(t, "1.2.3")
+	server := serverJSON(t)
+
+	if manifest["homepage"] != server["websiteUrl"] {
+		t.Errorf("homepage drift:\n  manifest.json.tmpl homepage: %v\n  server.json websiteUrl:      %v",
+			manifest["homepage"], server["websiteUrl"])
+	}
+}
+
 // TestManifestPlatformsMatchBuildMatrix stops the manifest claiming a platform
 // the release does not build. Widening compatibility.platforms to the spec's
 // full enum is the tempting, wrong edit: it advertises a Windows bundle that

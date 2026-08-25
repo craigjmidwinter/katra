@@ -75,14 +75,37 @@ they saw, not for what it is called.
 
 ## Where the link points
 
-`https://craigjmidwinter.github.io/katra/` — the documentation site, not the
-repository. A reader arriving cold needs the page that says what katra is and
-how to install it; the site links onward to GitHub for anyone who wants source.
+`https://midwinter.io/katra/` — the documentation site, not the repository. A
+reader arriving cold needs the page that says what katra is and how to install
+it; the site links onward to GitHub for anyone who wants source.
 
-No tracking parameter. Referrals from published devlogs are measurable from the
-`Referer` header by any of the privacy-respecting analytics the fleet is
-standing up, and a query string baked into every published devlog is the single
-most expensive thing here to change later — it ships inside other people's
-committed sites. If the steward comes back needing an explicit marker, adding
-one is a one-line change to a single constant; removing one from the wild is
-not possible.
+**Not** `https://craigjmidwinter.github.io/katra/`, which is the URL every other
+piece of katra metadata currently uses. The steward flagged it and it checks
+out:
+
+    $ curl -sSI -L https://craigjmidwinter.github.io/katra/
+    HTTP/2 301
+    location: http://midwinter.io/katra/     <- plaintext
+    HTTP/1.1 200 OK
+
+    $ curl -sSI -L https://midwinter.io/katra/
+    HTTP/2 200
+
+The github.io address is a redirect, and it redirects via plaintext `http://`
+before landing on the https page. That is a poor thing to bake into every
+devlog anyone else publishes, so the colophon targets the canonical URL
+directly. `katra.midwinter.io` does not resolve; it is not a target today.
+
+No tracking parameter. The fleet's Umami records the `Referer` header
+natively — referrers are a first-class view there, not something a parameter
+opts into — and `midwinter.io` is already registered as a tracked site, so a
+click from a published devlog is counted with nothing in the URL. A query
+string baked into every published devlog is also the single most expensive
+thing here to change later, because it ships inside other people's committed
+sites. Adding a marker afterwards is a one-line change to one constant;
+removing one from the wild is not possible.
+
+Collection is not live yet: the steward reports Umami deployed and the sites
+registered, but the collector resolves to a private LAN address pending a
+Cloudflare Tunnel. The link is correct regardless and starts being measurable
+when the tunnel lands, with no change to anything shipped here.

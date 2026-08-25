@@ -27,6 +27,12 @@ type siteMeta struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Accent      string `json:"accent"`
+	// Colophon carries the config answer into the generated site, which is
+	// what makes the credit survive a rebuild: it is recomputed on every
+	// `katra build` rather than being an edit someone makes to the output and
+	// loses next time. Always emitted, including when false, so a viewer
+	// served from an older data.json is not ambiguous.
+	Colophon bool `json:"colophon"`
 }
 
 type entryData struct {
@@ -91,6 +97,7 @@ func BuildData(s *core.Store) ([]byte, error) {
 			Title:       s.Config.Title,
 			Description: s.Config.Description,
 			Accent:      s.Config.Accent,
+			Colophon:    s.Config.ColophonEnabled(),
 		},
 	}
 	known := core.KnownSlugs(entries)

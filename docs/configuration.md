@@ -3,8 +3,9 @@ title: Configuration
 layout: default
 nav_order: 5
 description: >-
-  Every key in katra/config.yml — title, accent, the two git-hook knobs, and
-  the memory-ingest settings — with its default and its failure mode.
+  Every key in katra/config.yml — title, accent, the colophon (footer) credit,
+  the two git-hook knobs, and the memory-ingest settings — with its default and
+  its failure mode.
 ---
 
 # Configuration
@@ -17,6 +18,7 @@ entry.
 title: HellHole Country Club
 description: Night golf, in VR, on a course that hates you
 accent: "#b5502f"
+colophon: true
 
 autoCommit: false
 commitPrefix: "katra:"
@@ -37,6 +39,7 @@ for `config.yml`, which is why an empty `katra/` is not one.
 | `title` | string | the repo name | Shown in the viewer and in the hub's project list. |
 | `description` | string | `A living, committed chronicle of development.` | Subtitle in the viewer. |
 | `accent` | colour | `"#e0533d"` | Viewer accent colour. Also tints this project's card in the hub. |
+| `colophon` | boolean | `true` | The one-line "Chronicled with katra" footer on a built site. Set `false` to remove it. See below. |
 | `autoCommit` | boolean | `false` | Whether the post-commit hook commits the stamp itself. See below. |
 | `commitPrefix` | string | `katra:` | Prefix for the hook's own stamp commits. |
 | `memory.enabled` | boolean | `true` | Whether Claude Code memory is ingested at all. |
@@ -45,6 +48,36 @@ for `config.yml`, which is why an empty `katra/` is not one.
 
 Quote a colour. Unquoted, `#b5502f` is a YAML comment and the key silently
 becomes empty.
+
+## The colophon (the footer credit)
+
+A built site carries one quiet line at the end of the page:
+
+> Chronicled with [katra](https://midwinter.io/katra/)
+
+That is the whole of it — no badge, no logo, no version string. It exists
+because a published katra is the main way anyone discovers katra: a reader who
+likes the devlog they are reading currently has no way to find out what made
+it.
+
+**To remove it:**
+
+```yaml
+# katra/config.yml
+colophon: false
+```
+
+That is the entire opt-out, and it is honoured on the next `katra build` with
+no other change. Nobody has to justify turning it off.
+
+It defaults to on because a credit nobody switches on is not a credit. It is
+computed from config on every build rather than written once into the output,
+so it survives a re-generate — and so does its absence: turning it off stays
+off without anyone re-editing generated files.
+
+The footer renders at the end of the scrolling column rather than in the
+sidebar, because the sidebar is hidden below 860px and a credit no phone reader
+ever sees is not doing the job.
 
 ## `autoCommit`, and why it defaults to false
 

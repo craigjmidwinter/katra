@@ -4,7 +4,7 @@
   "title": "katra",
   "description": "A committed markdown dev log and task graph that agents read and write over MCP.",
   "version": "0.1.0",
-  "websiteUrl": "https://craigjmidwinter.github.io/katra/",
+  "websiteUrl": "https://midwinter.io/katra/",
   "repository": {
     "url": "https://github.com/craigjmidwinter/katra",
     "source": "github"
