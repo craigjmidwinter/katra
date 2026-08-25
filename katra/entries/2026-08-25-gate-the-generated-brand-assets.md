@@ -2,6 +2,11 @@
 title: Gate the generated brand assets
 date: "2026-08-25"
 time: "08:40:27"
+hash: "1326822"
+stat:
+    f: 13
+    a: 575
+    d: 30
 closes:
     - gate-branding-build-py-output-with-a-hash-based-check
 ---
