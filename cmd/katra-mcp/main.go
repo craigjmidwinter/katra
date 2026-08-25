@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/craigjmidwinter/katra/internal/buildinfo"
 	"github.com/craigjmidwinter/katra/internal/mcpserver"
 )
 
@@ -14,7 +15,7 @@ import (
 var version = "dev"
 
 func main() {
-	if err := mcpserver.Run(version); err != nil {
+	if err := mcpserver.Run(buildinfo.Resolve(version)); err != nil {
 		fmt.Fprintln(os.Stderr, "katra-mcp:", err)
 		os.Exit(1)
 	}

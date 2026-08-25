@@ -262,10 +262,10 @@ go install github.com/craigjmidwinter/katra/cmd/katra-mcp@latest
 Install both. `katra-mcp` is not optional extra tooling — the skill and every
 MCP client wiring assume it sits beside `katra` on your `PATH`.
 
-Note that `go install` builds report `dev` for `--version`, because the version
-is stamped at link time and the `go` tool does not do it. Released binaries and
-`make build` report the real tag. If you file a bug from a `go install` build,
-say which commit you installed.
+A `go install` build reports the version you installed —
+`go install …@v0.1.0` reports `v0.1.0`, and installing from a working tree
+reports a pseudo-version naming the commit. Release binaries and `make build`
+carry a link-time stamp instead, which additionally marks a dirty tree.
 
 ### Build from source
 
