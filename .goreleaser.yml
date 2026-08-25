@@ -2,6 +2,12 @@ version: 2
 
 project_name: katra
 
+# Where scripts/build-mcpb.sh drops the MCP Bundles. Named once here because
+# three places refer to it: the build hook that writes them, the checksum
+# block that signs them, and the release block that uploads them.
+env:
+  - MCPB_OUT=dist/mcpb
+
 before:
   hooks:
     - go mod download
@@ -43,6 +49,14 @@ builds:
       - -trimpath
     ldflags:
       - -s -w -X main.version=v{{ .Version }}
+    # The .mcpb bundle is assembled here, per target, rather than in an `after`
+    # hook, because goreleaser writes checksums.txt before `after` hooks run --
+    # and an asset the checksum file does not cover is one the release footer's
+    # verify instructions silently do not apply to. See
+    # docs/design/mcpb-bundle.md.
+    hooks:
+      post:
+        - cmd: ./scripts/build-mcpb.sh "{{ .Path }}" "{{ .Os }}" "{{ .Arch }}" "{{ .Version }}" "{{ .Env.MCPB_OUT }}"
 
 archives:
   - id: katra
@@ -69,6 +83,10 @@ archives:
 checksum:
   name_template: checksums.txt
   algorithm: sha256
+  # Pull the .mcpb bundles into the same signed checksum file as the archives,
+  # so one `sha256sum --check` covers every asset a download page offers.
+  extra_files:
+    - glob: dist/mcpb/*.mcpb
 
 # The official MCP Registry indexes installable packages, not bare Go release
 # binaries. This image is deliberately narrower than katra's release archives:
@@ -178,6 +196,11 @@ release:
     owner: craigjmidwinter
     name: katra
   prerelease: auto
+  # MCP Bundles for clients that install a package rather than pull an image.
+  # The OCI package in server.json serves the official registry; this serves
+  # everywhere that does not ingest it.
+  extra_files:
+    - glob: dist/mcpb/*.mcpb
   footer: |
     ## Install
 

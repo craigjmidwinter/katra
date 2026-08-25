@@ -108,6 +108,7 @@ jobs:
           name: dist
           path: |
             dist/*.tar.gz
+            dist/mcpb/*.mcpb
             dist/checksums.txt
           retention-days: 7
           if-no-files-found: error

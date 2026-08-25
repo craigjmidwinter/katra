@@ -1,0 +1,25 @@
+{
+  "manifest_version": "0.3",
+  "name": "katra",
+  "version": "__VERSION__",
+  "description": "A committed markdown dev log and task graph that agents read and write over MCP.",
+  "author": {
+    "name": "Craig Midwinter",
+    "url": "https://github.com/craigjmidwinter"
+  },
+  "homepage": "https://craigjmidwinter.github.io/katra/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/craigjmidwinter/katra"
+  },
+  "server": {
+    "type": "binary",
+    "entry_point": "server/katra-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/server/katra-mcp"
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "linux"]
+  }
+}

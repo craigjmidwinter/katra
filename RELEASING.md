@@ -106,8 +106,10 @@ gh run watch
 ```
 
 This runs the same job as a real release with `--snapshot --clean --skip=publish,sign`
-and uploads `dist/*.tar.gz` + `checksums.txt` as a workflow artifact (7-day
-retention) so you can inspect exactly what a tag would produce.
+and uploads `dist/*.tar.gz`, `dist/mcpb/*.mcpb` and `checksums.txt` as a
+workflow artifact (7-day retention) so you can inspect exactly what a tag would
+produce. The dry run is the only place the `.mcpb` bundles get built before a
+tag exists, so it is worth downloading one and unzipping it.
 
 ## 3. Tag and push
 
@@ -127,8 +129,9 @@ release: `release.yml`'s `push: tags: v*` trigger runs `goreleaser release
 | Homebrew tap token check | Reports in the run summary whether `HOMEBREW_TAP_GITHUB_TOKEN` is set. If it isn't, the release still ships — this only decides whether the cask update below runs — but the job posts a loud `::warning` and a summary block explaining the fix, rather than silently skipping. |
 | `goreleaser release --clean` | Builds `katra` and `katra-mcp` for darwin/linux × amd64/arm64 (`CGO_ENABLED=0`, `-trimpath`), version-stamped `v{{ .Version }}`. |
 | Archives | One `tar.gz` per platform (`katra_<version>_<os>_<arch>.tar.gz`), each containing **both** binaries plus `README.md`, `LICENSE`, `examples/`, and `contrib/**` (the launchd/systemd hub-daemon files) — a binary download is a complete install, not just the tool. |
+| MCP Bundles (`.mcpb`) | One bundle per platform (`katra_<version>_<os>_<arch>.mcpb`), a zip holding `manifest.json` and `server/katra-mcp`, assembled by `scripts/build-mcpb.sh` as a post-hook on the `katra-mcp` build. These exist for venues that ingest an uploaded bundle rather than the official registry — see `docs/design/mcpb-bundle.md`. |
 | MCP Registry OCI package | Builds and pushes `ghcr.io/craigjmidwinter/katra-mcp:<version>` for linux/amd64 and linux/arm64. This minimal image contains only `katra-mcp` and `git`; it is registry packaging, not Katra's supported general-purpose install path. |
-| Checksums | `checksums.txt`, sha256 over every archive. |
+| Checksums | `checksums.txt`, sha256 over every archive **and every `.mcpb`**. The bundles are built during the build phase, before checksums are calculated, precisely so they land inside this file. |
 | Cosign signing | Keyless `cosign sign-blob` over `checksums.txt`, using GitHub OIDC (`id-token: write`) rather than a stored key. Produces `checksums.txt.sig` and `checksums.txt.pem`, and the signature is logged to the public Rekor transparency log. |
 | GitHub release | Created from the tag. Changelog is generated from commits since the last tag (see the filter rules in step 1). `prerelease: auto` — a tag with a semver prerelease segment (`v0.2.0-rc1`) is flagged prerelease and won't become "latest". |
 | Homebrew cask | If `HOMEBREW_TAP_GITHUB_TOKEN` is set, bumps `Casks/katra.rb` in [`craigjmidwinter/homebrew-tap`](https://github.com/craigjmidwinter/homebrew-tap) via a cross-repo PAT (the default `GITHUB_TOKEN` can't write to another repo). The cask's post-install hook also strips the macOS quarantine attribute from both binaries — this is why the README tells `go install`/manual-download users to do that step by hand, but Homebrew users don't need to. |
@@ -137,9 +140,11 @@ release: `release.yml`'s `push: tags: v*` trigger runs `goreleaser release
 
 ## 5. Verify
 
-- Release page has all five expected files per platform-archive plus the two
-  checksum-signing files: four `.tar.gz`, `checksums.txt`, `checksums.txt.sig`,
-  `checksums.txt.pem`.
+- Release page has four `.tar.gz`, four `.mcpb`, and the three checksum files:
+  `checksums.txt`, `checksums.txt.sig`, `checksums.txt.pem`.
+- Unzip one `.mcpb` and confirm it holds `manifest.json` and
+  `server/katra-mcp`, that the manifest's `version` matches the tag, and that
+  `server/katra-mcp` answers an `initialize` over stdio.
 - Run the verification snippet already documented in README's
   [Verify what you downloaded](README.md#verify-what-you-downloaded) section —
   don't duplicate it here, just confirm it against the new tag.

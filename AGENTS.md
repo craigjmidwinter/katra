@@ -74,6 +74,13 @@ sessions must append the reasoning worth publishing themselves.
   `mcp-publisher validate`; never publish it outside a tagged release. Both
   workflows install the publisher through `scripts/install-mcp-publisher.sh`,
   whose pinned version and SHA-256 are the single source of truth.
+- **The `.mcpb` bundle is the second listing, and it must not drift from the
+  first.** `packaging/mcpb/manifest.json.tmpl` copies its `description` from
+  `server.json` verbatim, and its `compatibility.platforms` from the
+  `katra-mcp` build's `goos` list. `go test ./packaging/...` enforces both, so
+  a palette-style silent divergence is a failing test rather than two listings
+  making different claims. Bundles are assembled in the build post-hook, not an
+  `after` hook, so `checksums.txt` covers them.
 - **Task lifecycle** is `todo → specced → doing → done | cut`; `spec:` refs
   resolve as a node slug first, then a repo-root-relative path. Setting a
   spec never moves a status backwards.

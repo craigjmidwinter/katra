@@ -1,0 +1,32 @@
+<title>MCP Bundle proof</title>
+<style>
+:root{--bg:#f7f2e8;--ink:#2c2823;--rule:#c9bda4;--accent:#8a3d24;--muted:#6f6656}
+:root:not([data-theme="light"]) { }
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1c1a17;--ink:#ece5d8;--rule:#3a352e;--accent:#e08a5c;--muted:#a99a80}}
+:root[data-theme="dark"]{--bg:#1c1a17;--ink:#ece5d8;--rule:#3a352e;--accent:#e08a5c;--muted:#a99a80}
+body{background:var(--bg);color:var(--ink);font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;margin:0;padding:1.5rem}
+h2{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:1.6rem 0 .4rem;font-weight:600}
+h2:first-of-type{margin-top:0}
+pre{background:transparent;border:1px solid var(--rule);border-left:3px solid var(--accent);padding:.75rem 1rem;overflow-x:auto;margin:0;border-radius:2px}
+em{color:var(--muted);font-style:normal}
+</style>
+<h2>1 &middot; bundle layout &mdash; <em>entry_point resolves</em></h2>
+<pre>Archive:  dist/mcpb/katra_0.0.1-next_darwin_arm64.mcpb
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+      649  08-25-2026 08:32   manifest.json
+        0  08-25-2026 08:32   server/
+  5149890  08-25-2026 08:32   server/katra-mcp
+---------                     -------
+  5150539                     3 files</pre>
+<h2>2 &middot; the bundled binary answers MCP over stdio</h2>
+<pre>$ ./server/katra-mcp &lt;&lt;&lt; '{"method":"initialize",...}'
+{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;result&quot;:{&quot;protocolVersion&quot;:&quot;2024-11-05&quot;,&quot;capabilities&quot;:{&quot;tools&quot;:{}},&quot;serverInfo&quot;:{&quot;name&quot;:&quot;katra&quot;,&quot;version&quot;:&quot;v0.0.1-next&quot;}}}</pre>
+<h2>3 &middot; every bundle is inside the signed checksums.txt</h2>
+<pre>21af740e969fdcdf35f140e8eabbcb74e62d094bea392b2368eb4cb999026b08  katra_0.0.1-next_darwin_amd64.mcpb
+
+2fa0073d0e56ee01f06f8eca30a9b5c3215158fb0909d77dbc49806dea114520  katra_0.0.1-next_darwin_arm64.mcpb
+
+923bb4e7536f4185a063780aefb7b58a11b0ecfb90e79530ba02c00c751facfe  katra_0.0.1-next_linux_amd64.mcpb
+
+e6610233661ed7eacd34c2e12d134b1cc54cfc61f8a3c0ecad5bf08ff79c7b19  katra_0.0.1-next_linux_arm64.mcpb</pre>
