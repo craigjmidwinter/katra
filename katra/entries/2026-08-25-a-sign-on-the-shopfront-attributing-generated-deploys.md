@@ -2,6 +2,11 @@
 title: 'A sign on the shopfront: attributing generated deploys'
 date: "2026-08-25"
 time: "17:39:20"
+hash: 29a8621
+stat:
+    f: 15
+    a: 272
+    d: 17
 closes:
     - attribute-generated-deploys-back-to-katra
 ---
