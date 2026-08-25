@@ -2,6 +2,11 @@
 title: Ship an .mcpb bundle before the v0.1.0 tag
 date: "2026-08-25"
 time: "08:31:34"
+hash: b096ba5
+stat:
+    f: 11
+    a: 387
+    d: 7
 closes:
     - ship-an-mcpb-bundle-in-the-v0-1-0-release
 ---

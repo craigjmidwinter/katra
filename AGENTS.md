@@ -81,6 +81,13 @@ sessions must append the reasoning worth publishing themselves.
   a palette-style silent divergence is a failing test rather than two listings
   making different claims. Bundles are assembled in the build post-hook, not an
   `after` hook, so `checksums.txt` covers them.
+- **The brand assets are generated, and the gate is `--check`.** Everything in
+  `docs/assets/brand/` comes from `branding/build.py`; never hand-edit it.
+  `python3 branding/build.py --check` compares the SVGs byte for byte and the
+  PNGs by the recorded hash of their source SVG — not by PNG bytes, which vary
+  with librsvg. `python3 branding/contrast.py --check` recomputes BRAND.md's
+  contrast table. Both run in CI's `branding` job. The fontTools pin in that
+  job and `fonttools` in `branding/assets.lock.json` move together.
 - **Task lifecycle** is `todo → specced → doing → done | cut`; `spec:` refs
   resolve as a node slug first, then a repo-root-relative path. Setting a
   spec never moves a status backwards.

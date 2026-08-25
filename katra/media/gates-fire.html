@@ -1,0 +1,40 @@
+<title>Gates proven to fire</title>
+<style>
+:root{--bg:#f7f2e8;--ink:#2c2823;--rule:#c9bda4;--accent:#8a3d24;--muted:#6f6656;--ok:#4a8a5c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1c1a17;--ink:#ece5d8;--rule:#3a352e;--accent:#e08a5c;--muted:#a99a80;--ok:#5aa877}}
+:root[data-theme="dark"]{--bg:#1c1a17;--ink:#ece5d8;--rule:#3a352e;--accent:#e08a5c;--muted:#a99a80;--ok:#5aa877}
+body{background:var(--bg);color:var(--ink);font:13.5px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;margin:0;padding:1.5rem}
+p.lede{font-family:Georgia,serif;font-size:15px;color:var(--muted);max-width:62ch;margin:0 0 1.5rem;line-height:1.55}
+h2{font-size:.75rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:1.7rem 0 .5rem;font-weight:600}
+pre{border:1px solid var(--rule);border-left:3px solid var(--accent);padding:.75rem 1rem;overflow-x:auto;margin:0;border-radius:2px;white-space:pre-wrap}
+pre.ok{border-left-color:var(--ok)}
+</style>
+<p class="lede">A gate nobody has faulted is a gate nobody knows the state of. Six deliberate
+faults, one per failure mode each check claims to catch — every one caught, then reverted.</p>
+<h2>branding/build.py --check</h2>
+<pre>$ printf &#x27;&lt;!-- hand edit --&gt;&#x27; &gt;&gt; docs/assets/brand/mark.svg
+branding/build.py --check: 1 stale asset(s):
+  - mark.svg: committed file differs from what build.py generates
+
+$ # a vector regenerated, its raster left stale
+branding/build.py --check: 1 stale asset(s):
+  - social-preview.png: rendered from a stale social-preview.svg -- the vector changed and the raster was not re-rendered
+
+$ mv docs/assets/brand/favicon-16.png /tmp/
+branding/build.py --check: 1 stale asset(s):
+  - favicon-16.png: missing from docs/assets/brand/</pre>
+<h2>branding/contrast.py --check</h2>
+<pre>$ # a stated ratio the hex does not compute to
+branding/contrast.py: 1 disagreement(s) with BRAND.md:
+  - Muted `#6f6656` on Paper: BRAND.md says 5.94:1, recomputed 4.94:1
+
+$ # correct ratio, flattering verdict
+branding/contrast.py: 1 disagreement(s) with BRAND.md:
+  - **Accent `#b5502f` on Paper**: 4.41:1 fails AA at 4.5:1, but the verdict reads &#x27;**body text**&#x27;
+
+$ # palette hex changed, contrast table left alone
+branding/contrast.py: 1 disagreement(s) with BRAND.md:
+  - #6f6656 is used in the contrast table but is not in the palette table -- one of the two was edited without the other</pre>
+<h2>restored</h2>
+<pre class="ok">branding/build.py --check: 7 vectors and 8 rasters are current.
+branding/contrast.py: 13 ratios in BRAND.md all check out.</pre>

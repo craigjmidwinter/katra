@@ -1,0 +1,55 @@
+{
+  "comment": "Written by branding/build.py. Each PNG records the SHA-256 of the SVG it was rendered from, because PNG bytes vary by librsvg version and the source SVG does not.",
+  "fonttools": "4.63.0",
+  "rasters": {
+    "apple-touch-icon.png": {
+      "source": "mark.svg",
+      "source_sha256": "83ad1a46b8adb48921cd1c67ebf9919560470554aee2b0f807197d28b3d86181",
+      "width": 180
+    },
+    "favicon-16.png": {
+      "source": "mark-small.svg",
+      "source_sha256": "41e9ef5f9d2a7690b32e460736af60f6d4cbc354730325c00f23358366ea6b25",
+      "width": 16
+    },
+    "favicon-32.png": {
+      "source": "mark-small.svg",
+      "source_sha256": "41e9ef5f9d2a7690b32e460736af60f6d4cbc354730325c00f23358366ea6b25",
+      "width": 32
+    },
+    "favicon-48.png": {
+      "source": "mark.svg",
+      "source_sha256": "83ad1a46b8adb48921cd1c67ebf9919560470554aee2b0f807197d28b3d86181",
+      "width": 48
+    },
+    "lockup-408.png": {
+      "source": "lockup.svg",
+      "source_sha256": "d7780b69f33bdc482378ccc5d38ef7a5ec1223b220c3e85f29ebb29d79611d83",
+      "width": 408
+    },
+    "lockup-dark-408.png": {
+      "source": "lockup-dark.svg",
+      "source_sha256": "5c1978884b5a80af6c0029d77ef9b612be29815512bcd76bd2627c8688c772db",
+      "width": 408
+    },
+    "mark-480.png": {
+      "source": "mark.svg",
+      "source_sha256": "83ad1a46b8adb48921cd1c67ebf9919560470554aee2b0f807197d28b3d86181",
+      "width": 480
+    },
+    "social-preview.png": {
+      "source": "social-preview.svg",
+      "source_sha256": "32d671680fcc5b051828981a5ba897190d61aa91b780735a99da0c3affc8c76a",
+      "width": 1280
+    }
+  },
+  "vectors": {
+    "lockup-dark.svg": "5c1978884b5a80af6c0029d77ef9b612be29815512bcd76bd2627c8688c772db",
+    "lockup.svg": "d7780b69f33bdc482378ccc5d38ef7a5ec1223b220c3e85f29ebb29d79611d83",
+    "mark-small.svg": "41e9ef5f9d2a7690b32e460736af60f6d4cbc354730325c00f23358366ea6b25",
+    "mark.svg": "83ad1a46b8adb48921cd1c67ebf9919560470554aee2b0f807197d28b3d86181",
+    "social-preview.svg": "32d671680fcc5b051828981a5ba897190d61aa91b780735a99da0c3affc8c76a",
+    "wordmark-dark.svg": "22253a211c6491ddca672a3dba8ddd24372d2fc8e0b5e9972f109ddbcb7778a3",
+    "wordmark.svg": "886b52a863549985cee6b41b46cf54be3f32eee7d21d9a66fe16895468d188de"
+  }
+}
