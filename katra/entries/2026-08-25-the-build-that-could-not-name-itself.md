@@ -2,6 +2,11 @@
 title: The build that could not name itself
 date: "2026-08-25"
 time: "17:53:28"
+hash: 77b5e00
+stat:
+    f: 9
+    a: 177
+    d: 9
 closes:
     - report-a-real-version-from-go-install-builds
 ---
