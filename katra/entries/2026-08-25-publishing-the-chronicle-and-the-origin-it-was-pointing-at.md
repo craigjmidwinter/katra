@@ -2,6 +2,11 @@
 title: Publishing the chronicle, and the origin it was pointing at
 date: "2026-08-25"
 time: "19:00:18"
+hash: 2efecfc
+stat:
+    f: 7
+    a: 136
+    d: 9
 closes:
     - publish-katra-s-own-chronicle-at-devlog
 ---
