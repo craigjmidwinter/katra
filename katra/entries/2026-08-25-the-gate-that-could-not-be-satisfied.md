@@ -2,6 +2,11 @@
 title: The gate that could not be satisfied
 date: "2026-08-25"
 time: "19:44:12"
+hash: 61b9bee
+stat:
+    f: 10
+    a: 551
+    d: 19
 closes:
     - fix-the-unsatisfiable-pre-commit-gate
 ---
