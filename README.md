@@ -703,6 +703,14 @@ Command names and flags may still move.
 - **The `stat` diffstat counts the whole commit**, including files unrelated to
   the entry, and for a chapter it is the sum across commits. It is a sense of
   scale, not an accounting.
+- **`katra build` overwrites what it generates.** `index.html`, `app.js`,
+  `styles.css` and `data.json` are rewritten on every build; files you add
+  alongside them are left alone. So anything hand-edited *into* the generated
+  page — an analytics snippet, social tags, a favicon link — is silently gone
+  on the next `katra build`, and the page still renders perfectly while whatever
+  it powered stops. Keep such insertions in a step that runs **after** the
+  build, and verify them against the build output rather than against a page
+  you edited once.
 - **A built site has one URL, so entries have no individual ones.** The viewer
   routes on the fragment (`#/node/<slug>`), which the browser never sends to a
   server. Two consequences, both worth knowing before you publish a katra
@@ -714,6 +722,11 @@ Command names and flags may still move.
     between entries is a fragment change, which emits no navigation. A reader
     who works through twenty entries registers as one pageview, so per-entry
     readership is not merely inaccurate — it is absent.
+
+  These are one limitation, not two, and neither half can be fixed on its own:
+  both need a URL per entry. Injecting head tags into the built page addresses
+  neither — it cannot vary a card the server never routes, and it cannot emit a
+  navigation that never happens.
 
   Per-entry pages the server can see are planned, and every published
   `#/node/<slug>` link will keep working when they land. Until then, a katra is

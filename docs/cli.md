@@ -160,6 +160,13 @@ self-contained directory with no external requests.
 | `--out DIR` | Output directory. Defaults to `dist`. |
 | `--all` | Build one aggregate site of every registered katra. |
 
+`index.html`, `app.js`, `styles.css` and `data.json` are **rewritten on every
+build**. Files you add to the output directory yourself are untouched, but
+anything hand-edited into one of those four is gone on the next build — and the
+page keeps rendering, so the loss is invisible until whatever it powered is
+missed. Host customisations (analytics, social tags, a favicon) belong in a step
+that runs after the build, checked against the build output.
+
 ### `katra doctor`
 
 Check the katra for problems: dangling media references and entries that fail
