@@ -5,11 +5,14 @@
 package viewer
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/craigjmidwinter/katra/internal/core"
 )
@@ -166,13 +169,66 @@ func Asset(name string) ([]byte, error) {
 	return assets.ReadFile("assets/" + name)
 }
 
+// shellTitle is the placeholder the embedded index.html ships with. Shell
+// replaces this exact string, so an edit to the asset that drops it fails
+// loudly rather than silently going back to serving katra's own name.
+const shellTitle = "<title>Katra</title>"
+
+// defaultTitle is what a katra with no configured title reports. It matches the
+// placeholder, so the fallback renders the same page the raw asset is.
+const defaultTitle = "Katra"
+
+// Shell returns index.html carrying this site's own identity in the head.
+//
+// Without it every published katra served `<title>Katra</title>`, so katra's
+// product name was the browser tab, the bookmark, and the search-result title
+// of somebody else's page. app.js does set the real title from data.json, but
+// client-side — too late for any scraper, and for the tab of anyone still
+// loading.
+//
+// Only what the renderer can guarantee is emitted. The title belongs to the
+// store, so title and og:title are safe. og:description and og:image are not:
+// katra ships a default description that most stores never change, so emitting
+// it would overwrite a host's tailored value with a placeholder, and a renderer
+// that improves one field while degrading another is not an improvement.
+// og:url needs the deploy URL, which katra does not know. Those stay the host's.
+func Shell(s *core.Store) ([]byte, error) {
+	raw, err := Asset("index.html")
+	if err != nil {
+		return nil, err
+	}
+
+	title := strings.TrimSpace(s.Config.Title)
+	if title == "" {
+		title = defaultTitle
+	}
+	escaped := html.EscapeString(title)
+
+	head := "<title>" + escaped + "</title>\n" +
+		`<meta property="og:type" content="website">` + "\n" +
+		`<meta property="og:title" content="` + escaped + `">`
+
+	out := bytes.Replace(raw, []byte(shellTitle), []byte(head), 1)
+	if bytes.Equal(out, raw) {
+		return nil, fmt.Errorf("viewer: index.html no longer contains %s, so the site title cannot be set", shellTitle)
+	}
+	return out, nil
+}
+
 // Build writes a complete static site into outDir: the viewer assets, the
 // generated data.json, and a copy of the media directory.
 func Build(s *core.Store, outDir string) error {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return err
 	}
-	for _, name := range []string{"index.html", "app.js", "styles.css"} {
+	shell, err := Shell(s)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(outDir, "index.html"), shell, 0o644); err != nil {
+		return err
+	}
+	for _, name := range []string{"app.js", "styles.css"} {
 		b, err := Asset(name)
 		if err != nil {
 			return err

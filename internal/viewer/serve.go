@@ -88,7 +88,16 @@ func Serve(s *core.Store, port int) error {
 		if name == "" {
 			name = "index.html"
 		}
-		b, err := Asset(name)
+		// The shell goes through Shell so the dev server shows the same title
+		// a deploy will. Seeing "Katra" locally and the project name in
+		// production is exactly how a title bug survives review.
+		var b []byte
+		var err error
+		if name == "index.html" {
+			b, err = Shell(s)
+		} else {
+			b, err = Asset(name)
+		}
 		if err != nil {
 			http.NotFound(w, r)
 			return
