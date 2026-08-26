@@ -2,6 +2,11 @@
 title: The devlog that called itself Katra
 date: "2026-08-25"
 time: "19:06:42"
+hash: dd2ad42
+stat:
+    f: 8
+    a: 214
+    d: 3
 closes:
     - stop-published-devlogs-claiming-to-be-katra
 ---
