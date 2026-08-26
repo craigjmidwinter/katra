@@ -151,10 +151,9 @@ jobs:
       - name: Publish
         run: ./mcp-publisher publish
 
-  # The documentation site is plain GitHub Pages from /docs on the default
-  # branch, so there is no build job for it here. This only pins the docs to
-  # the released version by leaving a note in the run summary -- the site is
-  # continuously deployed and intentionally tracks main, not the tag.
+  # The documentation site is built and deployed by pages.yml on every push to
+  # main, so there is no build job for it here. This only leaves a note in the
+  # run summary -- the site tracks main, not the tag, and that is deliberate.
   docs-note:
     name: docs
     needs: release
@@ -166,7 +165,7 @@ jobs:
           {
             echo "### Documentation"
             echo
-            echo "<https://craigjmidwinter.github.io/katra/> is served from \`/docs\`"
+            echo "<https://midwinter.io/katra/> is built by \`pages.yml\` from \`/docs\`"
             echo "on \`main\` and tracks the branch, not \`${GITHUB_REF_NAME}\`."
             echo "If this release changed a command, a config key, or a component,"
             echo "the site already reflects it."

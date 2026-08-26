@@ -136,7 +136,7 @@ release: `release.yml`'s `push: tags: v*` trigger runs `goreleaser release
 | GitHub release | Created from the tag. Changelog is generated from commits since the last tag (see the filter rules in step 1). `prerelease: auto` — a tag with a semver prerelease segment (`v0.2.0-rc1`) is flagged prerelease and won't become "latest". |
 | Homebrew cask | If `HOMEBREW_TAP_GITHUB_TOKEN` is set, bumps `Casks/katra.rb` in [`craigjmidwinter/homebrew-tap`](https://github.com/craigjmidwinter/homebrew-tap) via a cross-repo PAT (the default `GITHUB_TOKEN` can't write to another repo). The cask's post-install hook also strips the macOS quarantine attribute from both binaries — this is why the README tells `go install`/manual-download users to do that step by hand, but Homebrew users don't need to. |
 | MCP Registry listing | After the image exists, a dependent job stamps the release tag into `server.json`, authenticates with GitHub Actions OIDC, and publishes. CI and release both install the pinned, SHA-256-verified publisher through `scripts/install-mcp-publisher.sh`, so validation and publication cannot drift. No stored registry token or device-code login is involved. |
-| `docs-note` job | Posts a note to the run summary that the docs site (`craigjmidwinter.github.io/katra`) is served continuously from `/docs` on `main`, not pinned to the tag — nothing to do here unless the release changed something the docs don't yet reflect. |
+| `docs-note` job | Posts a note to the run summary that the docs site (`midwinter.io/katra`) is built by `pages.yml` from `/docs` on `main`, not pinned to the tag — nothing to do here unless the release changed something the docs don't yet reflect. |
 
 ## 5. Verify
 

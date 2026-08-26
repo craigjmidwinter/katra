@@ -1,17 +1,24 @@
 # Jekyll configuration for the katra documentation site.
 #
 # Served by GitHub Pages from the /docs directory on the default branch:
-#   https://craigjmidwinter.github.io/katra/
+#   https://midwinter.io/katra/
 #
 # This is a project page, so `url` is the user domain and `baseurl` is the
 # repository name. Getting `baseurl` wrong breaks every link on the site.
+#
+# `url` is midwinter.io, NOT craigjmidwinter.github.io. jekyll-seo-tag resolves
+# rel=canonical, og:url and og:image against url + baseurl, and the github.io
+# origin 301s -- to *http://*, downgrading the scheme on the way. That meant the
+# site told every search engine its canonical home was a redirecting origin, and
+# handed scrapers a social image URL many of them will not follow. One value,
+# three defects.
 
 title: katra
 description: >-
   A committed, rich-component dev log you write as you build — markdown entries
   with embedded interactive components, stamped automatically with the commit
   and diffstat they describe, and served as a live, auto-reloading page.
-url: "https://craigjmidwinter.github.io"
+url: "https://midwinter.io"
 baseurl: "/katra"
 
 repository: craigjmidwinter/katra
