@@ -703,14 +703,20 @@ Command names and flags may still move.
 - **The `stat` diffstat counts the whole commit**, including files unrelated to
   the entry, and for a chapter it is the sum across commits. It is a sense of
   scale, not an accounting.
-- **`katra build` overwrites what it generates.** `index.html`, `app.js`,
-  `styles.css` and `data.json` are rewritten on every build; files you add
-  alongside them are left alone. So anything hand-edited *into* the generated
-  page — an analytics snippet, social tags, a favicon link — is silently gone
-  on the next `katra build`, and the page still renders perfectly while whatever
-  it powered stops. Keep such insertions in a step that runs **after** the
-  build, and verify them against the build output rather than against a page
-  you edited once.
+- **`katra build` overwrites what it generates, and only that.** `index.html`,
+  `app.js`, `styles.css` and `data.json` are rewritten on every build; files you
+  add alongside them are left alone. That combination is the trap. A generator
+  that clobbered the whole directory would teach you to be careful with it; this
+  one respects the file you added, which invites the reasonable conclusion that
+  it respects your edits generally — and then discards the one edit that had to
+  live *inside* a generated file.
+
+  So anything hand-edited into that page — an analytics snippet, social tags, a
+  favicon link — is silently gone on the next build, and the page still renders
+  perfectly while whatever it powered has stopped. Keep such insertions in a
+  step that runs **after** the build. Verify by checking that a fresh build plus
+  your step reproduces the file you committed: that the page looks right proves
+  it worked once, not that it is still working.
 - **A built site has one URL, so entries have no individual ones.** The viewer
   routes on the fragment (`#/node/<slug>`), which the browser never sends to a
   server. Two consequences, both worth knowing before you publish a katra

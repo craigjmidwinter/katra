@@ -161,11 +161,16 @@ self-contained directory with no external requests.
 | `--all` | Build one aggregate site of every registered katra. |
 
 `index.html`, `app.js`, `styles.css` and `data.json` are **rewritten on every
-build**. Files you add to the output directory yourself are untouched, but
-anything hand-edited into one of those four is gone on the next build — and the
-page keeps rendering, so the loss is invisible until whatever it powered is
-missed. Host customisations (analytics, social tags, a favicon) belong in a step
-that runs after the build, checked against the build output.
+build**. Files you add to the output directory yourself are untouched — which is
+what makes this worth stating rather than assuming: the build respecting your
+added file does not mean it respects your edit to a generated one. Anything
+hand-edited into those four is gone on the next build, and the page keeps
+rendering, so the loss is invisible until whatever it powered is missed.
+
+Host customisations (analytics, social tags, a favicon) belong in a step that
+runs after the build. Check it by confirming a fresh build plus that step
+reproduces the committed file — looking at the page proves it worked once, not
+that it still works.
 
 ### `katra doctor`
 
