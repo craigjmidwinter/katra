@@ -2,6 +2,11 @@
 title: The insertions that vanish on rebuild
 date: "2026-08-25"
 time: "20:03:35"
+hash: de6b2ab
+stat:
+    f: 3
+    a: 31
+    d: 0
 ---
 
 Verified rather than accepted. A host customises the generated page, then publishes a new entry and rebuilds: three injected head tags present before, zero after. Files katra writes — index.html, app.js, styles.css, data.json — are replaced wholesale; a separate file the host added alongside them survives untouched. So the hazard is precise: it is not that the output directory is wiped, it is that the four generated files are, and the page still renders perfectly afterwards while whatever the insertions powered has stopped.
