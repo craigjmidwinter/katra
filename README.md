@@ -703,10 +703,26 @@ Command names and flags may still move.
 - **The `stat` diffstat counts the whole commit**, including files unrelated to
   the entry, and for a chapter it is the sum across commits. It is a sense of
   scale, not an accounting.
+- **A built site has one URL, so entries have no individual ones.** The viewer
+  routes on the fragment (`#/node/<slug>`), which the browser never sends to a
+  server. Two consequences, both worth knowing before you publish a katra
+  somewhere that matters:
+  - **Every entry shares one social card.** A link to any entry unfurls as the
+    site, not as that entry, because there is no per-entry URL for a scraper to
+    fetch. Setting tags on the one page that exists cannot change this.
+  - **Analytics count one pageview per visit, not per entry read.** Moving
+    between entries is a fragment change, which emits no navigation. A reader
+    who works through twenty entries registers as one pageview, so per-entry
+    readership is not merely inaccurate — it is absent.
+
+  Per-entry pages the server can see are planned, and every published
+  `#/node/<slug>` link will keep working when they land. Until then, a katra is
+  a chronicle you can publish and link *to*, not one whose individual entries
+  can be linked, previewed, or counted.
 
 ## Documentation
 
-Browsable at <https://craigjmidwinter.github.io/katra/>, or in this repo:
+Browsable at <https://midwinter.io/katra/>, or in this repo:
 
 - [docs/quickstart.md](docs/quickstart.md) — install to first stamped entry.
 - [docs/workflow.md](docs/workflow.md) — the complete harness-neutral
