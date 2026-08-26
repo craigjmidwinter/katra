@@ -76,7 +76,9 @@ means it renders wrong everywhere the font is missing.
 ## Palette
 
 The Field Notebook palette, the same one the viewer uses
-(`internal/viewer/assets/styles.css`). **If you change one, change both.**
+(`internal/viewer/assets/styles.css`). **If you change one, change both.** That
+last sentence is not yet gated by anything — `contrast.py` checks this table
+against itself, not against the stylesheet.
 
 | Role | Light | Dark |
 | --- | --- | --- |
@@ -91,7 +93,10 @@ The Field Notebook palette, the same one the viewer uses
 
 ### The accent is not a text colour
 
-Measured contrast, all ratios computed rather than eyeballed:
+Measured contrast, all ratios computed rather than eyeballed — and
+re-computable: `python3 branding/contrast.py --check` recalculates every row
+below from the hexes and fails if a number, or a verdict, has drifted from what
+the colours actually do. CI runs it on every push.
 
 | Pair | Ratio | Verdict |
 | --- | --- | --- |

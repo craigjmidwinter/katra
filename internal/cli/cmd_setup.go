@@ -34,7 +34,7 @@ func setupCmd() *cobra.Command {
 	var noGate bool
 	cmd := &cobra.Command{
 		Use:   "setup",
-		Short: "Make this repo a katra project: skill + hooks + git auto-stamp (idempotent)",
+		Short: "Install Katra's Claude Code integration plus portable Git auto-stamp",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			wd, _ := os.Getwd()
 

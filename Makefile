@@ -50,7 +50,8 @@ release-check:
 	HOMEBREW_TAP_GITHUB_TOKEN="$$HOMEBREW_TAP_GITHUB_TOKEN" goreleaser check
 
 # Build the full release locally -- every target, archives, checksums, Homebrew
-# cask -- without publishing or signing. Output lands in ./dist.
+# cask and the registry-only OCI image -- without publishing or signing. This
+# needs Docker Buildx (and QEMU for the arm64 image). Output lands in ./dist.
 snapshot:
 	HOMEBREW_TAP_GITHUB_TOKEN="$$HOMEBREW_TAP_GITHUB_TOKEN" \
 		goreleaser release --snapshot --clean --skip=publish,sign,announce

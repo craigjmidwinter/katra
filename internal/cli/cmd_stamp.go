@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// warnNoVisual nudges when an entry lands with nothing to look at. The skill
-// asks every entry for one visual, and an entry is easiest to fix in the moment
-// it is stamped — so this is a note on stderr, never a failure: the entry is
-// already written and the commit already made.
+// warnNoVisual nudges when an entry lands with nothing to look at. The public
+// workflow asks every entry for one visual, and an entry is easiest to fix in
+// the moment it is stamped — so this is a note on stderr, never a failure: the
+// entry is already written and the commit already made.
 func warnNoVisual(e core.Entry) {
 	if core.HasVisual(e) {
 		return

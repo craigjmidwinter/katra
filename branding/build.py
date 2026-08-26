@@ -7,10 +7,21 @@ rather than resampled. The SVGs under `docs/assets/brand/` are the masters the
 site and the README consume; this script regenerates them, plus the PNG
 rasters, from the definitions below.
 
-    python3 branding/build.py
+    python3 branding/build.py            # regenerate every asset
+    python3 branding/build.py --check    # verify the committed assets are current
 
 Requires `rsvg-convert` (librsvg) for the PNGs and `fonttools` for converting
 the Fraunces wordmark to outlines, so no SVG consumer needs the font file.
+
+`--check` is deliberately not a byte-diff of everything. The SVGs are pure
+string output from the definitions below, so those are compared byte for byte.
+The PNGs are not: `rsvg-convert` produces different bytes on different librsvg
+and cairo versions, so byte-comparing them fails on any machine that is not the
+one that last ran the build -- which is every CI runner. Instead `assets.lock.json`
+records the SHA-256 of each PNG's *source SVG*, and `--check` verifies that hash
+against the freshly generated source. That catches the failure that matters --
+an SVG regenerated and committed while its rasters were left stale -- without
+pinning the repository to one renderer build.
 
 Two grids, not one. A 24-unit mark carries the ruled lines; a 16-unit mark
 drops most of them for the favicon sizes. This is not belt-and-braces — the
@@ -21,12 +32,17 @@ small grid; 48px and above uses the full one.
 See BRAND.md for the palette, the contrast measurements, and the usage rules.
 """
 
+import argparse
+import hashlib
+import json
 import os
 import subprocess
+import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "docs", "assets", "brand")
 FONT = os.path.join(ROOT, "branding", "fonts", "Fraunces72pt-Black.ttf")
+LOCK = os.path.join(ROOT, "branding", "assets.lock.json")
 
 # ------------------------------------------------------------- palette ---
 # The Field Notebook palette, the same one the viewer uses
@@ -251,6 +267,71 @@ MARK = mark_grid(24, 4, 19, 1, 20, 6, (4, 7, 10, 13, 16))
 MARK_SMALL = mark_grid(16, 2, 13, 1, 14, 4, (4, 7, 10))
 
 
+# Favicons come off the small grid; anything larger off the full mark. Each
+# entry is (source svg, width, output png) -- the whole raster set, in one
+# place, so the build and the check cannot disagree about what should exist.
+RASTERS = [
+    ("mark-small.svg", 16, "favicon-16.png"),
+    ("mark-small.svg", 32, "favicon-32.png"),
+    ("mark.svg", 48, "favicon-48.png"),
+    ("mark.svg", 180, "apple-touch-icon.png"),
+    ("mark.svg", 480, "mark-480.png"),
+    ("lockup.svg", 408, "lockup-408.png"),
+    ("lockup-dark.svg", 408, "lockup-dark-408.png"),
+    ("social-preview.svg", 1280, "social-preview.png"),
+]
+
+
+def vectors():
+    """Every SVG this script owns, as {filename: content}.
+
+    Generating into a dict rather than straight to disk is what lets --check
+    compare without writing anything.
+    """
+    _, wordmark_light = wordmark_svg(64, PAL["K"])
+    _, wordmark_dark = wordmark_svg(64, INK_DARK)
+    return {
+        "mark.svg": grid_svg(*MARK, scale=20),
+        "mark-small.svg": grid_svg(*MARK_SMALL, scale=20),
+        "lockup.svg": lockup_svg(PAL["K"]),
+        "lockup-dark.svg": lockup_svg(INK_DARK),
+        "wordmark.svg": wordmark_light,
+        "wordmark-dark.svg": wordmark_dark,
+        "social-preview.svg": social_svg(),
+    }
+
+
+def digest(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def fonttools_version():
+    import fontTools
+
+    return fontTools.version
+
+
+def lock_for(svgs):
+    """The provenance record: what each PNG was rendered from, and at what width."""
+    return {
+        "comment": (
+            "Written by branding/build.py. Each PNG records the SHA-256 of the "
+            "SVG it was rendered from, because PNG bytes vary by librsvg "
+            "version and the source SVG does not."
+        ),
+        # The wordmark SVGs are glyph outlines emitted by fontTools' SVGPathPen,
+        # whose exact output has changed between fontTools releases. Recording
+        # the version turns "the SVG differs and nobody knows why" into a
+        # specific, actionable message. CI pins the same version.
+        "fonttools": fonttools_version(),
+        "vectors": {name: digest(body) for name, body in sorted(svgs.items())},
+        "rasters": {
+            png_name: {"source": svg_name, "width": width, "source_sha256": digest(svgs[svg_name])}
+            for svg_name, width, png_name in RASTERS
+        },
+    }
+
+
 def png(svg_name, width, png_name):
     subprocess.run(
         ["rsvg-convert", "-w", str(width), "-o",
@@ -259,34 +340,108 @@ def png(svg_name, width, png_name):
     )
 
 
-def main():
+def build():
     os.makedirs(OUT, exist_ok=True)
+    svgs = vectors()
 
-    write = lambda name, s: open(os.path.join(OUT, name), "w").write(s)
+    for name, body in svgs.items():
+        with open(os.path.join(OUT, name), "w", encoding="utf-8") as handle:
+            handle.write(body)
 
-    write("mark.svg", grid_svg(*MARK, scale=20))
-    write("mark-small.svg", grid_svg(*MARK_SMALL, scale=20))
-    write("lockup.svg", lockup_svg(PAL["K"]))
-    write("lockup-dark.svg", lockup_svg(INK_DARK))
-    _, w = wordmark_svg(64, PAL["K"])
-    write("wordmark.svg", w)
-    _, w = wordmark_svg(64, INK_DARK)
-    write("wordmark-dark.svg", w)
-    write("social-preview.svg", social_svg())
+    for svg_name, width, png_name in RASTERS:
+        png(svg_name, width, png_name)
 
-    # Favicons come off the small grid; anything larger off the full mark.
-    png("mark-small.svg", 16, "favicon-16.png")
-    png("mark-small.svg", 32, "favicon-32.png")
-    png("mark.svg", 48, "favicon-48.png")
-    png("mark.svg", 180, "apple-touch-icon.png")
-    png("mark.svg", 480, "mark-480.png")
-    png("lockup.svg", 408, "lockup-408.png")
-    png("lockup-dark.svg", 408, "lockup-dark-408.png")
-    png("social-preview.svg", 1280, "social-preview.png")
+    with open(LOCK, "w", encoding="utf-8") as handle:
+        json.dump(lock_for(svgs), handle, indent=2, sort_keys=True)
+        handle.write("\n")
 
     for f in sorted(os.listdir(OUT)):
         print("  ", f)
+    return 0
+
+
+def check():
+    """Report every way the committed assets are out of date with this script."""
+    svgs = vectors()
+    problems = []
+    stale_vectors = []
+
+    for name, body in sorted(svgs.items()):
+        path = os.path.join(OUT, name)
+        if not os.path.exists(path):
+            problems.append(f"{name}: missing from docs/assets/brand/")
+            continue
+        with open(path, encoding="utf-8") as handle:
+            if handle.read() != body:
+                problems.append(f"{name}: committed file differs from what build.py generates")
+                stale_vectors.append(name)
+
+    if not os.path.exists(LOCK):
+        problems.append("branding/assets.lock.json: missing -- run build.py to create it")
+    else:
+        with open(LOCK, encoding="utf-8") as handle:
+            locked = json.load(handle)
+        expected = lock_for(svgs)
+
+        # A version mismatch is the likely explanation for a wordmark diff, and
+        # saying so is the difference between a two-minute fix and an afternoon.
+        locked_ft = locked.get("fonttools")
+        if stale_vectors and locked_ft and locked_ft != expected["fonttools"]:
+            problems.append(
+                f"fontTools {expected['fonttools']} is installed but these assets "
+                f"were generated with {locked_ft} -- pin fontTools=={locked_ft} "
+                "before concluding the assets are stale"
+            )
+
+        for png_name, want in sorted(expected["rasters"].items()):
+            if not os.path.exists(os.path.join(OUT, png_name)):
+                problems.append(f"{png_name}: missing from docs/assets/brand/")
+                continue
+            got = locked.get("rasters", {}).get(png_name)
+            if got is None:
+                problems.append(f"{png_name}: not recorded in assets.lock.json")
+            elif got.get("source_sha256") != want["source_sha256"]:
+                problems.append(
+                    f"{png_name}: rendered from a stale {want['source']} "
+                    "-- the vector changed and the raster was not re-rendered"
+                )
+            elif got.get("width") != want["width"] or got.get("source") != want["source"]:
+                problems.append(
+                    f"{png_name}: lock records {got.get('source')} at {got.get('width')}px, "
+                    f"build.py renders {want['source']} at {want['width']}px"
+                )
+
+        for png_name in sorted(set(locked.get("rasters", {})) - set(expected["rasters"])):
+            problems.append(f"{png_name}: recorded in assets.lock.json but build.py no longer renders it")
+
+    if problems:
+        print(f"branding/build.py --check: {len(problems)} stale asset(s):", file=sys.stderr)
+        for problem in problems:
+            print(f"  - {problem}", file=sys.stderr)
+        print(
+            "\nRun `python3 branding/build.py` and commit the result. "
+            "The generated assets are outputs, not sources -- do not hand-edit them.",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(
+        f"branding/build.py --check: {len(svgs)} vectors and "
+        f"{len(RASTERS)} rasters are current."
+    )
+    return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate the katra brand assets.")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="verify the committed assets match this script instead of rewriting them",
+    )
+    args = parser.parse_args()
+    return check() if args.check else build()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

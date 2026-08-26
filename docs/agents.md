@@ -3,21 +3,22 @@ title: Agents
 layout: default
 nav_order: 7
 description: >-
-  How an agent keeps the log — the Claude Code skill, the seven hooks katra
-  setup installs, the blocking commit gate, memory ingest, and the MCP tools.
+  How any coding agent keeps the log through the common CLI workflow, plus
+  optional Claude Code hooks, memory ingest, and the fifteen MCP tools.
 ---
 
 # Agents
 
 katra was built to be written *by* an agent while it works, so the log records
-what happened rather than what someone reconstructed afterwards. There are three
-ways in, and they compose.
+what happened rather than what someone reconstructed afterwards. The complete,
+harness-neutral contract is [The Katra workflow](workflow). There are three
+ways into the same core, and they compose.
 
 | Surface | Use it when |
 | --- | --- |
-| **The skill + hooks** | You use Claude Code. This is the whole system, and the one `katra setup` installs. |
-| **The CLI** | Any agent that can run a shell command. `katra new`, `append`, `capture`, `stamp`. |
+| **The CLI** | The common surface for any agent that can run a shell command: planning, specs, entries, decisions, closure, and stamps. |
 | **MCP** | A client that speaks the Model Context Protocol and would rather call a tool than shell out. |
+| **The skill + hooks** | Optional Claude Code reminders, memory ingest, and a commit gate installed by `katra setup`. |
 
 ## The problem this solves
 
@@ -26,11 +27,20 @@ one thing the diff already tells you. What is lost is everything that happened
 before the final state: the approach that failed, the measurement that changed
 the plan, the screenshot of the bug.
 
-So katra's agent integration is built around a single rule — **the draft exists
-while the work does** — and the hooks exist to make that true without the agent
-having to remember.
+So katra's workflow is built around a single rule — **the draft exists while
+the work does**. The CLI makes that portable; hooks can make it harder to
+forget.
 
-## `katra setup`
+## Portable setup
+
+```bash
+katra init --install-hook
+```
+
+That creates the store and installs Git auto-stamp without writing harness
+configuration. An existing Katra can use `katra hook install`.
+
+## Claude Code setup
 
 ```bash
 katra setup            # with the commit gate
@@ -62,6 +72,33 @@ the operation.
 `agent-hook pre-commit` blocks by exiting **2** — the Claude Code `PreToolUse`
 convention for stopping a tool call — not the plain 0/1 every other katra
 command uses. See [CLI reference: Exit codes](cli#exit-codes).
+
+### What the commit gate covers
+
+Coverage is answered **per path**, not per set. A receipt declaring
+`{a.go, b.go}` covers a commit of `{a.go}` — committing part of declared work is
+still declared work, so an ordinary split commit is not blocked. Content is
+still checked: edit a file after declaring it and the gate asks again, because
+the per-path key is that path's change record (op, mode, HEAD blob, new blob),
+not merely its name.
+
+The gate judges exactly the set `reconcile` treats as work — the staged paths
+outside the katra store and outside `.claude/`. Asking both sides the same
+question is what keeps them from disagreeing about what the work is.
+
+If the gate ever blocks over a path `katra reconcile` cannot see, it says so and
+names the path:
+
+    katra: staged code isn't covered by a reconciliation receipt, and
+    `katra reconcile` cannot see it either — declaring will not help.
+      invisible to reconcile: y.go
+      This is a katra bug, not something you did wrong.
+
+That state should be unreachable. The message exists because it was reachable,
+in three different ways, and each one presented as an ordinary "declare it"
+prompt that no amount of declaring would satisfy — see
+[the design note](design/unsatisfiable-gate). If you see it, `--no-verify` is
+the correct response and the report is welcome.
 
 ### What the Stop gate actually blocks
 
@@ -98,6 +135,12 @@ trying katra out, `katra setup --no-gate` gives you the nudges without the
 block, and you can turn the gate on later by re-running `katra setup`.
 
 ## Working from a spec
+
+{: .warning }
+The installed v0.1.0 CLI predates `task spec`, `task new --spec`, and the
+`specced` help value. Build current source with `make all` to use this phase
+until the next release. The release checklist tests these commands against the
+packaged binary.
 
 A task can point at a committed spec. `katra task spec <slug> <ref>` sets
 `spec:` on it and moves it from `todo` (or empty) to `specced` — a status
@@ -163,7 +206,7 @@ flat technical document — a wall of prose that reads like a handoff note to th
 next agent — and a log of those is one nobody, including you in a month, ever
 reads.
 
-The skill (`internal/cli/embed/SKILL.md`) is the full guidance. Its core:
+The public [Katra workflow](workflow) is the full guidance. Its core:
 
 - **Show the thing.** Treat a draft with zero visuals as unfinished. A
   screenshot, a before/after, a chart of the numbers you just measured.
@@ -195,6 +238,13 @@ all.
 It resolves the katra from `$KATRA_DIR` (or the legacy `$DEVLOG_DIR`), falling
 back to discovery from the working directory.
 
+The native binary is the supported path because it can use the working tree
+directly. From the first release onward, the official MCP Registry will list a
+minimal OCI wrapper containing only `katra-mcp` and `git`. That wrapper is
+distribution metadata for registry clients, not a general Katra container: a
+client running it still has to expose the repository working tree. It does not
+contain `katra setup`, the viewer, the hub, or the CLI.
+
 | Tool | What it does |
 | --- | --- |
 | `katra_list` | List entries. |
@@ -207,7 +257,8 @@ back to discovery from the working directory.
 | `katra_nodes` | List nodes of any type. |
 | `katra_task_new` | Create a task. |
 | `katra_task_list` | List tasks. |
-| `katra_task_set_status` | Move a task between `todo`/`doing`/`done`/`cut`. |
+| `katra_task_set_status` | Move a task between `todo`/`specced`/`doing`/`done`/`cut`. |
+| `katra_task_spec` | Attach a spec and advance a todo task to `specced` without moving later statuses backwards. |
 | `katra_epic_new` | Create an epic. |
 | `katra_decide` | Record a decision. |
 | `katra_article_new` | Create an article. |
@@ -218,8 +269,9 @@ corresponding core operation exists and wiring it up is a small change.
 
 ## Without Claude Code
 
-Nothing above is required. Any agent that can run a shell command can keep a
-katra with four of them:
+Claude integration is not required. Any agent that can run a shell command can
+drive the full workflow, including epics, specced tasks, spec pointers,
+decisions, closure, and rollup. The smallest entry loop is four commands:
 
 ```bash
 katra new "What you are about to do" --tags area,kind
@@ -229,3 +281,4 @@ katra stamp
 ```
 
 Install the git hook (`katra hook install`) and the last one happens on its own.
+For the complete plan-to-proof sequence, use [The Katra workflow](workflow).

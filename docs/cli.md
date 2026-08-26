@@ -38,9 +38,10 @@ Create a katra in this repository.
 
 ### `katra setup`
 
-Make this repo a katra project: store, skill, Claude Code hooks, git auto-stamp,
-and hub registration. **Idempotent** — re-run it after upgrading katra to pick
-up new hook wiring.
+Install the Claude Code integration on this repo: store, skill, Claude Code
+hooks, portable Git auto-stamp, and hub registration. **Idempotent** — re-run
+it after upgrading katra to pick up new hook wiring. Other harnesses use
+`katra init --install-hook` or `katra hook install` instead.
 
 | Flag | Meaning |
 | --- | --- |
@@ -159,6 +160,18 @@ self-contained directory with no external requests.
 | `--out DIR` | Output directory. Defaults to `dist`. |
 | `--all` | Build one aggregate site of every registered katra. |
 
+`index.html`, `app.js`, `styles.css` and `data.json` are **rewritten on every
+build**. Files you add to the output directory yourself are untouched — which is
+what makes this worth stating rather than assuming: the build respecting your
+added file does not mean it respects your edit to a generated one. Anything
+hand-edited into those four is gone on the next build, and the page keeps
+rendering, so the loss is invisible until whatever it powered is missed.
+
+Host customisations (analytics, social tags, a favicon) belong in a step that
+runs after the build. Check it by confirming a fresh build plus that step
+reproduces the committed file — looking at the page proves it worked once, not
+that it still works.
+
 ### `katra doctor`
 
 Check the katra for problems: dangling media references and entries that fail
@@ -175,6 +188,11 @@ do not affect the exit code:
 - more than one draft open, and unreferenced files in `media/`
 
 ## The node model
+
+{: .warning }
+The installed v0.1.0 CLI predates `task spec`, `task new --spec`, and the
+`specced` task-list help value. They are available in current source and are
+gated against release artifacts for the next tag.
 
 An entry is one kind of node. Tasks, epics, decisions and articles are the
 others; they share the frontmatter schema and the `[[wikilink]]` graph. See

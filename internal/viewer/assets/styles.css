@@ -154,6 +154,20 @@ h1, h2, h3, h4 { font-family: var(--serif); font-weight: 600; letter-spacing: -0
 .kv-side-foot .mk-amber { color: var(--amber); }
 .kv-side-foot .mk-accent { color: var(--accent); }
 
+/* The colophon: one line at the end of the scrolling column, in the register
+   of a printer's mark rather than a badge. Deliberately quiet -- it sits on
+   someone else's published page and has to earn its place there. */
+.kv-colophon {
+  padding: 26px 34px 30px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em;
+  color: var(--ink-faint); text-align: center;
+}
+.kv-colophon a {
+  color: var(--ink-soft); text-decoration: none;
+  border-bottom: 1px solid var(--line-3);
+}
+.kv-colophon a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
 /* ── Canvas: swaps per view ──────────────────────────────── */
 .kv-canvas { min-width: 0; overflow: hidden; display: grid; }
 

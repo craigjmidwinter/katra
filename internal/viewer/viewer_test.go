@@ -2,6 +2,7 @@ package viewer_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/craigjmidwinter/katra/internal/core"
@@ -26,7 +27,8 @@ type nodeJSON struct {
 
 type dataJSON struct {
 	Site struct {
-		Title string `json:"title"`
+		Title    string `json:"title"`
+		Colophon bool   `json:"colophon"`
 	} `json:"site"`
 	Entries []nodeJSON `json:"entries"`
 }
@@ -226,4 +228,162 @@ func keys(m map[string]nodeJSON) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+// TestColophonDefaultsOnAndSurvivesRebuild is the attribution's whole point in
+// test form: a fresh katra credits katra, and it does so because the answer is
+// recomputed from config on every build rather than being an edit to the output
+// that a rebuild would wipe.
+func TestColophonDefaultsOnAndSurvivesRebuild(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Test")
+	if err != nil {
+		t.Fatalf("InitStore: %v", err)
+	}
+
+	for i, label := range []string{"first build", "rebuild"} {
+		raw, err := viewer.BuildData(s)
+		if err != nil {
+			t.Fatalf("%s: BuildData: %v", label, err)
+		}
+		var d dataJSON
+		if err := json.Unmarshal(raw, &d); err != nil {
+			t.Fatalf("%s: unmarshal: %v", label, err)
+		}
+		if !d.Site.Colophon {
+			t.Errorf("%s (pass %d): site.colophon is false; a fresh katra should credit katra", label, i)
+		}
+	}
+}
+
+// TestColophonSuppressible is the other half, and the more important one: a
+// credit that cannot be removed is a reason to reject the tool. An explicit
+// `colophon: false` has to be distinguishable from an absent key, which is why
+// Config.Colophon is a *bool.
+func TestColophonSuppressible(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Test")
+	if err != nil {
+		t.Fatalf("InitStore: %v", err)
+	}
+
+	off := false
+	s.Config.Colophon = &off
+
+	raw, err := viewer.BuildData(s)
+	if err != nil {
+		t.Fatalf("BuildData: %v", err)
+	}
+	var d dataJSON
+	if err := json.Unmarshal(raw, &d); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if d.Site.Colophon {
+		t.Error("site.colophon is true after `colophon: false`; the credit is not suppressible")
+	}
+
+	// The field must still be emitted rather than omitted, so the viewer reads
+	// a definite false instead of an absent key it has to guess about.
+	var loose map[string]any
+	if err := json.Unmarshal(raw, &loose); err != nil {
+		t.Fatal(err)
+	}
+	site, ok := loose["site"].(map[string]any)
+	if !ok {
+		t.Fatal("site block missing from data.json")
+	}
+	if _, present := site["colophon"]; !present {
+		t.Error("site.colophon was omitted rather than emitted as false")
+	}
+}
+
+// TestShellSetsTheSiteTitle is the fix for katra's product name appearing as
+// the browser tab, bookmark and search-result title of somebody else's page.
+func TestShellSetsTheSiteTitle(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "GetVect")
+	if err != nil {
+		t.Fatalf("InitStore: %v", err)
+	}
+
+	shell, err := viewer.Shell(s)
+	if err != nil {
+		t.Fatalf("Shell: %v", err)
+	}
+	got := string(shell)
+
+	if !strings.Contains(got, "<title>GetVect</title>") {
+		t.Error("shell does not carry the store's own title")
+	}
+	if strings.Contains(got, "<title>Katra</title>") {
+		t.Error("shell still claims to be Katra on someone else's deploy")
+	}
+	if !strings.Contains(got, `<meta property="og:title" content="GetVect">`) {
+		t.Error("shell does not emit og:title")
+	}
+
+	// Deliberately absent. katra's default description is a placeholder most
+	// stores never change, and emitting it would overwrite a host's tailored
+	// value; og:url needs a deploy URL katra does not know.
+	for _, unsafe := range []string{"og:description", "og:image", "og:url"} {
+		if strings.Contains(got, unsafe) {
+			t.Errorf("shell emits %s, which the renderer cannot guarantee", unsafe)
+		}
+	}
+}
+
+// TestShellEscapesTheTitle: the title is user-controlled config that lands in
+// both an element and an attribute.
+func TestShellEscapesTheTitle(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), `Ac"me <script>alert(1)</script>`)
+	if err != nil {
+		t.Fatalf("InitStore: %v", err)
+	}
+
+	shell, err := viewer.Shell(s)
+	if err != nil {
+		t.Fatalf("Shell: %v", err)
+	}
+	got := string(shell)
+
+	if strings.Contains(got, "<script>alert(1)</script>") {
+		t.Error("an unescaped title reached the shell")
+	}
+	if !strings.Contains(got, "&lt;script&gt;") {
+		t.Error("title was not HTML-escaped")
+	}
+	// An unescaped double quote would close the content attribute early.
+	if strings.Contains(got, `content="Ac"me`) {
+		t.Error("title broke out of the og:title attribute")
+	}
+}
+
+// TestShellFallsBackToKatra: an untitled store still renders a valid page.
+func TestShellFallsBackToKatra(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Test")
+	if err != nil {
+		t.Fatalf("InitStore: %v", err)
+	}
+	s.Config.Title = "   "
+
+	shell, err := viewer.Shell(s)
+	if err != nil {
+		t.Fatalf("Shell: %v", err)
+	}
+	if !strings.Contains(string(shell), "<title>Katra</title>") {
+		t.Error("an untitled store should fall back to Katra, not an empty title")
+	}
+}
+
+// TestShellMarkerStillExists guards the substitution itself. Shell works by
+// replacing one exact string in an embedded asset; an innocuous edit to
+// index.html could remove it and every deploy would quietly go back to being
+// titled "Katra". Shell errors rather than returning the input unchanged, and
+// this is what notices.
+func TestShellMarkerStillExists(t *testing.T) {
+	raw, err := viewer.Asset("index.html")
+	if err != nil {
+		t.Fatalf("Asset: %v", err)
+	}
+	if !strings.Contains(string(raw), "<title>Katra</title>") {
+		t.Fatal("index.html no longer contains the title placeholder Shell replaces; " +
+			"update viewer.shellTitle to match the asset")
+	}
 }

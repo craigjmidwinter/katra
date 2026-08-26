@@ -1,0 +1,22 @@
+# This image is a packaging envelope for the official MCP Registry, not a
+# general katra install. The supported install remains the native katra and
+# katra-mcp binaries, which can use a working tree without a bind mount.
+FROM alpine:3.22
+
+# katra-mcp computes hashes and diffstats through the git executable. Leaving
+# it out would produce an image that initializes correctly but fails as soon as
+# a client stamps an entry.
+RUN apk add --no-cache git
+
+# The MCP Registry reads this annotation from the pushed manifest and requires
+# it to equal `name` in server.json. GoReleaser repeats it at manifest level;
+# this LABEL keeps a directly built per-platform image truthful too.
+LABEL io.modelcontextprotocol.server.name="io.github.craigjmidwinter/katra"
+
+# GoReleaser lays out one compiled binary per target platform. Buildx supplies
+# these values while assembling the multi-architecture manifest.
+ARG TARGETOS
+ARG TARGETARCH
+COPY ${TARGETOS}/${TARGETARCH}/katra-mcp /usr/local/bin/katra-mcp
+
+ENTRYPOINT ["/usr/local/bin/katra-mcp"]

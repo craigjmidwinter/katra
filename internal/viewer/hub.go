@@ -169,7 +169,9 @@ func ServeHub(load func() ([]HubProject, error), port int) error {
 		}
 		switch {
 		case sub == "" || sub == "index.html":
-			b, err := Asset("index.html")
+			// Per-project, so the hub's tab names the project being viewed
+			// rather than reporting "Katra" for every one of them.
+			b, err := Shell(store)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

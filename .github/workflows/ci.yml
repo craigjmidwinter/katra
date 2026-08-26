@@ -196,6 +196,44 @@ jobs:
           "$katra" build --out ./site
           test -s ./site/data.json
 
+  # The brand assets under docs/assets/brand/ are generated, and a generated
+  # file with no gate is a file that drifts from the script that claims to
+  # produce it. Same for BRAND.md's contrast table, whose numbers were correct
+  # and unverifiable until this ran.
+  branding:
+    name: branding assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      # librsvg is only needed for a full regenerate. --check reads the
+      # committed rasters' provenance out of assets.lock.json rather than
+      # re-rendering them, precisely because runners' librsvg and cairo
+      # versions differ and a byte-diff of PNGs fails on all of them.
+      # Pinned, and pinned to the version recorded in assets.lock.json.
+      # SVGPathPen's output has changed between fontTools releases, so an
+      # unpinned install turns a wordmark byte-diff into a mystery. Bump this
+      # and the lock file together, in one commit, after regenerating.
+      - name: Install fontTools
+        run: python3 -m pip install --disable-pip-version-check 'fonttools==4.63.0'
+
+      - name: The pin matches the lock file
+        run: |
+          set -euo pipefail
+          locked=$(python3 -c "import json; print(json.load(open('branding/assets.lock.json'))['fonttools'])")
+          installed=$(python3 -c "import fontTools; print(fontTools.version)")
+          if [ "$locked" != "$installed" ]; then
+            echo "::error::assets.lock.json records fontTools $locked, this job installs $installed."
+            exit 1
+          fi
+
+      - name: Brand assets are current
+        run: python3 branding/build.py --check
+
+      - name: BRAND.md's contrast table still computes
+        run: python3 branding/contrast.py --check
+
   # Cross-compiles every release target *through* the release config, so a
   # broken .goreleaser.yml fails here on every push rather than at tag time.
   release-dry-run:
@@ -222,6 +260,14 @@ jobs:
         env:
           HOMEBREW_TAP_GITHUB_TOKEN: ""
 
+      # The release snapshot includes the two-platform registry image, whose
+      # Alpine arm64 layer executes during the build on this amd64 runner.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build a snapshot release
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -241,8 +287,22 @@ jobs:
       - name: Both binaries are in the archive
         run: |
           set -euo pipefail
-          archive="$(ls dist/katra_*_linux_amd64.tar.gz | head -1)"
+          archive="$(find dist -maxdepth 1 -name 'katra_*_linux_amd64.tar.gz' -print -quit)"
+          test -n "$archive"
           contents="$(tar tzf "$archive")"
           echo "$contents"
           echo "$contents" | grep -qx katra
           echo "$contents" | grep -qx katra-mcp
+
+          # v0.1.0-era installed binaries predate the published spec phase.
+          # Check the archive itself so source tests cannot hide release drift.
+          smoke_dir="$(mktemp -d)"
+          tar -xzf "$archive" -C "$smoke_dir"
+          ./scripts/check-workflow-surface.sh "$smoke_dir/katra"
+
+      # Publishing is deliberately tag-only, but malformed metadata must fail
+      # on a pull request rather than after the release image already exists.
+      - name: Validate server.json
+        run: |
+          ./scripts/install-mcp-publisher.sh
+          ./mcp-publisher validate

@@ -29,7 +29,7 @@ spec instead of re-deriving intent from a conversation that no longer exists.
 That loop is [the agent workflow](#the-agent-workflow) below.
 
 ```bash
-katra setup                      # skill + hooks + auto-stamp, in this repo
+katra init --install-hook        # store + portable Git auto-stamp
 katra new "Reworked the swing"   # start a draft (a markdown file)
 katra capture shot.png           # drop a screenshot into it
 katra compare before.png after.png
@@ -119,15 +119,19 @@ how the build actually went.
 An agent that logs at the end writes a summary of a diff — the one thing the
 diff already tells you. What is lost is everything before the final state: the
 approach that failed, the measurement that changed the plan, the picture of the
-bug. So katra pushes the log *into* the work, with hooks that make the draft
-exist while the work does.
+bug. So katra pushes the log *into* the work. The common contract is the CLI
+sequence in [The Katra workflow](docs/workflow.md): declare the epic/task,
+attach and read a committed spec when one is warranted, open the draft before
+implementation, record decisions and evidence as you go, then stamp and close.
+It works from Codex, Claude Code, MCP, or a plain shell.
 
 ```bash
-katra setup
+katra init --install-hook
 ```
 
-That installs a Claude Code skill, seven hooks, and a git `post-commit`
-auto-stamp. From then on:
+That creates the Katra and installs the harness-neutral Git `post-commit`
+auto-stamp. Claude Code users can additionally run `katra setup`, which
+installs its skill and seven session hooks. With that optional adapter:
 
 1. **`SessionStart`** reports the active draft, unresolved memory, or in-flight
    changes that need reconciling.
@@ -162,11 +166,23 @@ repository is a real change to how committing feels, and it should be a choice
 made on purpose.
 
 There is also an MCP server (`katra-mcp`) for clients that would rather call a
-tool than shell out — and none of this is required. Any agent that can run
-`katra new`, `capture`, `append` and `stamp` can keep a katra. Full detail:
-[docs/agents.md](docs/agents.md).
+tool than shell out. Its fifteen tools cover entries plus tasks, task specs,
+epics, decisions, and articles. Full detail: [The Katra workflow](docs/workflow.md)
+and [Agents](docs/agents.md).
+
+When the first release ships, the official MCP Registry will be able to
+discover the same stdio server through a narrow OCI package. That image
+contains only `katra-mcp` and `git`; it exists because the registry needs an
+installable package, not because a container is a better way to use Katra. A
+registry client still has to expose the repository working tree to it. For
+direct use, install the native binaries above.
 
 ### Spec-driven, not spec-derived
+
+> **Current-source feature:** the installed v0.1.0 CLI does not yet have
+> `task spec`, `task new --spec`, or the `specced` list-filter help value.
+> Build current source with `make all` for this phase until the next release;
+> the release checklist now asserts all three against the packaged binary.
 
 A task can carry `spec:` — a node slug in the katra (a decision, an article, an
 entry) or a path relative to the repository root, resolved the same way as a
@@ -191,7 +207,7 @@ for the tasks where a design is worth writing down first — and the entries you
 write while implementing become the other half of the record: what the spec
 proposed against what actually happened, dead ends included.
 
-### It reads the agent's own memory
+### Optional Claude Code memory ingest
 
 Claude Code keeps native per-project memory. katra can ingest it into a private
 ledger, so the log gets the play-by-play without anyone re-typing it. Only
@@ -246,10 +262,10 @@ go install github.com/craigjmidwinter/katra/cmd/katra-mcp@latest
 Install both. `katra-mcp` is not optional extra tooling — the skill and every
 MCP client wiring assume it sits beside `katra` on your `PATH`.
 
-Note that `go install` builds report `dev` for `--version`, because the version
-is stamped at link time and the `go` tool does not do it. Released binaries and
-`make build` report the real tag. If you file a bug from a `go install` build,
-say which commit you installed.
+A `go install` build reports the version you installed —
+`go install …@v0.1.0` reports `v0.1.0`, and installing from a working tree
+reports a pseudo-version naming the commit. Release binaries and `make build`
+carry a link-time stamp instead, which additionally marks a dirty tree.
 
 ### Build from source
 
@@ -376,35 +392,33 @@ and it stays.
 
 About five minutes, from inside a git repository.
 
-1. **Set it up.**
+1. **Set it up without tying the repository to a coding harness.**
 
    ```bash
-   katra setup --no-gate
+   katra init --install-hook
    ```
 
    ```
-   ✓ created katra store → …/katra
-   ✓ skill → …/.claude/skills/katra/SKILL.md
-   ✓ hooks → …/.claude/settings.json (session nudges + no commit gate)
-   ✓ git post-commit auto-stamp → …/.git/hooks/post-commit
-   ✓ registered with the katra hub
+   ✓ katra created at katra
+     entries/   — one markdown file per post
+     media/     — images, gifs, video, html embeds
+     config.yml — title, accent, hook behaviour
+     registered with the global katra registry (…)
+   ✓ post-commit hook installed at .git/hooks/post-commit
    ```
 
-   Creates `katra/`, installs the skill and hooks, installs the git
-   auto-stamp, and registers the project with the hub. Without Claude Code,
-   `katra init --install-hook` does the store and the git hook only.
+   Creates `katra/`, a welcome draft, the portable Git auto-stamp hook, and a
+   hub registration. Claude Code users can layer on `katra setup --no-gate`
+   for session nudges or `katra setup` for nudges plus its commit gate.
 
-2. **Start a draft, add to it, drop in a screenshot.**
+2. **Add to the welcome draft, then drop in a screenshot.**
 
    ```bash
-   katra new "Reworked the swing arc" --tags physics,gameplay
-   katra append "The magnus model was fighting the animation, not the physics."
+   katra append --entry hello-katra "The first reason this project needs a chronicle."
    ```
 
    ```
-   ✓ draft created: katra/entries/2026-08-20-reworked-the-swing-arc.md
-     slug: reworked-the-swing-arc
-   ✓ appended to reworked-the-swing-arc
+   ✓ appended to hello-katra
    ```
 
    Optional, and worth doing for real once you have something to show: capture
@@ -412,12 +426,12 @@ About five minutes, from inside a git repository.
    if you don't).
 
    ```bash
-   katra capture ~/Desktop/swing.png --caption "after the fix"   # swap in your own path
+   katra capture ~/Desktop/swing.png --entry hello-katra --caption "first visible proof"   # swap in your own path
    ```
 
    ```
    ✓ imported media/swing.png
-   ✓ added to reworked-the-swing-arc
+   ✓ added to hello-katra
    ```
 
 3. **Serve it.**
@@ -563,8 +577,8 @@ ignored, an unknown fence degrades to a code block, and an absent `type` means
 
 | Command | What it does |
 |---|---|
-| `katra setup [--no-gate]` | Skill + hooks + git auto-stamp + hub registration. Idempotent. |
-| `katra init [--title T] [--install-hook]` | Scaffold a katra without the agent wiring |
+| `katra setup [--no-gate]` | Add the Claude Code skill/hooks plus portable Git auto-stamp and hub registration. Idempotent. |
+| `katra init [--title T] [--install-hook]` | Scaffold a harness-neutral Katra, with optional Git auto-stamp |
 | `katra new "Title" [--tags a,b] [--featured]` | Start a draft entry |
 | `katra append [text] [--entry slug] [--file -]` | Append markdown to a draft |
 | `katra capture <file> [--caption C]` | Import media into the active draft |
@@ -661,9 +675,12 @@ Command names and flags may still move.
 - **A hosted service.** Your log is markdown in your repo. There is nothing to
   sign into and nothing to migrate off, and adding a backend would trade that
   away for convenience.
-- **A container image.** katra operates on your working tree, your git history
-  and your hooks. Containerising it means mounting all three, at which point you
-  have a worse local install.
+- **A general-purpose container install.** katra operates on your working tree,
+  your git history and your hooks. Containerising the whole tool means mounting
+  all three, at which point you have a worse local install. The release workflow
+  does build a minimal `katra-mcp` OCI wrapper solely so the official MCP
+  Registry has a package to index; it is not an alternative to the install
+  paths above.
 - **A theme system.** The viewer is one design, with `accent` as the knob. The
   static build is a directory you can restyle yourself if you must.
 - **Feeds, comments, analytics.** It is a log for the people in the repo.
@@ -686,12 +703,49 @@ Command names and flags may still move.
 - **The `stat` diffstat counts the whole commit**, including files unrelated to
   the entry, and for a chapter it is the sum across commits. It is a sense of
   scale, not an accounting.
+- **`katra build` overwrites what it generates, and only that.** `index.html`,
+  `app.js`, `styles.css` and `data.json` are rewritten on every build; files you
+  add alongside them are left alone. That combination is the trap. A generator
+  that clobbered the whole directory would teach you to be careful with it; this
+  one respects the file you added, which invites the reasonable conclusion that
+  it respects your edits generally — and then discards the one edit that had to
+  live *inside* a generated file.
+
+  So anything hand-edited into that page — an analytics snippet, social tags, a
+  favicon link — is silently gone on the next build, and the page still renders
+  perfectly while whatever it powered has stopped. Keep such insertions in a
+  step that runs **after** the build. Verify by checking that a fresh build plus
+  your step reproduces the file you committed: that the page looks right proves
+  it worked once, not that it is still working.
+- **A built site has one URL, so entries have no individual ones.** The viewer
+  routes on the fragment (`#/node/<slug>`), which the browser never sends to a
+  server. Two consequences, both worth knowing before you publish a katra
+  somewhere that matters:
+  - **Every entry shares one social card.** A link to any entry unfurls as the
+    site, not as that entry, because there is no per-entry URL for a scraper to
+    fetch. Setting tags on the one page that exists cannot change this.
+  - **Analytics count one pageview per visit, not per entry read.** Moving
+    between entries is a fragment change, which emits no navigation. A reader
+    who works through twenty entries registers as one pageview, so per-entry
+    readership is not merely inaccurate — it is absent.
+
+  These are one limitation, not two, and neither half can be fixed on its own:
+  both need a URL per entry. Injecting head tags into the built page addresses
+  neither — it cannot vary a card the server never routes, and it cannot emit a
+  navigation that never happens.
+
+  Per-entry pages the server can see are planned, and every published
+  `#/node/<slug>` link will keep working when they land. Until then, a katra is
+  a chronicle you can publish and link *to*, not one whose individual entries
+  can be linked, previewed, or counted.
 
 ## Documentation
 
-Browsable at <https://craigjmidwinter.github.io/katra/>, or in this repo:
+Browsable at <https://midwinter.io/katra/>, or in this repo:
 
 - [docs/quickstart.md](docs/quickstart.md) — install to first stamped entry.
+- [docs/workflow.md](docs/workflow.md) — the complete harness-neutral
+  spec-to-stamp workflow.
 - [docs/components.md](docs/components.md) — every component, the exact keys
   each takes, and the recipe for charts and diagrams.
 - [docs/cli.md](docs/cli.md) — every command and flag.
@@ -699,8 +753,8 @@ Browsable at <https://craigjmidwinter.github.io/katra/>, or in this repo:
   default and its failure mode.
 - [docs/format.md](docs/format.md) — the on-disk contract. Read it before
   writing a tool that consumes a katra.
-- [docs/agents.md](docs/agents.md) — the skill, the seven hooks, the commit
-  gate, memory ingest, and the MCP tools.
+- [docs/agents.md](docs/agents.md) — CLI, fifteen MCP tools, and the optional
+  Claude skill, hooks, commit gate, and memory ingest.
 - [docs/hub.md](docs/hub.md) — the registry and the cross-project views.
 - [docs/architecture.md](docs/architecture.md) — the seams, and where your
   change belongs.

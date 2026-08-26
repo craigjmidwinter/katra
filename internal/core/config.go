@@ -40,6 +40,25 @@ type Config struct {
 	AutoCommit   bool         `yaml:"autoCommit,omitempty"`   // hook commits the stamp itself
 	CommitPrefix string       `yaml:"commitPrefix,omitempty"` // prefix for stamp commits
 	Memory       MemoryConfig `yaml:"memory,omitempty"`       // Claude Code memory ingest settings
+
+	// Colophon toggles the one-line "Chronicled with katra" credit at the
+	// bottom of a generated site. nil means the default (true) — a pointer so
+	// that an explicit `colophon: false` is distinguishable from an absent
+	// field, the same idiom as Memory.Enabled.
+	//
+	// It defaults on because an attribution nobody switches on is not an
+	// attribution, and it is removable in one line because a credit that
+	// cannot be removed is a reason to reject a tool.
+	Colophon *bool `yaml:"colophon,omitempty"`
+}
+
+// ColophonEnabled reports whether the generated site carries the katra credit
+// (default true when unset).
+func (c Config) ColophonEnabled() bool {
+	if c.Colophon == nil {
+		return true
+	}
+	return *c.Colophon
 }
 
 // MemoryConfig controls the memory-ingest layer (see memory.go). All fields are

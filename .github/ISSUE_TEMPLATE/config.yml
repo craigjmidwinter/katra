@@ -8,7 +8,7 @@ contact_links:
     about: Every fenced block katra renders, with a worked example of each.
   - name: Agent integration
     url: https://craigjmidwinter.github.io/katra/agents
-    about: The skill, the Claude Code hooks, the commit gate, and the MCP tools.
+    about: The common CLI workflow, fifteen MCP tools, and optional harness integrations.
   - name: Questions and ideas
     url: https://github.com/craigjmidwinter/katra/discussions
     about: Ask about usage or float an idea before filing an issue.

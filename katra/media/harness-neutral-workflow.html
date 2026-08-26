@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Katra's common workflow</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f3efe5; color: #27241f; font: 16px/1.4 Georgia, serif; }
+  main { padding: 28px; min-height: 360px; }
+  h1 { margin: 0 0 22px; font-size: 25px; }
+  .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-items: stretch; }
+  .step { position: relative; padding: 18px 13px; border: 2px solid #4c654c; border-radius: 8px; background: #fffdf7; text-align: center; }
+  .step:not(:last-child)::after { content: "→"; position: absolute; right: -13px; top: 38%; z-index: 2; color: #9a4f2f; font: bold 22px sans-serif; }
+  strong { display: block; color: #9a4f2f; font: 700 13px/1.2 system-ui, sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+  code { display: block; margin-top: 8px; font: 12px/1.35 ui-monospace, monospace; }
+  .surfaces { margin-top: 22px; padding: 13px 16px; border-left: 5px solid #9a4f2f; background: #e4eadf; font-family: system-ui, sans-serif; }
+  .metrics { margin-top: 10px; color: #4c654c; font-weight: 700; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1f2420; color: #f0eadc; }
+    .step { background: #293029; border-color: #9ab18e; }
+    .surfaces { background: #30392f; }
+    strong, .step:not(:last-child)::after { color: #e3a176; }
+    .metrics { color: #b9d0ad; }
+  }
+</style>
+<main>
+  <h1>One committed path, regardless of harness</h1>
+  <div class="flow">
+    <div class="step"><strong>Plan</strong><code>epic new<br>task new</code></div>
+    <div class="step"><strong>Specify</strong><code>task spec<br>specced</code></div>
+    <div class="step"><strong>Build</strong><code>task start<br>new + append</code></div>
+    <div class="step"><strong>Prove</strong><code>capture<br>doctor</code></div>
+    <div class="step"><strong>Publish</strong><code>stamp --closes<br>epic done</code></div>
+  </div>
+  <div class="surfaces">
+    Public docs + CLI are the contract. Claude hooks, Codex, and MCP are adapters.
+    <div class="metrics">15 MCP tools · 1 spec pointer · 1 stamped entry · 0 harness-only requirements</div>
+  </div>
+</main>
+</html>

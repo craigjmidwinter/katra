@@ -256,11 +256,79 @@ func hookPreCommitRun() error {
 	if !preCommitBlocks(s, in) {
 		return nil
 	}
-	fmt.Fprintln(os.Stderr, "katra: staged code isn't covered by a reconciliation receipt.\n"+
-		"  Declare it:   katra reconcile --advance/--close <slug>  (or --no-task/--skip --reason \"…\")\n"+
-		"  Or skip gate: git commit --no-verify")
+	fmt.Fprintln(os.Stderr, preCommitMessage(s, in))
 	os.Exit(2) // PreToolUse: exit 2 blocks the tool call
 	return nil
+}
+
+// preCommitMessage explains a block, distinguishing the two states the gate
+// used to conflate.
+//
+// "A receipt is required" and "a receipt is required and reconcile cannot see
+// the work to give you one" are different situations. Only the second tells the
+// person that the tool is broken rather than that they have a step left, and
+// only that message lets them stop trying. This gate blocked seven legitimate
+// commits in one session before the person working around it concluded,
+// correctly, that it could not be satisfied.
+//
+// The invisibility check is deliberately kept even though the unit and coverage
+// fixes close both known routes into that state. It costs one evaluation on a
+// path that is already blocking, and it is the only thing that would make a
+// third route loud instead of silent.
+func preCommitMessage(s *core.Store, in hookInput) string {
+	uncovered := s.UncoveredPaths(stagedCode(s))
+
+	visible := map[string]bool{}
+	for _, p := range s.EvaluateReconcileForSession(in.SessionID).TouchedPaths {
+		visible[p] = true
+	}
+	var invisible []string
+	for _, p := range uncovered {
+		if !visible[p] {
+			invisible = append(invisible, p)
+		}
+	}
+
+	return gateMessage(invisible)
+}
+
+// gateMessage renders the block. invisible is the staged paths reconcile cannot
+// see; empty means the ordinary, satisfiable case.
+func gateMessage(invisible []string) string {
+	if len(invisible) == 0 {
+		return "katra: staged code isn't covered by a reconciliation receipt.\n" +
+			"  Declare it:   katra reconcile --advance/--close <slug>  (or --no-task/--skip --reason \"…\")\n" +
+			"  Or skip gate: git commit --no-verify"
+	}
+	return "katra: staged code isn't covered by a reconciliation receipt, and\n" +
+		"`katra reconcile` cannot see it either — declaring will not help.\n" +
+		"  invisible to reconcile: " + strings.Join(invisible, ", ") + "\n" +
+		"  This is a katra bug, not something you did wrong.\n" +
+		"  Commit with:  git commit --no-verify\n" +
+		"  Please report: https://github.com/craigjmidwinter/katra/issues"
+}
+
+// stagedCode is the staged paths the gate judges.
+//
+// IsWorkProduct, not IsStorePath: the two differ on `.claude/`, and the gate
+// must judge exactly the set reconcile treats as work. Filtering only the store
+// meant a commit staging just a `.claude/settings.json` change — which `katra
+// setup` produces routinely — demanded a receipt that reconcile would never
+// write, because reconcile does not consider agent config to be work. That was
+// a third route into an unsatisfiable gate, found by the invisibility check
+// below reporting it. Asking both sides the same question closes it.
+func stagedCode(s *core.Store) []string {
+	staged, err := s.StagedFiles()
+	if err != nil {
+		return nil
+	}
+	var code []string
+	for _, f := range staged {
+		if s.IsWorkProduct(f) {
+			code = append(code, f)
+		}
+	}
+	return code
 }
 
 // preCommitBlocks reports whether a `git commit` tool call should be blocked
@@ -276,16 +344,7 @@ func preCommitBlocks(s *core.Store, in hookInput) bool {
 	if !s.ReceiptsExist() {
 		return false // reconcile system not in use → don't block
 	}
-	staged, err := s.StagedFiles()
-	if err != nil {
-		return false
-	}
-	var code []string
-	for _, f := range staged {
-		if !s.IsStorePath(f) {
-			code = append(code, f)
-		}
-	}
+	code := stagedCode(s)
 	if len(code) == 0 {
 		return false // only the store staged → bookkeeping, allow
 	}

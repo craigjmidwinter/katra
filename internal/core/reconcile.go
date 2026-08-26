@@ -130,6 +130,21 @@ type ReconcileReceipt struct {
 	SkipReason       string   `json:"skipReason,omitempty"`
 	ResolvedMemory   []string `json:"resolvedMemory,omitempty"`
 	CreatedAt        string   `json:"createdAt"`
+
+	// PathRecords fingerprints each declared path's change record on its own,
+	// so coverage can be answered per path instead of per set.
+	//
+	// The whole-set WorkGenerationID cannot express that a receipt declaring
+	// {a.go, b.go} covers a commit of {a.go} — and committing a subset of
+	// declared work is the most ordinary thing a person does. Matching on the
+	// set meant any divergence between what reconcile saw and what was staged
+	// produced an id no receipt would ever carry, so the gate could not be
+	// satisfied at all. See docs/design/unsatisfiable-gate.md.
+	//
+	// Receipts written before this field existed have it empty; coverage falls
+	// back to the whole-set comparison for those, so an existing ledger keeps
+	// working.
+	PathRecords map[string]string `json:"pathRecords,omitempty"`
 }
 
 type receiptLedger struct {
@@ -415,6 +430,19 @@ func (s *Store) WriteReceipt(r ReconcileReceipt) error {
 	if r.CreatedAt == "" {
 		r.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 	}
+	// Record each declared path on its own so coverage can be answered per path
+	// later. Derived from the working tree, which is what the declaring person
+	// is looking at; the index records the gate compares against are identical
+	// for any path whose staged content equals the working tree, because both
+	// key on the same git blob id.
+	if r.PathRecords == nil && len(r.TouchedPaths) > 0 {
+		if root, err := s.RepoRoot(); err == nil {
+			r.PathRecords = map[string]string{}
+			for _, rc := range s.workingTreeChangeRecords(root, r.TouchedPaths) {
+				r.PathRecords[rc.Path] = fingerprintChangeRecords([]changeRecord{rc})
+			}
+		}
+	}
 	return s.withStateLock(func() error {
 		l, err := s.loadReceipts()
 		if err != nil {
@@ -565,11 +593,75 @@ func dispositionFromReceipt(r *ReconcileReceipt) TaskDisposition {
 // ledger is treated as satisfied so a bookkeeping failure never blocks a commit
 // (§ fix #7).
 func (s *Store) CoverageSatisfied(paths []string) bool {
+	return len(s.UncoveredPaths(paths)) == 0
+}
+
+// UncoveredPaths returns the staged paths no resolving receipt accounts for.
+// Empty means the commit is covered.
+//
+// Coverage is answered per path. A receipt declaring {a.go, b.go} covers a
+// commit of {a.go}: committing a subset of declared work is still declared
+// work, and requiring the whole set to match is what made this gate impossible
+// to satisfy (docs/design/unsatisfiable-gate.md).
+//
+// Content sensitivity is unchanged, because the per-path key is the same
+// changeRecord the set fingerprint was built from — op, mode, HEAD blob, new
+// blob. Edit a file after declaring it and its record changes, so it stops
+// being covered and the gate blocks again, which is the point of the gate.
+func (s *Store) UncoveredPaths(paths []string) []string {
 	l, err := s.loadReceipts()
 	if err != nil {
-		return true // corrupt receipts → don't block the commit
+		return nil // corrupt receipts → don't block the commit
 	}
-	return receiptResolves(findReceipt(l, s.CoverageReceiptID(paths)))
+
+	// A receipt over exactly this set still covers it. Checked first so the
+	// ordinary declare-then-commit flow costs one lookup.
+	if receiptResolves(findReceipt(l, s.CoverageReceiptID(paths))) {
+		return nil
+	}
+
+	records := s.indexChangeRecords(sortedCopy(paths))
+	byPath := make(map[string]string, len(records))
+	for _, rc := range records {
+		byPath[rc.Path] = fingerprintChangeRecords([]changeRecord{rc})
+	}
+
+	var uncovered []string
+	for _, p := range sortedCopy(paths) {
+		want, ok := byPath[p]
+		if !ok {
+			// No index record: nothing staged for this path after all.
+			continue
+		}
+		if !s.pathCovered(l, p, want) {
+			uncovered = append(uncovered, p)
+		}
+	}
+	return uncovered
+}
+
+// pathCovered reports whether any resolving receipt declared this exact path at
+// this exact change record.
+func (s *Store) pathCovered(l *receiptLedger, path, record string) bool {
+	if l == nil {
+		return false
+	}
+	for i := range l.Receipts {
+		r := &l.Receipts[i]
+		if !receiptResolves(r) {
+			continue
+		}
+		if got, ok := r.PathRecords[path]; ok && got == record {
+			return true
+		}
+	}
+	return false
+}
+
+func sortedCopy(paths []string) []string {
+	out := append([]string(nil), paths...)
+	sort.Strings(out)
+	return out
 }
 
 // CoverageReceiptID computes the work-generation id for a set of repo-relative
@@ -622,12 +714,38 @@ func (s *Store) unitForSession(sessionID string, dirtyAll, dirtyTracked map[stri
 		}
 		return out
 	}
+	// Whatever is staged is part of the unit, always. The index is definitionally
+	// what a commit will record and what the pre-commit gate will judge, so
+	// reconcile has to see at least that much or the two disagree about what the
+	// work even is — which is how the gate became impossible to satisfy. Work
+	// that arrived through a shell command rather than Edit/Write is attributed
+	// to nobody, and before this it was invisible to reconcile while being
+	// perfectly visible to the gate. See docs/design/unsatisfiable-gate.md.
+	withStaged := func(unit []string) []string {
+		seen := map[string]bool{}
+		for _, p := range unit {
+			seen[p] = true
+		}
+		out := append([]string(nil), unit...)
+		staged, err := s.StagedFiles()
+		if err != nil {
+			return out
+		}
+		for _, p := range staged {
+			if !seen[p] && s.IsWorkProduct(p) {
+				seen[p] = true
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+
 	if sessionID != "" {
 		// An explicit session with no authored work → empty unit (allow).
-		return intersect(s.SessionTouchedThisTurn(sessionID))
+		return withStaged(intersect(s.SessionTouchedThisTurn(sessionID)))
 	}
 	if sess := s.mostRecentTouchedSession(); sess != nil {
-		return intersect(touchedCodePaths(s, sess))
+		return withStaged(intersect(touchedCodePaths(s, sess)))
 	}
 	// No session context at all: we cannot attribute anything, so guess from the
 	// repo. Tracked changes always count. Untracked files are ambiguous — a newly
@@ -649,7 +767,7 @@ func (s *Store) unitForSession(sessionID string, dirtyAll, dirtyTracked map[stri
 	if len(untracked) <= maxUntrackedFallback {
 		out = append(out, untracked...)
 	}
-	return out
+	return withStaged(out)
 }
 
 // findReceipt returns the receipt for workGenID from an already-loaded ledger.
