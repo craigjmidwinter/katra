@@ -1,0 +1,58 @@
+<title>The unsatisfiable gate</title>
+<style>
+:root{--bg:#f7f2e8;--ink:#2c2823;--rule:#c9bda4;--accent:#8a3d24;--muted:#6f6656;--bad:#b5502f;--ok:#4a8a5c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1c1a17;--ink:#ece5d8;--rule:#3a352e;--accent:#e08a5c;--muted:#a99a80;--bad:#e08a5c;--ok:#5aa877}}
+:root[data-theme="dark"]{--bg:#1c1a17;--ink:#ece5d8;--rule:#3a352e;--accent:#e08a5c;--muted:#a99a80;--bad:#e08a5c;--ok:#5aa877}
+body{background:var(--bg);color:var(--ink);font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;margin:0;padding:1.5rem}
+p.lede{font-family:Georgia,serif;font-size:15px;color:var(--muted);max-width:64ch;margin:0 0 1.6rem;line-height:1.55}
+h2{font-size:.74rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:1.7rem 0 .5rem;font-weight:600}
+pre{border:1px solid var(--rule);padding:.8rem 1rem;overflow-x:auto;margin:0;border-radius:2px;white-space:pre}
+pre.bad{border-left:3px solid var(--bad)}
+pre.ok{border-left:3px solid var(--ok)}
+.grid{display:grid;gap:1rem}
+@media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+</style>
+<p class="lede">A gate that fires wrongly costs one argument. A gate that <em>cannot pass</em> costs the
+practice — every session it blocks either loses its commits or learns to reach for
+<code>--no-verify</code>. Reported from chesscast after seven blocked commits in one session.</p>
+<h2>Sequence 1 &middot; a second commit in the same turn</h2>
+<div class="grid">
+<div><h2 style="margin-top:0">before</h2><pre class="bad">$ katra reconcile status
+reconcile: no changed code in the working tree — nothing to reconcile
+
+$ git commit -m &quot;feat&quot;
+katra: staged code isn&#x27;t covered by a reconciliation receipt.
+  Declare it:   katra reconcile --advance/--close &lt;slug&gt;  ...
+                                                          [blocked, exit 2]
+
+$ katra reconcile --no-task --reason &quot;declaring the staged work&quot;
+✓ recorded: this work advances no task
+                                          gate exit after declaring: 2
+
+$ katra reconcile --skip --reason &quot;just let me commit&quot;
+✓ skipped this unit of work
+                                            gate exit after --skip: 2</pre></div>
+<div><h2 style="margin-top:0">after</h2><pre class="ok">$ katra reconcile status
+work-generation: 864512ae0b6f
+changed code (1): y.go
+status: needs reconciliation —
+
+$ katra reconcile --no-task --reason &quot;declaring the staged work&quot;
+✓ recorded: this work advances no task
+                                          gate exit after declaring: 0
+
+$ git commit -m &quot;feat&quot;
+                                                            [allowed]</pre></div>
+</div>
+<h2>Sequence 2 &middot; an ordinary split commit</h2>
+<pre class="ok">$ katra reconcile status
+status: ✓ reconciled — the gate will allow a stop
+
+$ git add a.go        # commit this part first
+$ git commit -m &quot;a&quot;
+                                              BEFORE: [blocked, exit 2]
+                                              AFTER:  [allowed, exit 0]</pre>
+<h2>the receipt those remedies wrote</h2>
+<pre class="bad">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  = SHA-256 of the empty string — a receipt covering nothing,
+    written cheerfully, forever.</pre>

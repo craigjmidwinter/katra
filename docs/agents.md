@@ -73,6 +73,33 @@ the operation.
 convention for stopping a tool call — not the plain 0/1 every other katra
 command uses. See [CLI reference: Exit codes](cli#exit-codes).
 
+### What the commit gate covers
+
+Coverage is answered **per path**, not per set. A receipt declaring
+`{a.go, b.go}` covers a commit of `{a.go}` — committing part of declared work is
+still declared work, so an ordinary split commit is not blocked. Content is
+still checked: edit a file after declaring it and the gate asks again, because
+the per-path key is that path's change record (op, mode, HEAD blob, new blob),
+not merely its name.
+
+The gate judges exactly the set `reconcile` treats as work — the staged paths
+outside the katra store and outside `.claude/`. Asking both sides the same
+question is what keeps them from disagreeing about what the work is.
+
+If the gate ever blocks over a path `katra reconcile` cannot see, it says so and
+names the path:
+
+    katra: staged code isn't covered by a reconciliation receipt, and
+    `katra reconcile` cannot see it either — declaring will not help.
+      invisible to reconcile: y.go
+      This is a katra bug, not something you did wrong.
+
+That state should be unreachable. The message exists because it was reachable,
+in three different ways, and each one presented as an ordinary "declare it"
+prompt that no amount of declaring would satisfy — see
+[the design note](design/unsatisfiable-gate). If you see it, `--no-verify` is
+the correct response and the report is welcome.
+
 ### What the Stop gate actually blocks
 
 This is the part worth understanding, because a gate that fires wrongly is worse
