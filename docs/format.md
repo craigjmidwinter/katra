@@ -110,6 +110,31 @@ summary: tuned the magnus model
 | `entry` | task, decision | The entry slug that recorded or occasioned it. |
 | `supersedes` | decision | Slugs this decision replaces. |
 | `superseded-by` | decision | The mirror of the above. |
+| `author` | any | An **opaque** actor token, stamped at creation from `$KATRA_ACTOR`. See below. |
+
+### `author`
+
+Recorded when a node is created, from the `KATRA_ACTOR` environment variable,
+so that work can be attributed to whoever produced it.
+
+**katra never interprets the token.** It does not parse it, validate its shape,
+map it to a role, or resolve it to anything — validation would be interpretation,
+because a rule about what a token may look like is a rule about what tokens mean.
+Whoever reads the store decides that. An environment variable rather than a
+lookup, so the field works under any harness, in CI, and on a machine with none
+of the infrastructure that issues the tokens.
+
+**Absent is a value.** An unset `KATRA_ACTOR` leaves the key off entirely; it is
+never written empty and never defaults to a role. A person running `katra task
+new` by hand is not a manager, and a default would flatter whoever forgot to set
+the variable. Anything reporting authorship must report its unattributed count
+beside it — `katra doctor` does.
+
+Nodes created before this field existed carry no author and cannot be attributed
+retroactively. That is a permanent gap in the record, not a bug to fix.
+
+An explicit `author` in frontmatter wins over the environment, so importing or
+reconstructing history is not overwritten by whatever happens to be set.
 
 `specced` sits between `todo` and `doing`: a design exists, committed, and the
 task points at it, but nothing has been built yet. It is optional — `todo →

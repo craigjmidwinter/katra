@@ -61,6 +61,17 @@ type Frontmatter struct {
 	Featured bool     `yaml:"featured,omitempty"` // lands in the "Deep Dives" zone
 	Pinned   bool     `yaml:"pinned,omitempty"`
 
+	// Author is an opaque actor token recorded when the node is created, from
+	// $KATRA_ACTOR. katra never interprets it: it does not parse it, validate
+	// its shape, map it to a role, or resolve it to anything. Whoever reads the
+	// store decides what it means.
+	//
+	// Absent is a value. An unset $KATRA_ACTOR leaves the key off entirely
+	// rather than writing a placeholder or assuming a tier — a person running
+	// `katra task new` by hand is not a manager, and a default would flatter
+	// whoever forgot to set the variable. See docs/design/claim-seam.md.
+	Author string `yaml:"author,omitempty"`
+
 	// Node-model fields (Katra). Empty Type means "entry" for back-compat.
 	Type         string   `yaml:"type,omitempty"`          // "" or "entry" = entry; else task|epic|decision|article
 	Status       string   `yaml:"status,omitempty"`        // task: todo|specced|doing|done|cut ; epic: planned|active|done|cut ; decision: proposed|accepted|superseded|deprecated

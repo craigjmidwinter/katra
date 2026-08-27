@@ -121,6 +121,21 @@ only governs the first stage.
 The ledger lives in `katra/.state/`. See [the design note](memory-consume) for
 the full pipeline.
 
+## `KATRA_ACTOR`
+
+Not a config key — an environment variable, read when a node is created and
+stamped into its `author` field.
+
+```sh
+export KATRA_ACTOR="whatever-identifies-you"
+```
+
+The token is opaque: katra stores it and hands it back, and never interprets it.
+Unset means the `author` key is simply absent, never a placeholder and never a
+default role. `katra doctor` reports how many nodes are unattributed, because a
+count of authored work without that number measures who remembered to set the
+variable. See [the format reference](format#author).
+
 ## What is not configurable
 
 Some absences are deliberate:

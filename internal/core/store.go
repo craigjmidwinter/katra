@@ -219,6 +219,13 @@ func (s *Store) NewNode(nodeType string, fm Frontmatter, body string) (*Entry, e
 	if fm.Time == "" {
 		fm.Time = NowTime()
 	}
+	// Stamped at creation, because authorship is a fact about the moment a node
+	// entered the world and cannot be recovered afterwards. An explicit Author
+	// on the passed frontmatter wins, so a caller reconstructing history is not
+	// overwritten by the ambient environment.
+	if fm.Author == "" {
+		fm.Author = ActorToken()
+	}
 	if fm.Title == "" {
 		return nil, fmt.Errorf("title is required")
 	}

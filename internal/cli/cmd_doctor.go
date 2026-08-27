@@ -78,6 +78,21 @@ func doctorCmd() *cobra.Command {
 				}
 			}
 
+			// Authorship coverage. Reported rather than assumed: a count of
+			// authored nodes without the count of unauthored ones measures
+			// whoever remembered to set $KATRA_ACTOR, not who did the work.
+			// Never an error -- an unattributed node is not broken, and nodes
+			// created before the field existed can never be attributed at all.
+			if tasks, err := s.ListNodes("task"); err == nil && len(tasks) > 0 {
+				if missing, err := s.UnattributedNodes("task"); err == nil && len(missing) > 0 {
+					fmt.Printf("  ⚠ no author on %d of %d tasks (%d%% attributable)\n",
+						len(missing), len(tasks), (len(tasks)-len(missing))*100/len(tasks))
+					if core.ActorToken() == "" {
+						fmt.Printf("      $%s is unset here, so new nodes will be unattributed too\n", core.ActorEnv)
+					}
+				}
+			}
+
 			// `katra task spec` writes a dangling ref regardless (the spec may land
 			// in the same change), so doctor is where it actually gets reported.
 			if nodes, err := s.ListNodes(); err == nil {
