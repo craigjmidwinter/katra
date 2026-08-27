@@ -538,3 +538,50 @@ func TestPreCommitStoreOnlyStagedAllows(t *testing.T) {
 		t.Fatal("store-only staged bookkeeping should never be blocked")
 	}
 }
+
+// TestCheckpointDoesNotLandInAnUnrelatedDraft is the regression for what
+// happened on the feature's first live use: a session-wide checkpoint was
+// appended to an entry opened hours earlier on a different subject, because
+// --entry defaulted to the active draft. A checkpoint is session-scoped; a
+// draft is subject-scoped.
+func TestCheckpointDoesNotLandInAnUnrelatedDraft(t *testing.T) {
+	s, repo := cliGitStore(t)
+	t.Setenv("KATRA_DIR", s.Dir)
+
+	unrelated, err := s.NewEntry(core.Frontmatter{Title: "Something else entirely"}, "opened hours ago")
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(repo, "a.go"), "a1\n")
+
+	withStdin(t, `{"session_id":"s","hook_event_name":"PreCompact"}`)
+	if err := hookSnapshotRun("pre-compact"); err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := os.ReadFile(unrelated.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "### Checkpoint") {
+		t.Error("the checkpoint landed inside an unrelated draft")
+	}
+
+	// It must still have been captured somewhere.
+	entries, err := s.ListNodes("entry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var captured bool
+	for _, e := range entries {
+		if e.Slug == unrelated.Slug {
+			continue
+		}
+		if body, err := os.ReadFile(e.Path); err == nil && strings.Contains(string(body), "### Checkpoint") {
+			captured = true
+		}
+	}
+	if !captured {
+		t.Error("avoiding the unrelated draft dropped the checkpoint entirely")
+	}
+}
