@@ -233,6 +233,7 @@ Create a task (status `todo`, or `specced` if `--spec` is given).
 | --- | --- |
 | `--spec REF` | Spec artifact ref (node slug, or a path relative to the repo root); creates the task already `specced`. |
 | `--effort S\|M\|L` | Effort estimate. |
+| `--horizon now\|next\|later` | Planning horizon. |
 | `--epic SLUG` | Parent epic slug. |
 | `--tags a,b` | Comma-separated tags. |
 | `--summary S` | One-line summary. |
