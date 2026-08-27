@@ -2,6 +2,11 @@
 title: You needed katra to contribute to katra
 date: "2026-08-27"
 time: "11:03:34"
+hash: 63aa95d
+stat:
+    f: 8
+    a: 232
+    d: 26
 ---
 
 Verified on katra's own repo before touching anything. craigjmidwinter/katra is PUBLIC, .claude/settings.json is tracked, and all seven committed hooks called a bare katra with no guard. katra is not on a bare PATH — env -i PATH=/usr/bin:/bin sh -c 'command -v katra' returns nothing. So a contributor cloning katra to work on katra got seven hooks calling a binary they do not have, put there by katra's own installer. A bootstrap trap on the tool's front door.
