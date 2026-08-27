@@ -21,11 +21,32 @@ import (
 // is computed; none of it asks the session a question, because the session may
 // be out of room to answer one.
 type Checkpoint struct {
-	Doing      []Entry            // tasks in flight
-	Specced    []Entry            // tasks owed: designed, not started
-	Draft      *Entry             // the active draft, if any
-	InFlight   []string           // changed code paths reconcile can see
-	Undeclared bool               // that code has no covering task declaration
+	Doing   []Entry // tasks in flight
+	Specced []Entry // tasks owed: designed, not started
+	Draft   *Entry  // the active draft, if any
+
+	// AtRisk is every uncommitted work-product path: what a clear would
+	// actually destroy. Read from git status, not from reconcile.
+	//
+	// This is the correction the feature's first instance test forced.
+	// BuildCheckpoint used to take its file list from EvaluateReconcile, whose
+	// unit is *this turn's authored paths* — and whose docstring says plainly
+	// that a pre-existing dirty file the session never touched is never pulled
+	// in, so Stop cannot block a net-no-change turn. That constraint is right
+	// for a Stop gate and wrong here: Stop must not block a session for
+	// somebody else's dirt, while a checkpoint must report exactly that file,
+	// because a pre-existing dirty file IS what is at risk when a session ends.
+	//
+	// The original composition was reasoned — one answer rather than two that
+	// can disagree — but the two questions genuinely differ. "What did this
+	// turn author that is undeclared" is not "what is lost if this session ends
+	// now". See docs/design/checkpoint-measures-risk.md.
+	AtRisk []string
+
+	// Undeclared reports that reconcile sees changed code with no covering task
+	// declaration. Scoped to reconcile's turn-based unit, so it is an annotation
+	// on the declaration question and never the risk list.
+	Undeclared bool
 	Memory     []MemoryObligation // unresolved memory generations
 	Branch     string
 	Head       string
@@ -46,14 +67,17 @@ type Checkpoint struct {
 // A `specced` task alone does not count: work that is designed and unstarted is
 // already durable on disk, and losing context does not lose it.
 //
-// Undocumented is here because the first three inputs are all derived from the
-// record this feature exists to repair. InFlight in particular measures the
-// dirty working tree, which means it measures *uncommitted* work rather than
-// *undocumented* work — so a session that commits as it goes empties it, and
-// scores zero at exactly the moment it is fullest. Counting commits since the
-// last chronicle entry is the input a busy session cannot accidentally starve.
+// The inputs answer three different questions on purpose, because each one
+// alone has been observed to miss the case that mattered:
+//
+//   - AtRisk: what is uncommitted right now. The only thing a clear destroys,
+//     read from git rather than from any record.
+//   - Doing / Memory: what the record says is open.
+//   - Undocumented: commits since anything was written down — the input no
+//     missing discipline can starve, since AtRisk empties for a session that
+//     commits as it goes and Doing depends on somebody maintaining a board.
 func (c Checkpoint) HasOpenLoops() bool {
-	return len(c.Doing) > 0 || len(c.InFlight) > 0 || len(c.Memory) > 0 || c.Undocumented > 0
+	return len(c.AtRisk) > 0 || len(c.Doing) > 0 || len(c.Memory) > 0 || c.Undocumented > 0
 }
 
 // BuildCheckpoint derives the current checkpoint from the store.
@@ -75,13 +99,23 @@ func (s *Store) BuildCheckpoint() Checkpoint {
 		c.Draft = d
 	}
 
-	// reconcile is the existing evaluator for "what has this session changed and
-	// has it been declared". Composing it here rather than re-deriving keeps one
-	// answer to that question instead of two that can disagree.
+	// Ask git what is uncommitted. Directly, not through reconcile: this is the
+	// question "what is lost if this session ends now", and git answers it in a
+	// millisecond without any notion of whose turn touched what.
+	if dirty, err := s.DirtyPaths(); err == nil {
+		for _, p := range dirty {
+			if s.IsWorkProduct(p) {
+				c.AtRisk = append(c.AtRisk, p)
+			}
+		}
+		sort.Strings(c.AtRisk)
+	}
+
+	// reconcile still answers the declaration question, which is a different
+	// one and stays scoped to the turn. Its file list is deliberately not used
+	// as the risk list.
 	if r := s.EvaluateReconcile(); r.Applicable {
-		c.InFlight = append([]string(nil), r.TouchedPaths...)
-		sort.Strings(c.InFlight)
-		c.Undeclared = r.Task.Kind == "" || r.Task.Kind == "unknown"
+		c.Undeclared = len(r.TouchedPaths) > 0 && (r.Task.Kind == "" || r.Task.Kind == "unknown")
 		c.Memory = r.Memory
 	}
 
@@ -177,14 +211,15 @@ func (c Checkpoint) Render() string {
 			fmt.Fprintf(&b, "- `%s` — %s\n", t.Slug, t.FM.Title)
 		}
 	}
-	if len(c.InFlight) > 0 {
-		state := "declared"
-		if c.Undeclared {
-			state = "**not yet declared** — `katra reconcile --advance/--close <slug>`"
-		}
-		fmt.Fprintf(&b, "\n**Changed code** (%d, %s)\n", len(c.InFlight), state)
-		for _, p := range c.InFlight {
+	// First, because it is the only section describing something that can be
+	// lost. Everything else survives a clear.
+	if len(c.AtRisk) > 0 {
+		fmt.Fprintf(&b, "\n**Uncommitted — lost if this session ends** (%d)\n", len(c.AtRisk))
+		for _, p := range c.AtRisk {
 			fmt.Fprintf(&b, "- `%s`\n", p)
+		}
+		if c.Undeclared {
+			b.WriteString("- not yet declared — `katra reconcile --advance/--close <slug>`\n")
 		}
 	}
 	if len(c.Memory) > 0 {

@@ -116,7 +116,7 @@ func printCheckpointNext(c core.Checkpoint, hadNote bool) {
 	if !hadNote {
 		fmt.Println("  add what only you know:  katra append \"…\"  (or pipe it)")
 	}
-	if c.Undeclared && len(c.InFlight) > 0 {
+	if c.Undeclared {
 		fmt.Println("  code is undeclared:      katra reconcile --advance/--close <slug>")
 	}
 }

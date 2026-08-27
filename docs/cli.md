@@ -181,9 +181,16 @@ session is about to be compacted or cleared, which is the moment knowledge is
 destroyed *between* commits — the failure `katra check` cannot help with,
 because it only speaks at commit time.
 
-Everything katra can derive is derived: tasks in flight and owed, changed code
-and whether it has been declared, unresolved memory, the branch and commit. The
-part only the session knows is added as text, `--file`, or stdin.
+Everything katra can derive is derived: **what is uncommitted right now** — the
+only thing a clear destroys, read straight from `git status` — plus tasks in
+flight and owed, unresolved memory, and the branch and commit. The part only the
+session knows is added as text, `--file`, or stdin.
+
+The uncommitted list deliberately does **not** come from `katra reconcile`.
+Reconcile's unit is *this turn's authored paths*, which correctly excludes a
+pre-existing dirty file the session never touched — right for the Stop gate,
+which must not block a session over somebody else's dirt, and wrong here, where
+that file is exactly what is at risk.
 
 | Flag | Meaning |
 | --- | --- |

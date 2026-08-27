@@ -58,7 +58,7 @@ func TestCheckpointRendersStatusNotNarrative(t *testing.T) {
 
 	got := s.BuildCheckpoint().Render()
 
-	for _, want := range []string{"Checkpoint", "In flight", "live-work", "Changed code", "a.go", "Where", "branch"} {
+	for _, want := range []string{"Checkpoint", "In flight", "live-work", "Uncommitted", "a.go", "Where", "branch"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("rendered checkpoint is missing %q:\n%s", want, got)
 		}
@@ -113,8 +113,8 @@ func TestThresholdSeesCommittedUndocumentedWork(t *testing.T) {
 	}
 
 	c := s.BuildCheckpoint()
-	if len(c.InFlight) != 0 {
-		t.Fatalf("precondition: tree should be clean, got %v", c.InFlight)
+	if len(c.AtRisk) != 0 {
+		t.Fatalf("precondition: tree should be clean, got %v", c.AtRisk)
 	}
 	if c.Undocumented == 0 {
 		t.Fatal("three committed, unchronicled commits count as zero undocumented work")
@@ -180,5 +180,73 @@ func TestCheckpointEntryIsReusedNotScattered(t *testing.T) {
 	got := s.CheckpointEntry(at)
 	if got == nil || got.Slug != made.Slug {
 		t.Errorf("CheckpointEntry did not find today's checkpoint entry (got %v)", got)
+	}
+}
+
+// TestCheckpointReportsPreExistingDirtyFile is the instance test the feature
+// failed. A session at 100% context had exactly one uncommitted file, and the
+// checkpoint reported a stale task instead — the one thing it named was wrong
+// and the one thing at risk was absent.
+//
+// The cause was composing EvaluateReconcile, whose unit is this turn's authored
+// paths and which deliberately excludes a pre-existing dirty file the session
+// never touched. Correct for a Stop gate, wrong here: that file is precisely
+// what is lost when a session ends.
+func TestCheckpointReportsPreExistingDirtyFile(t *testing.T) {
+	s, repo := gitTestStore(t)
+
+	// Committed and safe.
+	writeFile(t, filepath.Join(repo, "shipped.md"), "done\n")
+	runGit(t, repo, "add", "shipped.md")
+	runGit(t, repo, "commit", "-m", "shipped")
+
+	// The session authored something ELSE this turn. This is the condition that
+	// made the instance fail and that a fresh store does not reproduce: once a
+	// session has touched paths, reconcile stops falling back to the repo-wide
+	// dirty set, and anything it did not touch becomes invisible to it.
+	writeFile(t, filepath.Join(repo, "touched.md"), "authored\n")
+	if err := s.RecordTouched("wedged", "t1", filepath.Join(repo, "touched.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	// The at-risk artefact: dirty, and never touched through Edit/Write.
+	writeFile(t, filepath.Join(repo, "shipped.md"), "done\nplus 58 lines nobody wrote down\n")
+
+	c := s.BuildCheckpoint()
+
+	var found bool
+	for _, p := range c.AtRisk {
+		if p == "shipped.md" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("the only uncommitted file is absent from AtRisk: %v", c.AtRisk)
+	}
+	if !c.HasOpenLoops() {
+		t.Error("uncommitted work reads as nothing to lose")
+	}
+	if !strings.Contains(c.Render(), "shipped.md") {
+		t.Errorf("the rendered checkpoint does not name the at-risk file:\n%s", c.Render())
+	}
+}
+
+// TestCheckpointDoesNotDependOnASessionHavingTouchedTheFile pins the
+// distinction directly: a stale `doing` task must not be the only thing
+// reported while a dirty file goes unmentioned.
+func TestCheckpointDoesNotDependOnASessionHavingTouchedTheFile(t *testing.T) {
+	s, repo := gitTestStore(t)
+	if _, err := s.NewNode("task", Frontmatter{Title: "Stale from yesterday", Status: "doing"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(repo, "touched.md"), "authored\n")
+	if err := s.RecordTouched("wedged", "t1", filepath.Join(repo, "touched.md")); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(repo, "at-risk.md"), "unsaved reasoning\n")
+
+	got := s.BuildCheckpoint().Render()
+	if !strings.Contains(got, "at-risk.md") {
+		t.Errorf("a stale doing task was reported and the at-risk file was not:\n%s", got)
 	}
 }
