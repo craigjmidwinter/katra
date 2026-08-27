@@ -2,8 +2,11 @@
 title: Two lifetimes, two variables
 date: "2026-08-27"
 time: "10:38:45"
-author: devlog-9d
-author_role: project-session
+hash: 7c60520
+stat:
+    f: 8
+    a: 199
+    d: 67
 ---
 
 The steward caught a conflation I had already built. My first pass read one KATRA_ACTOR and wrote it to both author and claimed_by. The runtime is about to export a pane nonce for claims — a token that stops resolving when the pane dies, which is the whole elegance: a claim that no longer resolves IS the abandoned-work signal, with no expiry logic and nothing to garbage-collect. But if authorship rode that same variable, every author field would have become unreadable hex the moment a pane closed, and it would still have looked recorded. katra is the across-time half; a field that turns to garbage on pane close fails the guarantee this half exists for.
