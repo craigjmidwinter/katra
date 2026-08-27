@@ -6,6 +6,8 @@ package core
 // work — stamp the entry, close the tasks it declared, and roll up the affected
 // epics — happen in exactly one place and exactly once.
 
+import "time"
+
 // PublishResult reports what a publish did.
 type PublishResult struct {
 	Stamped bool
@@ -118,8 +120,11 @@ func (s *Store) ReconcileAdvance(slug string) error {
 	if n.Kind() != "task" {
 		return errNotATask(slug, n.Kind())
 	}
-	if n.FM.Status == "" || n.FM.Status == "todo" || n.FM.Status == "specced" {
-		n.FM.Status = "doing"
+	// Claim rather than write `doing`. Declaring that work advanced is exactly a
+	// statement that somebody took it up, which is the durable half; the stored
+	// status stays whatever it was, and `doing` is derived from the claim.
+	if !n.IsClaimed() && n.FM.Status != "done" && n.FM.Status != "cut" {
+		n.Claim(ActorToken(), time.Now())
 		if err := n.Save(); err != nil {
 			return err
 		}

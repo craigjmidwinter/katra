@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/craigjmidwinter/katra/internal/core"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ func taskCmd() *cobra.Command {
 		Use:   "task",
 		Short: "Work with tasks",
 	}
-	cmd.AddCommand(taskNewCmd(), taskListCmd(), taskStartCmd(), taskDoneCmd(), taskSpecCmd())
+	cmd.AddCommand(taskNewCmd(), taskListCmd(), taskStartCmd(), taskReleaseCmd(), taskDoneCmd(), taskSpecCmd())
 	return cmd
 }
 
@@ -118,11 +119,11 @@ func taskListCmd() *cobra.Command {
 			}
 			n := 0
 			for _, e := range nodes {
-				if len(want) > 0 && !want[e.FM.Status] {
+				if len(want) > 0 && !want[e.EffectiveStatus()] {
 					continue
 				}
 				n++
-				st := e.FM.Status
+				st := e.EffectiveStatus()
 				if st == "" {
 					st = "todo"
 				}
@@ -138,12 +139,78 @@ func taskListCmd() *cobra.Command {
 	return cmd
 }
 
+// taskStartCmd claims a task rather than writing `doing`.
+//
+// The verb is unchanged because breaking it would break every script and every
+// harness that learned it, and the intent is identical -- "I am taking this
+// up". What changed is the record: a claim is durable and honest, where a
+// stored `doing` was a guess about a session that may have ended hours ago.
 func taskStartCmd() *cobra.Command {
-	return statusCmd("start <slug>", "Mark a task as in progress (doing)", "doing")
+	return &cobra.Command{
+		Use:   "start <slug>",
+		Short: "Claim a task (its status then reads as doing)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := resolveStore()
+			if err != nil {
+				return err
+			}
+			e, err := s.GetNode(args[0])
+			if err != nil {
+				return err
+			}
+			if e.Kind() != "task" {
+				return fmt.Errorf("%s is a %s, not a task", e.Slug, e.Kind())
+			}
+			e.Claim(core.ActorToken(), time.Now())
+			if err := e.Save(); err != nil {
+				return err
+			}
+			fmt.Printf("✓ %s claimed by %s → status reads doing\n", e.Slug, e.FM.ClaimedBy)
+			if core.ActorToken() == "" {
+				fmt.Printf("  $%s is unset, so the claim cannot say who\n", core.ActorEnv)
+			}
+			return nil
+		},
+	}
 }
 
 func taskDoneCmd() *cobra.Command {
 	return statusCmd("done <slug>", "Mark a task as done", "done")
+}
+
+// taskReleaseCmd drops a claim without finishing the task.
+//
+// The counterpart start needs: before this, a task could be started and only
+// ever moved forward. A claim that cannot be given up becomes a claim nobody
+// trusts, and abandoned-looking work is one of the two signals the seam exists
+// to produce.
+func taskReleaseCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "release <slug>",
+		Short: "Drop a claim without closing the task",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := resolveStore()
+			if err != nil {
+				return err
+			}
+			e, err := s.GetNode(args[0])
+			if err != nil {
+				return err
+			}
+			if !e.IsClaimed() {
+				return fmt.Errorf("%s carries no claim", e.Slug)
+			}
+			was := e.FM.ClaimedBy
+			e.ReleaseClaim()
+			if err := e.Save(); err != nil {
+				return err
+			}
+			fmt.Printf("✓ %s released (was claimed by %s) → status reads %s\n", e.Slug, was, e.EffectiveStatus())
+			return nil
+		},
+	}
 }
 
 // statusCmd builds a subcommand that loads a node by slug, sets its status, and saves.
@@ -162,6 +229,12 @@ func statusCmd(use, short, status string) *cobra.Command {
 				return err
 			}
 			e.FM.Status = status
+			// A terminal status drops any claim. Leaving one behind would show
+			// up as claimed-but-no-live-session -- the seam's signal for
+			// abandoned work -- on a task that was simply finished.
+			if status == "done" || status == "cut" {
+				e.ReleaseClaim()
+			}
 			if err := e.Save(); err != nil {
 				return err
 			}
