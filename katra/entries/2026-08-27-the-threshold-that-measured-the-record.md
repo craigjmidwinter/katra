@@ -2,6 +2,11 @@
 title: The threshold that measured the record
 date: "2026-08-27"
 time: "09:36:01"
+hash: d3ad722
+stat:
+    f: 11
+    a: 404
+    d: 41
 closes:
     - make-the-checkpoint-threshold-see-undocumented-work
     - stop-checkpoints-landing-in-an-unrelated-draft
