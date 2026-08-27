@@ -184,8 +184,15 @@ func (s *Store) ActiveDraft() (*Entry, error) {
 }
 
 // Get returns the entry with the given slug.
+// Get resolves a slug across every node type, not only entries.
+//
+// It used to resolve through List(), which is ListNodes("entry"), so `katra
+// decide` created a decision that `katra append --entry <slug>` could not
+// address — a node could be created with a summary and then never composed with
+// the tool that created it, forcing the body to be written outside katra. That
+// is the exact displacement katra exists to remove.
 func (s *Store) Get(slug string) (*Entry, error) {
-	all, err := s.List()
+	all, err := s.ListNodes()
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +201,7 @@ func (s *Store) Get(slug string) (*Entry, error) {
 			return &all[i], nil
 		}
 	}
-	return nil, fmt.Errorf("no entry with slug %q", slug)
+	return nil, fmt.Errorf("no node with slug %q", slug)
 }
 
 // NewEntry creates and writes a new draft entry, returning it.

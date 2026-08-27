@@ -72,7 +72,7 @@ Append markdown to a draft. Takes text arguments, `--file`, or stdin.
 
 | Flag | Meaning |
 | --- | --- |
-| `--entry SLUG` | Target entry. Defaults to the active draft. |
+| `--entry SLUG` | Target node — any type, not only entries. Defaults to the active draft. |
 | `--file F` | Read markdown from a file; `-` for stdin. |
 
 ### `katra capture <file>`
@@ -83,7 +83,7 @@ block to the active draft.
 | Flag | Meaning |
 | --- | --- |
 | `--caption C` | Caption for the media. |
-| `--entry SLUG` | Target entry. Defaults to the active draft. |
+| `--entry SLUG` | Target node — any type, not only entries. Defaults to the active draft. |
 | `--name N` | Store under this filename. |
 | `--as KIND` | Force `image`, `video` or `embed`. |
 | `--no-append` | Import only; do not add it to an entry. |
@@ -108,7 +108,7 @@ diffstat, moving it from *In Progress* into the log. Defaults to `HEAD`.
 | Flag | Meaning |
 | --- | --- |
 | `--hash a,b,c` | Commit hash(es). Repeat or comma-separate for a chapter. |
-| `--entry SLUG` | Target entry. Defaults to the active draft. |
+| `--entry SLUG` | Target node — any type, not only entries. Defaults to the active draft. |
 | `--closes SLUG` | Task slug(s) this entry completes — marks them done and links them. |
 | `--commit` | `git add` + commit the stamped entry. |
 
@@ -187,17 +187,28 @@ part only the session knows is added as text, `--file`, or stdin.
 
 | Flag | Meaning |
 | --- | --- |
-| `--entry SLUG` | Target entry. Defaults to the active draft. |
+| `--entry SLUG` | Write into this node instead of a checkpoint entry. |
 | `--file PATH` | Read the note from a file (`-` for stdin). |
 | `--dry-run` | Print the checkpoint instead of writing it. |
 
-With no active draft, one is created — a session running out of room should not
-have to make a second decision.
+A checkpoint gets its own entry: an explicit `--entry`, else today's checkpoint
+entry, else a new one. It deliberately does **not** default to the active draft
+— a checkpoint is session-scoped and a draft is subject-scoped, and the active
+draft of a long session is usually about something else. Reusing today's keeps
+one checkpoint entry per day rather than a scatter.
 
 The `PreCompact` hook runs this automatically when there is something in flight,
 so the derived half survives even if the session does nothing. It stays silent
 when nothing is in flight, because a hook that fires every time is one people
 mute.
+
+"Something in flight" counts a started task, changed paths, unresolved memory —
+and **commits since anything was written down**. That last input exists because
+the first three are all derived from the record a checkpoint exists to repair:
+changed paths measure the *dirty tree*, so a session that commits as it goes
+empties them and scores zero at exactly the moment it is fullest. Commits that
+only touch the katra store do not count, since committing an entry *is* writing
+it down.
 
 ### `katra doctor`
 

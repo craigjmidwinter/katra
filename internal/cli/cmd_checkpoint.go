@@ -59,28 +59,18 @@ have to make a second decision.`,
 				return nil
 			}
 
-			e, err := targetEntry(s, slug)
+			e, created, err := checkpointTarget(s, c, slug, block)
 			if err != nil {
-				// No active draft and none named: make one rather than refuse.
-				// Refusing here would send the session to `katra new` at exactly
-				// the moment it has least room to notice it was told to.
-				e, err = s.NewEntry(core.Frontmatter{
-					Title:   core.CheckpointTitle(c.At),
-					Summary: "Open loops captured before clearing context",
-					Tags:    []string{"checkpoint"},
-				}, block)
-				if err != nil {
-					return err
-				}
-				fmt.Printf("✓ draft created: %s\n", e.Slug)
-				printCheckpointNext(c, strings.TrimSpace(note) != "")
-				return nil
-			}
-
-			if err := s.AppendBody(e, block); err != nil {
 				return err
 			}
-			fmt.Printf("✓ checkpoint written to %s\n", e.Slug)
+			if created {
+				fmt.Printf("✓ checkpoint written to new entry %s\n", e.Slug)
+			} else {
+				if err := s.AppendBody(e, block); err != nil {
+					return err
+				}
+				fmt.Printf("✓ checkpoint written to %s\n", e.Slug)
+			}
 			printCheckpointNext(c, strings.TrimSpace(note) != "")
 			return nil
 		},
@@ -90,6 +80,32 @@ have to make a second decision.`,
 	cmd.Flags().StringVar(&fromFile, "file", "", "read the note from a file ('-' for stdin)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print the checkpoint instead of writing it")
 	return cmd
+}
+
+// checkpointTarget picks where a checkpoint lands: an explicit --entry, else
+// today's checkpoint entry, else a new one. Never someone's unrelated draft.
+//
+// It deliberately does not default to the active draft. A checkpoint is
+// session-scoped and a draft is subject-scoped, and the active draft of a long
+// session is usually about something else entirely — which is how the first
+// live checkpoint landed inside an entry opened hours earlier on another topic.
+//
+// created reports whether the entry was made with the block already in it, so
+// the caller does not append twice.
+func checkpointTarget(s *core.Store, c core.Checkpoint, slug, block string) (e *core.Entry, created bool, err error) {
+	if slug != "" {
+		e, err = s.Get(slug)
+		return e, false, err
+	}
+	if e = s.CheckpointEntry(c.At); e != nil {
+		return e, false, nil
+	}
+	e, err = s.NewEntry(core.Frontmatter{
+		Title:   core.CheckpointTitle(c.At),
+		Summary: "Open loops captured before clearing context",
+		Tags:    []string{"checkpoint"},
+	}, block)
+	return e, true, err
 }
 
 // printCheckpointNext names the one thing the tool could not derive. The status

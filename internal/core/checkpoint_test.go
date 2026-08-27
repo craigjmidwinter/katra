@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestCheckpointThresholdStaysSilentWhenNothingIsInFlight is the property that
@@ -95,5 +96,89 @@ func TestCheckpointDedupesMemoryByPath(t *testing.T) {
 	}
 	if !strings.Contains(got, "`other.md`") {
 		t.Error("deduping dropped a distinct path")
+	}
+}
+
+// TestThresholdSeesCommittedUndocumentedWork is the regression for the blindness
+// the steward found on the first live use. A session that did a full day of work
+// and committed as it went has a clean tree, so InFlight is empty and the first
+// three inputs all read zero — at exactly the moment it is fullest.
+func TestThresholdSeesCommittedUndocumentedWork(t *testing.T) {
+	s, repo := gitTestStore(t)
+
+	for _, name := range []string{"a.md", "b.md", "c.md"} {
+		writeFile(t, filepath.Join(repo, name), "work\n")
+		runGit(t, repo, "add", name)
+		runGit(t, repo, "commit", "-m", "did "+name)
+	}
+
+	c := s.BuildCheckpoint()
+	if len(c.InFlight) != 0 {
+		t.Fatalf("precondition: tree should be clean, got %v", c.InFlight)
+	}
+	if c.Undocumented == 0 {
+		t.Fatal("three committed, unchronicled commits count as zero undocumented work")
+	}
+	if !c.HasOpenLoops() {
+		t.Error("a day of committed work with nothing written down reads as 'nothing to lose'")
+	}
+	if !strings.Contains(c.Render(), "Undocumented work") {
+		t.Error("the block does not tell the reader why it fired")
+	}
+}
+
+// TestChroniclingClearsTheCounter is the property that keeps the new input from
+// being permanently loud: it must fall to zero when someone does the thing the
+// hook is asking for.
+func TestChroniclingClearsTheCounter(t *testing.T) {
+	s, repo := gitTestStore(t)
+	writeFile(t, filepath.Join(repo, "a.md"), "work\n")
+	runGit(t, repo, "add", "a.md")
+	runGit(t, repo, "commit", "-m", "did a")
+
+	if s.BuildCheckpoint().Undocumented == 0 {
+		t.Fatal("precondition: the commit should count as undocumented")
+	}
+
+	// Chronicle it: an entry stamped with that commit.
+	head := strings.TrimSpace(runGit(t, repo, "rev-parse", "HEAD"))
+	if _, err := s.NewNode("entry", Frontmatter{Title: "Wrote it down", Hash: head}, "body"); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := s.BuildCheckpoint().Undocumented; got != 0 {
+		t.Errorf("Undocumented = %d after chronicling the commit, want 0", got)
+	}
+}
+
+// TestStoreOnlyCommitsAreNotUndocumentedWork: a commit that only touches katra/
+// *is* chronicling, so counting it would mean the counter could never be
+// cleared by writing.
+func TestStoreOnlyCommitsAreNotUndocumentedWork(t *testing.T) {
+	s, repo := gitTestStore(t)
+	runGit(t, repo, "add", "-A")
+	runGit(t, repo, "commit", "-m", "store only")
+
+	if got := s.BuildCheckpoint().Undocumented; got != 0 {
+		t.Errorf("Undocumented = %d for a store-only commit, want 0", got)
+	}
+}
+
+// TestCheckpointEntryIsReusedNotScattered: one checkpoint entry per day, rather
+// than a new one on every compaction of a long session.
+func TestCheckpointEntryIsReusedNotScattered(t *testing.T) {
+	s, _ := gitTestStore(t)
+	at := time.Now()
+
+	if s.CheckpointEntry(at) != nil {
+		t.Fatal("precondition: no checkpoint entry should exist yet")
+	}
+	made, err := s.NewEntry(Frontmatter{Title: CheckpointTitle(at)}, "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := s.CheckpointEntry(at)
+	if got == nil || got.Slug != made.Slug {
+		t.Errorf("CheckpointEntry did not find today's checkpoint entry (got %v)", got)
 	}
 }
