@@ -2,6 +2,11 @@
 title: The tool with no entry for its own release
 date: "2026-08-27"
 time: "08:44:33"
+hash: 47ddd02
+stat:
+    f: 13
+    a: 677
+    d: 11
 closes:
     - let-new-read-its-body-from-a-file-or-stdin
     - add-a-status-shaped-checkpoint-for-the-clearing-moment
