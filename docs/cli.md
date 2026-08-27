@@ -172,6 +172,33 @@ runs after the build. Check it by confirming a fresh build plus that step
 reproduces the committed file — looking at the page proves it worked once, not
 that it still works.
 
+### `katra checkpoint`
+
+Capture open loops before losing context — status, not narrative.
+
+An entry says what happened; a checkpoint says what is unfinished. Use it when a
+session is about to be compacted or cleared, which is the moment knowledge is
+destroyed *between* commits — the failure `katra check` cannot help with,
+because it only speaks at commit time.
+
+Everything katra can derive is derived: tasks in flight and owed, changed code
+and whether it has been declared, unresolved memory, the branch and commit. The
+part only the session knows is added as text, `--file`, or stdin.
+
+| Flag | Meaning |
+| --- | --- |
+| `--entry SLUG` | Target entry. Defaults to the active draft. |
+| `--file PATH` | Read the note from a file (`-` for stdin). |
+| `--dry-run` | Print the checkpoint instead of writing it. |
+
+With no active draft, one is created — a session running out of room should not
+have to make a second decision.
+
+The `PreCompact` hook runs this automatically when there is something in flight,
+so the derived half survives even if the session does nothing. It stays silent
+when nothing is in flight, because a hook that fires every time is one people
+mute.
+
 ### `katra doctor`
 
 Check the katra for problems: dangling media references and entries that fail
