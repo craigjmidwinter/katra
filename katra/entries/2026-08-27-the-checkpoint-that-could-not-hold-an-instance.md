@@ -2,6 +2,11 @@
 title: The checkpoint that could not hold an instance
 date: "2026-08-27"
 time: "10:48:38"
+hash: 1a95043
+stat:
+    f: 7
+    a: 232
+    d: 33
 ---
 
 The instance test PR #2 deserved, and it failed. getvect at 100 percent, nothing produced since 08:37. Measured before clearing: HEAD equal to origin/main, 0 ahead 0 behind, so everything committed was already pushed and a clear could destroy nothing that shipped. Exactly one artefact was at risk — site/index.html, dirty, +58/-2, with its reasoning living only in the context about to go. The checkpoint reported one in-flight item, a task that had shipped the day before, and did not mention the file. The one thing it reported was wrong and the one thing at risk was absent.
