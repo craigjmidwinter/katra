@@ -224,7 +224,10 @@ func (s *Store) NewNode(nodeType string, fm Frontmatter, body string) (*Entry, e
 	// on the passed frontmatter wins, so a caller reconstructing history is not
 	// overwritten by the ambient environment.
 	if fm.Author == "" {
-		fm.Author = ActorToken()
+		fm.Author = Author()
+	}
+	if fm.AuthorRole == "" {
+		fm.AuthorRole = AuthorRole()
 	}
 	if fm.Title == "" {
 		return nil, fmt.Errorf("title is required")

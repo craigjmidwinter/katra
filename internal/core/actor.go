@@ -5,28 +5,57 @@ import (
 	"strings"
 )
 
-// ActorEnv is the environment variable carrying the actor token.
+// Identity in katra has two lifetimes, and conflating them destroys the durable
+// one. This file holds the durable half; see claim.go for the ephemeral half.
 //
-// An environment variable rather than anything katra looks up, because katra
-// must answer "who did this" under Codex, in CI, and on a machine with none of
-// this fleet's infrastructure installed. Every harness can set a variable; a
-// harness that sets none produces honest absence.
-const ActorEnv = "KATRA_ACTOR"
+// The first version of this read a single token and wrote it to both `author`
+// and `claimed_by`. Once the runtime exports a pane nonce into that variable,
+// every author field becomes unreadable hex the moment a pane closes — and it
+// still looks recorded. katra is the across-time half of the seam; a field that
+// turns to garbage when a pane closes fails the guarantee katra exists for.
+const (
+	// AuthorEnv carries a durable, human-legible identity for whoever created
+	// a node. It must still mean something years later.
+	AuthorEnv = "KATRA_AUTHOR"
 
-// ActorToken returns the current actor token, or "" when unset.
+	// AuthorRoleEnv carries the role that identity held AT CREATION TIME.
+	//
+	// Captured rather than resolved, because resolving a name to a role later
+	// answers what the role is *today*, not what it was at authorship. Roles
+	// change, and "who ranked this, in what capacity, at the time" is the fact
+	// worth keeping.
+	AuthorRoleEnv = "KATRA_AUTHOR_ROLE"
+
+	// ClaimEnv carries the EPHEMERAL half: a runtime nonce identifying the pane
+	// holding a claim. It is expected to stop resolving when that pane dies —
+	// that is the abandoned-work signal, not a leak, and it is why no expiry
+	// logic or garbage collection exists.
+	//
+	// Declared here, beside the durable names, so the separation is visible in
+	// one place and a test can assert the two never collapse into one variable.
+	// Nothing in authorship may ever read this.
+	ClaimEnv = "KATRA_CLAIM_TOKEN"
+)
+
+// Author returns the durable author identity, or "" when unset.
 //
-// The token is opaque. katra deliberately does not validate its shape, because
-// validation is interpretation: a rule about what a token may look like is a
-// rule about what tokens mean, and the moment katra holds one of those it has
-// started resolving identity — which belongs to whoever reads the store, not to
-// katra. Whitespace is trimmed so an empty-but-set variable reads as absent
-// rather than as an author whose name is a space.
+// Opaque: katra does not parse it, check a prefix, assume a length, or validate
+// a shape. Validation is interpretation, and if the runtime changes its format
+// katra must not notice.
+func Author() string { return envToken(AuthorEnv) }
+
+// AuthorRole returns the role held at creation, or "" when unset.
 //
-// Notably NOT sourced from the Claude Code hook payload's session_id. That is a
-// harness UUID: absent under Codex, never written to a node, and adopting it
-// would tie katra's durable record to one vendor's hook shape.
-func ActorToken() string {
-	return strings.TrimSpace(os.Getenv(ActorEnv))
+// Absent is a value. An unset role is absent, never inferred and never
+// defaulted — a person running `katra task new` by hand holds no role, and
+// guessing one flatters whoever forgot to set a variable.
+func AuthorRole() string { return envToken(AuthorRoleEnv) }
+
+// envToken reads an opaque token, trimming only whitespace so that an
+// empty-but-set variable reads as absent rather than as an identity whose name
+// is a space.
+func envToken(name string) string {
+	return strings.TrimSpace(os.Getenv(name))
 }
 
 // UnattributedNodes returns the nodes of the given types that carry no author.

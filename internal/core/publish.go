@@ -124,7 +124,7 @@ func (s *Store) ReconcileAdvance(slug string) error {
 	// statement that somebody took it up, which is the durable half; the stored
 	// status stays whatever it was, and `doing` is derived from the claim.
 	if !n.IsClaimed() && n.FM.Status != "done" && n.FM.Status != "cut" {
-		n.Claim(ActorToken(), time.Now())
+		n.Claim(ClaimToken(), time.Now())
 		if err := n.Save(); err != nil {
 			return err
 		}

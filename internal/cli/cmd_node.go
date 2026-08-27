@@ -162,13 +162,13 @@ func taskStartCmd() *cobra.Command {
 			if e.Kind() != "task" {
 				return fmt.Errorf("%s is a %s, not a task", e.Slug, e.Kind())
 			}
-			e.Claim(core.ActorToken(), time.Now())
+			e.Claim(core.ClaimToken(), time.Now())
 			if err := e.Save(); err != nil {
 				return err
 			}
 			fmt.Printf("✓ %s claimed by %s → status reads doing\n", e.Slug, e.FM.ClaimedBy)
-			if core.ActorToken() == "" {
-				fmt.Printf("  $%s is unset, so the claim cannot say who\n", core.ActorEnv)
+			if core.ClaimToken() == "" {
+				fmt.Printf("  $%s is unset, so the claim cannot say who\n", core.ClaimEnv)
 			}
 			return nil
 		},

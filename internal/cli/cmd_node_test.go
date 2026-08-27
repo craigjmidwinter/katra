@@ -282,7 +282,7 @@ func TestTaskStartClaimsAndDoesNotStoreDoing(t *testing.T) {
 	if _, err := runNodeCmd(t, store.Dir, "task", "new", "Claimable task"); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("KATRA_ACTOR", "cli-token")
+	t.Setenv("KATRA_CLAIM_TOKEN", "cli-token")
 	if _, err := runNodeCmd(t, store.Dir, "task", "start", "claimable-task"); err != nil {
 		t.Fatal(err)
 	}

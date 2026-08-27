@@ -121,20 +121,31 @@ only governs the first stage.
 The ledger lives in `katra/.state/`. See [the design note](memory-consume) for
 the full pipeline.
 
-## `KATRA_ACTOR`
+## Identity variables
 
-Not a config key — an environment variable, read when a node is created and
-stamped into its `author` field.
+Not config keys — environment variables katra reads and stores verbatim. There
+are two lifetimes here and they are deliberately separate.
 
 ```sh
-export KATRA_ACTOR="whatever-identifies-you"
+export KATRA_AUTHOR="whatever-identifies-you"   # durable
+export KATRA_AUTHOR_ROLE="whatever-you-are"     # durable, captured at creation
+export KATRA_CLAIM_TOKEN="$RUNTIME_NONCE"       # ephemeral, per claim
 ```
 
-The token is opaque: katra stores it and hands it back, and never interprets it.
-Unset means the `author` key is simply absent, never a placeholder and never a
-default role. `katra doctor` reports how many nodes are unattributed, because a
-count of authored work without that number measures who remembered to set the
-variable. See [the format reference](format#author).
+`KATRA_AUTHOR` and `KATRA_AUTHOR_ROLE` are stamped into a node at creation and
+must still be legible years later. `KATRA_CLAIM_TOKEN` identifies whoever picked
+a task up and is *expected* to stop resolving when its session ends — a claim
+whose token no longer resolves is exactly how abandoned work becomes visible.
+
+**Never the same variable.** If authorship rode the ephemeral token, every
+author field would become unreadable the moment a session ended, while still
+looking recorded.
+
+All three are opaque: katra stores them and hands them back, and never parses,
+validates or resolves them. Unset means the key is simply absent — never a
+placeholder, never an inferred role. `katra doctor` reports how many nodes are
+unattributed, because a count of authored work without that number measures who
+remembered to set a variable. See [the format reference](format#author-and-author_role).
 
 ## What is not configurable
 

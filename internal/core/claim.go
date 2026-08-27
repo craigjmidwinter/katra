@@ -66,3 +66,11 @@ func (e *Entry) ReleaseClaim() {
 // the environment could not say who. Author has no equivalent because an
 // unwritten author is not a fact about the work; an unattributed claim is.
 const UnknownActor = "unknown"
+
+// ClaimToken returns the ephemeral claim token, or "" when unset.
+//
+// Deliberately NOT Author(). A claim is a runtime nonce expected to stop
+// resolving when its session ends — which is the abandoned-work signal, and the
+// reason no expiry logic exists. Authorship must survive that, so the two read
+// different variables and a test asserts they can never be the same one.
+func ClaimToken() string { return envToken(ClaimEnv) }

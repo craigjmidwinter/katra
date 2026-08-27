@@ -110,24 +110,36 @@ summary: tuned the magnus model
 | `entry` | task, decision | The entry slug that recorded or occasioned it. |
 | `supersedes` | decision | Slugs this decision replaces. |
 | `superseded-by` | decision | The mirror of the above. |
-| `author` | any | An **opaque** actor token, stamped at creation from `$KATRA_ACTOR`. See below. |
-| `claimed_by` | task | An **opaque** actor token: somebody took this up. See below. |
+| `author` | any | An **opaque**, durable identity, stamped at creation from `$KATRA_AUTHOR`. See below. |
+| `author_role` | any | The **opaque** role that identity held at creation, from `$KATRA_AUTHOR_ROLE`. |
+| `claimed_by` | task | An **opaque**, *ephemeral* token from `$KATRA_CLAIM_TOKEN`: somebody took this up. See below. |
 | `claimed_at` | task | RFC 3339 UTC timestamp of the claim. |
 
-### `author`
+### `author` and `author_role`
 
-Recorded when a node is created, from the `KATRA_ACTOR` environment variable,
-so that work can be attributed to whoever produced it.
+Recorded when a node is created, from `KATRA_AUTHOR` and `KATRA_AUTHOR_ROLE`,
+so that work can be attributed to whoever produced it and in what capacity.
 
-**katra never interprets the token.** It does not parse it, validate its shape,
-map it to a role, or resolve it to anything — validation would be interpretation,
-because a rule about what a token may look like is a rule about what tokens mean.
-Whoever reads the store decides that. An environment variable rather than a
-lookup, so the field works under any harness, in CI, and on a machine with none
-of the infrastructure that issues the tokens.
+**These are durable and must still be legible years later**, which is why they
+are deliberately *not* the same value as `claimed_by`. A claim is a runtime
+nonce that stops resolving when its pane dies — correct for a claim, fatal for
+authorship. An author field that turns to unreadable hex on pane close fails the
+across-time guarantee katra exists for, and it would still look recorded.
 
-**Absent is a value.** An unset `KATRA_ACTOR` leaves the key off entirely; it is
-never written empty and never defaults to a role. A person running `katra task
+**`author_role` is captured at creation, never resolved later.** Resolving an
+identity to a role afterwards answers what that role is *today*, not what it was
+at authorship. Roles change; who ranked this, in what capacity, at the time is
+the fact worth keeping.
+
+**katra never interprets either value.** No parsing, no prefix checks, no length
+assumptions, no shape validation — if the runtime changes its format katra must
+not notice, because validation is interpretation and interpretation belongs to
+whoever reads the store. Environment variables rather than a lookup, so the
+fields work under any harness, in CI, and on a machine with none of the
+infrastructure that issues the values.
+
+**Absent is a value.** An unset variable leaves its key off entirely; neither is
+ever written empty, and `author_role` is never inferred from the identity. A person running `katra task
 new` by hand is not a manager, and a default would flatter whoever forgot to set
 the variable. Anything reporting authorship must report its unattributed count
 beside it — `katra doctor` does.
@@ -167,7 +179,7 @@ legacy, not invalid. New claims do not write the field. Anything filtering on
 `status: doing` in stored frontmatter will stop matching newly claimed tasks and
 should read the derived status instead.
 
-An unset `$KATRA_ACTOR` still claims — the claimant is recorded as `unknown`.
+An unset `$KATRA_CLAIM_TOKEN` still claims — the claimant is recorded as `unknown`.
 That is deliberately different from no claim at all: no claim means nobody took
 the work up, while an unknown claimant means somebody did and the environment
 could not say who.
