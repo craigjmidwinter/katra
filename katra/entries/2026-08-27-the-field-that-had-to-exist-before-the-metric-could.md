@@ -2,6 +2,11 @@
 title: The field that had to exist before the metric could
 date: "2026-08-27"
 time: "10:10:05"
+hash: 10e82d7
+stat:
+    f: 11
+    a: 279
+    d: 1
 closes:
     - record-an-author-token-on-node-creation
 ---
