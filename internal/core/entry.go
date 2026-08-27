@@ -61,16 +61,23 @@ type Frontmatter struct {
 	Featured bool     `yaml:"featured,omitempty"` // lands in the "Deep Dives" zone
 	Pinned   bool     `yaml:"pinned,omitempty"`
 
-	// Author is an opaque actor token recorded when the node is created, from
-	// $KATRA_ACTOR. katra never interprets it: it does not parse it, validate
-	// its shape, map it to a role, or resolve it to anything. Whoever reads the
-	// store decides what it means.
+	// Author and AuthorRole are the DURABLE half of identity: who created this
+	// node, in what capacity, at the time. They must still mean something years
+	// from now, which is why they are deliberately not the same value as a
+	// claim: a claim is a runtime nonce that stops resolving when its pane
+	// dies, and an author that turns to unreadable hex on pane close fails the
+	// across-time guarantee katra exists for — while still looking recorded.
 	//
-	// Absent is a value. An unset $KATRA_ACTOR leaves the key off entirely
-	// rather than writing a placeholder or assuming a tier — a person running
-	// `katra task new` by hand is not a manager, and a default would flatter
-	// whoever forgot to set the variable. See docs/design/claim-seam.md.
-	Author string `yaml:"author,omitempty"`
+	// AuthorRole is captured at creation, never resolved later. Resolving an
+	// identity to a role afterwards answers what the role is *today*, not what
+	// it was at authorship, and roles change.
+	//
+	// Both are opaque: katra does not parse them, check prefixes, assume
+	// lengths, or validate shapes. Absent is a value — an unset variable leaves
+	// the key off entirely rather than writing a placeholder or inferring a
+	// role. See docs/design/claim-seam.md.
+	Author     string `yaml:"author,omitempty"`
+	AuthorRole string `yaml:"author_role,omitempty"`
 
 	// Node-model fields (Katra). Empty Type means "entry" for back-compat.
 	Type         string   `yaml:"type,omitempty"`          // "" or "entry" = entry; else task|epic|decision|article
