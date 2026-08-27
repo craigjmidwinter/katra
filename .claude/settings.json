@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "katra agent-hook post-tool",
+            "command": "command -v katra \u003e/dev/null 2\u003e\u00261 \u0026\u0026 exec katra agent-hook post-tool || exit 0",
             "type": "command"
           }
         ],
@@ -15,7 +15,7 @@
       {
         "hooks": [
           {
-            "command": "katra agent-hook snapshot --event pre-compact",
+            "command": "command -v katra \u003e/dev/null 2\u003e\u00261 \u0026\u0026 exec katra agent-hook snapshot --event pre-compact || exit 0",
             "type": "command"
           }
         ]
@@ -25,7 +25,7 @@
       {
         "hooks": [
           {
-            "command": "katra agent-hook pre-commit",
+            "command": "command -v katra \u003e/dev/null 2\u003e\u00261 \u0026\u0026 exec katra agent-hook pre-commit || exit 0",
             "type": "command"
           }
         ],
@@ -37,7 +37,7 @@
         "hooks": [
           {
             "async": true,
-            "command": "katra agent-hook snapshot --event session-end",
+            "command": "command -v katra \u003e/dev/null 2\u003e\u00261 \u0026\u0026 exec katra agent-hook snapshot --event session-end || exit 0",
             "type": "command"
           }
         ]
@@ -47,7 +47,7 @@
       {
         "hooks": [
           {
-            "command": "katra agent-hook session-start",
+            "command": "command -v katra \u003e/dev/null 2\u003e\u00261 \u0026\u0026 exec katra agent-hook session-start || exit 0",
             "type": "command"
           }
         ]
@@ -57,7 +57,7 @@
       {
         "hooks": [
           {
-            "command": "katra agent-hook stop",
+            "command": "command -v katra \u003e/dev/null 2\u003e\u00261 \u0026\u0026 exec katra agent-hook stop || exit 0",
             "type": "command"
           }
         ]
@@ -67,7 +67,7 @@
       {
         "hooks": [
           {
-            "command": "katra agent-hook turn-start",
+            "command": "command -v katra \u003e/dev/null 2\u003e\u00261 \u0026\u0026 exec katra agent-hook turn-start || exit 0",
             "type": "command"
           }
         ]

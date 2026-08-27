@@ -592,3 +592,21 @@ func workingTreeMode(abs string) string {
 	}
 	return "100644"
 }
+
+// IsTracked reports whether an absolute path is tracked by git.
+//
+// Used to tell someone that a file being written is one that ships to everyone
+// who clones the repository, which is a different act from configuring their
+// own machine.
+func (s *Store) IsTracked(absPath string) bool {
+	root, err := s.RepoRoot()
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(root, absPath)
+	if err != nil {
+		return false
+	}
+	out, err := s.gitRoot("ls-files", "--error-unmatch", "--", rel)
+	return err == nil && strings.TrimSpace(out) != ""
+}
