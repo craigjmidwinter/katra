@@ -2,6 +2,11 @@
 title: The status nobody stores
 date: "2026-08-27"
 time: "10:20:56"
+hash: 24096b8
+stat:
+    f: 15
+    a: 498
+    d: 18
 closes:
     - derive-doing-from-a-claim
 ---
