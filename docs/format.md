@@ -100,7 +100,7 @@ summary: tuned the magnus model
 
 | Key | Applies to | Values |
 | --- | --- | --- |
-| `status` | task | `todo`, `specced`, `doing`, `done`, `cut` |
+| `status` | task | `todo`, `specced`, `done`, `cut` — **`doing` is derived, not stored**. See below. |
 | `status` | epic | `planned`, `active`, `done`, `cut` |
 | `status` | decision | `proposed`, `accepted`, `superseded`, `deprecated` |
 | `spec` | task | Reference to the committed spec artifact. Resolved as a node slug in the katra first, otherwise a path relative to the **repository root** (not the katra directory). Legal in any status; setting it never moves a status backwards. |
@@ -112,6 +112,8 @@ summary: tuned the magnus model
 | `superseded-by` | decision | The mirror of the above. |
 | `author` | any | An **opaque**, durable identity, stamped at creation from `$KATRA_AUTHOR`. See below. |
 | `author_role` | any | The **opaque** role that identity held at creation, from `$KATRA_AUTHOR_ROLE`. |
+| `claimed_by` | task | An **opaque**, *ephemeral* token from `$KATRA_CLAIM_TOKEN`: somebody took this up. See below. |
+| `claimed_at` | task | RFC 3339 UTC timestamp of the claim. |
 
 ### `author` and `author_role`
 
@@ -147,6 +149,40 @@ retroactively. That is a permanent gap in the record, not a bug to fix.
 
 An explicit `author` in frontmatter wins over the environment, so importing or
 reconstructing history is not overwritten by whatever happens to be set.
+
+### `doing` is derived from a claim
+
+A task's status reads `doing` when it carries a `claimed_by`, and `doing` is
+never written to frontmatter.
+
+The reason is a boundary rather than a preference. *In progress* is the
+conjunction of two facts with different lifetimes: a **claim**, which is durable
+and survives every session, and a **live session**, which does not. Storing the
+conjunction means two systems each half-knowing it, which is how they come to
+disagree. So katra stores the durable half and answers `claimed`; whether the
+claimant is still alive is a question about *now*, and katra deliberately cannot
+answer it — that would require reading a runtime, and katra depends on nothing.
+
+Precedence when reading a task's status:
+
+1. A terminal stored status (`done`, `cut`) wins — a finished task is finished
+   whether or not someone forgot to release their claim.
+2. A claim reads as `doing`.
+3. Otherwise the stored status.
+
+`katra task start` records a claim; `katra task release` drops one without
+closing the task; `katra task done` and `cut` drop it as they finish.
+
+**Migration.** This changes what `doing` means, so: a `status: doing` written
+before this existed **keeps reading as `doing`** and nothing rewrites it. It is
+legacy, not invalid. New claims do not write the field. Anything filtering on
+`status: doing` in stored frontmatter will stop matching newly claimed tasks and
+should read the derived status instead.
+
+An unset `$KATRA_CLAIM_TOKEN` still claims — the claimant is recorded as `unknown`.
+That is deliberately different from no claim at all: no claim means nobody took
+the work up, while an unknown claimant means somebody did and the environment
+could not say who.
 
 `specced` sits between `todo` and `doing`: a design exists, committed, and the
 task points at it, but nothing has been built yet. It is optional — `todo →

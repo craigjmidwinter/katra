@@ -48,7 +48,7 @@ func (s *Store) BuildCheckpoint() Checkpoint {
 
 	if tasks, err := s.ListNodes("task"); err == nil {
 		for _, t := range tasks {
-			switch t.FM.Status {
+			switch t.EffectiveStatus() {
 			case "doing":
 				c.Doing = append(c.Doing, t)
 			case "specced":

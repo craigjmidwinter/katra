@@ -125,8 +125,10 @@ func TestTaskStatusTransitions(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if node.FM.Status != st.want {
-			t.Errorf("after %v, status = %q, want %q", st.args, node.FM.Status, st.want)
+		// EffectiveStatus: `doing` is derived from a claim now, not stored, so
+		// asserting the raw field would be asserting the old contract.
+		if got := node.EffectiveStatus(); got != st.want {
+			t.Errorf("after %v, status = %q, want %q", st.args, got, st.want)
 		}
 	}
 
@@ -220,8 +222,8 @@ func TestTaskSpecCommand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if node.FM.Status != "doing" {
-		t.Errorf("Status = %q, want doing (unchanged)", node.FM.Status)
+	if got := node.EffectiveStatus(); got != "doing" {
+		t.Errorf("Status = %q, want doing (unchanged)", got)
 	}
 	if node.FM.Spec != "some-decision" {
 		t.Errorf("Spec = %q, want some-decision", node.FM.Spec)
@@ -263,5 +265,103 @@ func TestTaskNewWithSpecFlag(t *testing.T) {
 	}
 	if node.FM.Spec != "docs/design/foo.md" {
 		t.Errorf("Spec = %q, want docs/design/foo.md", node.FM.Spec)
+	}
+}
+
+// TestTaskStartClaimsAndDoesNotStoreDoing guards the CLI path specifically.
+//
+// A core-level test that `doing` is not persisted does not cover this: the
+// command could claim *and* write the old field, both tests would pass, and the
+// seam would be quietly undone at the only entry point anyone actually uses.
+// Found by faulting exactly that and watching nothing fail.
+func TestTaskStartClaimsAndDoesNotStoreDoing(t *testing.T) {
+	store, err := core.InitStore(t.TempDir(), "CLI Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "new", "Claimable task"); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("KATRA_CLAIM_TOKEN", "cli-token")
+	if _, err := runNodeCmd(t, store.Dir, "task", "start", "claimable-task"); err != nil {
+		t.Fatal(err)
+	}
+
+	node, err := store.GetNode("claimable-task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.FM.Status == "doing" {
+		t.Error("`task start` wrote status: doing; it must record a claim instead")
+	}
+	if !node.IsClaimed() {
+		t.Fatal("`task start` did not claim the task")
+	}
+	if node.FM.ClaimedBy != "cli-token" {
+		t.Errorf("ClaimedBy = %q, want the actor token", node.FM.ClaimedBy)
+	}
+	if node.FM.ClaimedAt == "" {
+		t.Error("a claim was recorded with no timestamp")
+	}
+	if got := node.EffectiveStatus(); got != "doing" {
+		t.Errorf("EffectiveStatus = %q, want doing", got)
+	}
+}
+
+// TestTaskReleaseDropsTheClaim: start needs a counterpart, or a claim becomes
+// something nobody can give up and therefore nobody trusts.
+func TestTaskReleaseDropsTheClaim(t *testing.T) {
+	store, err := core.InitStore(t.TempDir(), "CLI Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "new", "Droppable task"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "start", "droppable-task"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "release", "droppable-task"); err != nil {
+		t.Fatal(err)
+	}
+
+	node, err := store.GetNode("droppable-task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.IsClaimed() {
+		t.Error("release left the claim in place")
+	}
+	if got := node.EffectiveStatus(); got != "todo" {
+		t.Errorf("after release the task reads %q, want its stored status back", got)
+	}
+}
+
+// TestTaskDoneReleasesTheClaim: a finished task holding a claim reads as
+// abandoned work to whoever joins it against liveness.
+func TestTaskDoneReleasesTheClaim(t *testing.T) {
+	store, err := core.InitStore(t.TempDir(), "CLI Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "new", "Finishable task"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "start", "finishable-task"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "done", "finishable-task"); err != nil {
+		t.Fatal(err)
+	}
+
+	node, err := store.GetNode("finishable-task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.IsClaimed() {
+		t.Error("a completed task still carries a claim; it will read as abandoned work")
+	}
+	if got := node.EffectiveStatus(); got != "done" {
+		t.Errorf("EffectiveStatus = %q, want done", got)
 	}
 }

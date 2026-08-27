@@ -79,6 +79,18 @@ type Frontmatter struct {
 	Author     string `yaml:"author,omitempty"`
 	AuthorRole string `yaml:"author_role,omitempty"`
 
+	// ClaimedBy and ClaimedAt record that someone took a task up. The token is
+	// opaque exactly as Author is, and katra never resolves it.
+	//
+	// A claim is durable; whether the claimant is still alive is not, and katra
+	// deliberately cannot answer that — it would require reading the runtime,
+	// and the dependency points one way. So a claim means claimed, never
+	// "in progress": the second is the conjunction of this durable fact with a
+	// live session, and nothing stores a conjunction of two different lifetimes.
+	// See docs/design/claim-seam.md.
+	ClaimedBy string `yaml:"claimed_by,omitempty"`
+	ClaimedAt string `yaml:"claimed_at,omitempty"`
+
 	// Node-model fields (Katra). Empty Type means "entry" for back-compat.
 	Type         string   `yaml:"type,omitempty"`          // "" or "entry" = entry; else task|epic|decision|article
 	Status       string   `yaml:"status,omitempty"`        // task: todo|specced|doing|done|cut ; epic: planned|active|done|cut ; decision: proposed|accepted|superseded|deprecated

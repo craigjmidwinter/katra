@@ -199,6 +199,17 @@ so the derived half survives even if the session does nothing. It stays silent
 when nothing is in flight, because a hook that fires every time is one people
 mute.
 
+### `katra task start` / `katra task release`
+
+`start` claims a task; its status then *reads* as `doing` without `doing` ever
+being written. `release` drops the claim without closing the task, so work can
+be put down as well as picked up — a claim nobody can give up is a claim nobody
+trusts. `task done` and `task cut` drop it as they finish.
+
+The claim records `$KATRA_ACTOR` as an opaque token. Unset still claims, with
+the claimant recorded as `unknown`; that is different from no claim, which means
+nobody took the work up at all. See [the format reference](format#doing-is-derived-from-a-claim).
+
 ### `katra doctor`
 
 Check the katra for problems: dangling media references and entries that fail

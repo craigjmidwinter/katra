@@ -272,7 +272,7 @@ func hubListCmd() *cobra.Command {
 					}
 				}
 				for _, t := range tasks {
-					if t.FM.Status == "doing" {
+					if t.EffectiveStatus() == "doing" {
 						doing++
 					}
 				}

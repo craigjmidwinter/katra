@@ -163,8 +163,11 @@ func TestReconcileAdvanceRollsUpEpic(t *testing.T) {
 		t.Fatalf("ReconcileAdvance: %v", err)
 	}
 	task, _ := s.GetNode("do-thing")
-	if task.FM.Status != "doing" {
-		t.Errorf("task status = %q, want doing", task.FM.Status)
+	if got := task.EffectiveStatus(); got != "doing" {
+		t.Errorf("task status = %q, want doing", got)
+	}
+	if !task.IsClaimed() {
+		t.Error("advance did not claim the task; doing is derived from the claim")
 	}
 	epic, _ := s.GetNode("big-epic")
 	if epic.FM.Status != "active" {
@@ -188,8 +191,8 @@ func TestReconcileAdvanceFromSpecced(t *testing.T) {
 		t.Fatalf("ReconcileAdvance: %v", err)
 	}
 	task, _ := s.GetNode("specced-thing")
-	if task.FM.Status != "doing" {
-		t.Errorf("task status = %q, want doing", task.FM.Status)
+	if task.EffectiveStatus() != "doing" {
+		t.Errorf("task status = %q, want doing", task.EffectiveStatus())
 	}
 }
 

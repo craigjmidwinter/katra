@@ -305,7 +305,9 @@ func EpicRollupStatus(nodes []Entry, epicSlug string) string {
 		if n.Kind() != "task" || n.FM.Epic != epicSlug {
 			continue
 		}
-		switch n.FM.Status {
+		// EffectiveStatus, not the stored field: a claimed task reads as doing
+		// and must count as started, or an epic with live work rolls up planned.
+		switch n.EffectiveStatus() {
 		case "cut":
 			continue
 		case "done":
