@@ -26,6 +26,7 @@ func Execute(version string) {
 		initCmd(),
 		newCmd(),
 		appendCmd(),
+		checkpointCmd(),
 		stampCmd(),
 		captureCmd(),
 		compareCmd(),

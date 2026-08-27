@@ -75,7 +75,7 @@ func agentHookCmd() *cobra.Command {
 			case "stop":
 				return hookStopRun()
 			case "snapshot":
-				return hookSnapshotRun()
+				return hookSnapshotRun(event)
 			case "pre-commit":
 				return hookPreCommitRun()
 			default:
@@ -228,8 +228,9 @@ func renderStopReason(r core.ReconcileReport) string {
 	return b.String()
 }
 
-// snapshot (--event pre-compact|session-end): scan + snapshot only. Never blocks.
-func hookSnapshotRun() error {
+// snapshot (--event pre-compact|session-end): memory scan, plus -- on
+// pre-compact only -- an automatic checkpoint of the open loops. Never blocks.
+func hookSnapshotRun(event string) error {
 	if _, err := readHookInput(); err != nil {
 		return nil
 	}
@@ -238,7 +239,47 @@ func hookSnapshotRun() error {
 		return nil
 	}
 	_, _ = s.ScanMemory()
+
+	// pre-compact is the moment context is about to be destroyed, and this hook
+	// has been standing on it doing nothing but a memory scan. Compaction takes
+	// the session's working knowledge whether or not the session cooperates, so
+	// the derived half of a checkpoint is written here without being asked --
+	// that is exactly the half that needs no judgement.
+	//
+	// session-end is deliberately excluded: a session that ended has usually
+	// finished, and a checkpoint on every exit is the ceremony that gets a hook
+	// muted. See docs/design/checkpoint.md.
+	if event != "pre-compact" {
+		return nil
+	}
+	c := s.BuildCheckpoint()
+	if !c.HasOpenLoops() {
+		return nil // nothing to lose → say nothing
+	}
+	if err := writeCheckpoint(s, c); err != nil {
+		return nil // fail-open: a katra error must never disrupt compaction
+	}
+	fmt.Fprintln(os.Stderr,
+		"katra: context is about to be compacted, so the open loops were written to your draft.\n"+
+			"  What katra could not derive is why — add it now, while you still have it:\n"+
+			"    katra append \"…\"   (or: katra checkpoint --file -)")
 	return nil
+}
+
+// writeCheckpoint appends the derived block to the active draft, creating one
+// when there is none.
+func writeCheckpoint(s *core.Store, c core.Checkpoint) error {
+	block := c.Render()
+	d, err := s.ActiveDraft()
+	if err != nil || d == nil {
+		_, err := s.NewEntry(core.Frontmatter{
+			Title:   core.CheckpointTitle(c.At),
+			Summary: "Open loops captured before clearing context",
+			Tags:    []string{"checkpoint"},
+		}, block)
+		return err
+	}
+	return s.AppendBody(d, block)
 }
 
 // pre-commit (PreToolUse, matcher Bash): coverage check. If staged non-store

@@ -289,13 +289,95 @@ func TestStopSkipResolvesUnit(t *testing.T) {
 	}
 }
 
-// TestSnapshotNeverBlocks: PreCompact / SessionEnd snapshots only scan; they
-// never block or error.
+// TestSnapshotNeverBlocks: PreCompact / SessionEnd snapshots never block or
+// error, whether or not they write a checkpoint.
 func TestSnapshotNeverBlocks(t *testing.T) {
 	s, _ := cliGitStore(t)
 	t.Setenv("KATRA_DIR", s.Dir)
-	if err := hookSnapshotRun(); err != nil {
-		t.Fatalf("snapshot returned error: %v", err)
+	for _, ev := range []string{"pre-compact", "session-end", ""} {
+		withStdin(t, `{"session_id":"s","hook_event_name":"PreCompact"}`)
+		if err := hookSnapshotRun(ev); err != nil {
+			t.Fatalf("snapshot(%q) returned error: %v", ev, err)
+		}
+	}
+}
+
+// TestSessionEndWritesNoCheckpoint: only pre-compact checkpoints. A session that
+// ended has usually finished, and a checkpoint on every exit is the ceremony
+// that gets a hook muted.
+func TestSessionEndWritesNoCheckpoint(t *testing.T) {
+	s, repo := cliGitStore(t)
+	t.Setenv("KATRA_DIR", s.Dir)
+	write(t, filepath.Join(repo, "a.go"), "a1\n")
+
+	before, err := s.ListNodes("entry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	withStdin(t, `{"session_id":"s","hook_event_name":"SessionEnd"}`)
+	if err := hookSnapshotRun("session-end"); err != nil {
+		t.Fatal(err)
+	}
+	after, err := s.ListNodes("entry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != len(before) {
+		t.Errorf("session-end wrote a checkpoint: %d entries before, %d after", len(before), len(after))
+	}
+}
+
+// TestPreCompactWritesCheckpointForOpenLoops is the fix for the hook that stood
+// on the right moment in silence. Compaction destroys context whether or not
+// the session cooperates, so the derived half is written without being asked.
+func TestPreCompactWritesCheckpointForOpenLoops(t *testing.T) {
+	s, repo := cliGitStore(t)
+	t.Setenv("KATRA_DIR", s.Dir)
+	write(t, filepath.Join(repo, "a.go"), "a1\n")
+
+	withStdin(t, `{"session_id":"s","hook_event_name":"PreCompact"}`)
+	if err := hookSnapshotRun("pre-compact"); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := s.ListNodes("entry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, e := range entries {
+		b, err := os.ReadFile(e.Path)
+		if err != nil {
+			continue
+		}
+		if strings.Contains(string(b), "### Checkpoint") && strings.Contains(string(b), "a.go") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("pre-compact did not capture the open loops; the moment passed in silence again")
+	}
+}
+
+// TestPreCompactSilentWhenNothingInFlight: the threshold, at the hook.
+func TestPreCompactSilentWhenNothingInFlight(t *testing.T) {
+	s, _ := cliGitStore(t)
+	t.Setenv("KATRA_DIR", s.Dir)
+
+	before, err := s.ListNodes("entry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	withStdin(t, `{"session_id":"s","hook_event_name":"PreCompact"}`)
+	if err := hookSnapshotRun("pre-compact"); err != nil {
+		t.Fatal(err)
+	}
+	after, err := s.ListNodes("entry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != len(before) {
+		t.Error("pre-compact wrote a checkpoint with nothing in flight; this is how a hook gets muted")
 	}
 }
 

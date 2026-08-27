@@ -12,11 +12,11 @@ import (
 
 func newCmd() *cobra.Command {
 	var tags []string
-	var summary, date, body string
+	var summary, date, body, fromFile string
 	var featured bool
 	cmd := &cobra.Command{
 		Use:   "new \"Title\"",
-		Short: "Start a new draft entry",
+		Short: "Start a new draft entry (body from --body, --file, or stdin)",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, err := resolveStore()
@@ -24,6 +24,22 @@ func newCmd() *cobra.Command {
 				return err
 			}
 			title := strings.Join(args, " ")
+			// --file and stdin, the same shapes `append` takes. Without them the
+			// mid-task motion -- dump what I know before I lose it -- was two
+			// commands and a temp file, while the store already had the right
+			// shape one command over. --body still wins when both are given.
+			// Only when --file is given. readChunk otherwise sniffs stdin for a
+			// pipe, and stdin is not a character device under a hook, a CI step
+			// or any non-tty caller -- so an unguarded call turns `katra new
+			// "Title"` into a command that hangs forever waiting for input
+			// nobody is going to send. Piping still works: --file -.
+			if body == "" && fromFile != "" {
+				chunk, err := readChunk(nil, fromFile)
+				if err != nil {
+					return err
+				}
+				body = strings.TrimSpace(chunk)
+			}
 			if body == "" {
 				body = core.DraftPlaceholderBody
 			}
@@ -46,6 +62,7 @@ func newCmd() *cobra.Command {
 	cmd.Flags().StringVar(&summary, "summary", "", "one-line summary for the index")
 	cmd.Flags().StringVar(&date, "date", "", "entry date (YYYY-MM-DD, default today)")
 	cmd.Flags().StringVar(&body, "body", "", "initial body markdown")
+	cmd.Flags().StringVar(&fromFile, "file", "", "read the body from a file ('-' for stdin)")
 	cmd.Flags().BoolVar(&featured, "featured", false, "mark as a Deep Dive")
 	return cmd
 }

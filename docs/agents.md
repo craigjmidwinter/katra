@@ -66,7 +66,7 @@ the operation.
 | `PostToolUse` (`Edit\|Write`) | `agent-hook post-tool` | Records the touched path and incrementally rescans memory. Cheap. |
 | `Stop` | `agent-hook stop` | The gate. Blocks the turn ending if authored code changed and nothing declared what it was for. |
 | `PreToolUse` (`Bash`) | `agent-hook pre-commit` | The commit gate. Blocks a `git commit` whose staged code has no reconciliation receipt. |
-| `PreCompact` | `agent-hook snapshot --event pre-compact` | Snapshots state before the context is compacted. |
+| `PreCompact` | `agent-hook snapshot --event pre-compact` | Scans memory, and writes a checkpoint of the open loops into the draft when there is something in flight. This is the moment knowledge is destroyed between commits. |
 | `SessionEnd` | `agent-hook snapshot --event session-end` | The same at teardown. Async, so it never delays exit. |
 
 `agent-hook pre-commit` blocks by exiting **2** — the Claude Code `PreToolUse`
