@@ -5,6 +5,11 @@ time: "08:56:52"
 tags:
     - release
     - windows
+hash: 8c447c5
+stat:
+    f: 24
+    a: 319
+    d: 53
 summary: Make Windows a compiled, packaged, and documented release target.
 closes:
     - build-and-release-windows-binaries
