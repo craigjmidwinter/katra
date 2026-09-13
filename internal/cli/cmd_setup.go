@@ -15,19 +15,42 @@ import (
 //go:embed embed/SKILL.md
 var katraSkill string
 
+// hookGuard makes every hook a silent no-op when katra is not installed.
+//
+// Without it, a settings.json committed to a repository hands everyone who
+// clones it a set of hooks calling a binary they do not have. That is not
+// hypothetical: katra's own repository is public and commits this file, so a
+// contributor cloning katra to work on katra met `katra: command not found` on
+// every Bash command, every edit and every prompt — seven hooks, all failing,
+// on the tool's own front door. You needed katra installed to contribute to
+// katra, and katra's own installer put it there.
+//
+// The principle is the fix: the absence of an enforcer is not a violation. A
+// gate that fires because the tool is missing enforces nothing, it only fails,
+// and it fails during someone's first five minutes with the project.
+//
+// `exec` so the real hook inherits this process's stdin (hooks are fed JSON on
+// stdin) and its exit code reaches the harness unchanged — the pre-commit gate
+// blocks with exit 2, and a wrapper that swallowed that would disable the gate
+// it is guarding. `exit 0` so an absent binary is silence rather than noise.
+const hookGuard = "command -v katra >/dev/null 2>&1 && exec katra "
+
 // Hook command strings written into .claude/settings.json. All are tagged with
 // "katra" so setup can find and replace its own entries idempotently. Every hook
-// routes through the single `katra agent-hook <event>` adapter (fail-open).
+// routes through the single `katra agent-hook <event>` adapter (fail-open), and
+// every one is guarded so a machine without katra sees nothing at all.
 const (
-	hookSessionStart = `katra agent-hook session-start`
-	hookTurnStart    = `katra agent-hook turn-start`
-	hookPostTool     = `katra agent-hook post-tool`
-	hookStop         = `katra agent-hook stop`
-	hookPreCompact   = `katra agent-hook snapshot --event pre-compact`
-	hookSessionEnd   = `katra agent-hook snapshot --event session-end`
+	hookSessionStart = hookGuard + "agent-hook session-start || exit 0"
+	hookTurnStart    = hookGuard + "agent-hook turn-start || exit 0"
+	hookPostTool     = hookGuard + "agent-hook post-tool || exit 0"
+	hookStop         = hookGuard + "agent-hook stop || exit 0"
+	hookPreCompact   = hookGuard + "agent-hook snapshot --event pre-compact || exit 0"
+	hookSessionEnd   = hookGuard + "agent-hook snapshot --event session-end || exit 0"
 	// hookPreCommit is the coverage gate: a PreToolUse(Bash) check that blocks a
-	// `git commit` whose staged code has no reconciliation receipt.
-	hookPreCommit = `katra agent-hook pre-commit`
+	// `git commit` whose staged code has no reconciliation receipt. Guarded like
+	// the rest — a coverage gate that cannot find katra has no receipts to read
+	// and nothing to enforce.
+	hookPreCommit = hookGuard + "agent-hook pre-commit || exit 0"
 )
 
 func setupCmd() *cobra.Command {
@@ -81,6 +104,16 @@ func setupCmd() *cobra.Command {
 				gate = "no commit gate"
 			}
 			fmt.Printf("✓ hooks → %s (session nudges + %s)\n", rel(wd, settingsPath), gate)
+			// Writing into a tracked file means writing for everyone who clones
+			// the repository, not just for this machine. Say so rather than
+			// letting it be discovered by whoever gets the hooks. The hooks
+			// no-op without katra, so this is a fact worth knowing rather than a
+			// hazard -- but it is still someone else's environment being
+			// configured by a command they did not run.
+			if s.IsTracked(settingsPath) {
+				fmt.Printf("  note: %s is tracked by git, so committing it gives these hooks\n", rel(wd, settingsPath))
+				fmt.Printf("        to everyone who clones this repo. They no-op where katra is absent.\n")
+			}
 
 			// 4. Git post-commit auto-stamp hook.
 			if p, err := s.InstallHook(); err != nil {

@@ -69,6 +69,26 @@ the operation.
 | `PreCompact` | `agent-hook snapshot --event pre-compact` | Scans memory, and writes a checkpoint of the open loops into the draft when there is something in flight. This is the moment knowledge is destroyed between commits. |
 | `SessionEnd` | `agent-hook snapshot --event session-end` | The same at teardown. Async, so it never delays exit. |
 
+### Every hook no-ops without katra
+
+Each command katra writes is guarded:
+
+```sh
+command -v katra >/dev/null 2>&1 && exec katra agent-hook <event> || exit 0
+```
+
+**The absence of an enforcer is not a violation.** A hook that cannot find its
+binary enforces nothing — it only fails, on a machine where nothing is wrong.
+That matters most where `.claude/settings.json` is committed: everyone who
+clones the repository gets the hooks, and most of them will not have katra.
+katra's own public repository had this exact problem, so contributing to katra
+required installing katra first.
+
+`exec` rather than a plain call, so the hook inherits stdin (hooks are fed JSON
+on it) and its exit code reaches the harness unchanged — the pre-commit gate
+blocks with exit **2**, and a wrapper that swallowed that would silently disable
+the gate it guards.
+
 `agent-hook pre-commit` blocks by exiting **2** — the Claude Code `PreToolUse`
 convention for stopping a tool call — not the plain 0/1 every other katra
 command uses. See [CLI reference: Exit codes](cli#exit-codes).
