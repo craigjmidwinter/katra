@@ -5,10 +5,13 @@
 package packaging
 
 import (
+	"archive/zip"
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -19,9 +22,13 @@ import (
 // package directory as its working directory.
 const repoRoot = ".."
 
-// renderManifest substitutes the version placeholder the way
-// scripts/build-mcpb.sh does, then parses the result.
+// renderManifest substitutes the Unix values the way scripts/build-mcpb.sh
+// does, then parses the result.
 func renderManifest(t *testing.T, version string) map[string]any {
+	return renderManifestForBinary(t, version, "katra-mcp")
+}
+
+func renderManifestForBinary(t *testing.T, version, binary string) map[string]any {
 	t.Helper()
 
 	raw, err := os.ReadFile(filepath.Join(repoRoot, "packaging", "mcpb", "manifest.json.tmpl"))
@@ -30,7 +37,8 @@ func renderManifest(t *testing.T, version string) map[string]any {
 	}
 
 	var manifest map[string]any
-	if err := json.Unmarshal([]byte(strings.ReplaceAll(string(raw), "__VERSION__", version)), &manifest); err != nil {
+	rendered := strings.NewReplacer("__VERSION__", version, "__BINARY__", binary).Replace(string(raw))
+	if err := json.Unmarshal([]byte(rendered), &manifest); err != nil {
 		t.Fatalf("rendered manifest is not valid JSON: %v", err)
 	}
 	return manifest
@@ -129,9 +137,8 @@ func TestManifestHomepageMatchesServerJSON(t *testing.T) {
 }
 
 // TestManifestPlatformsMatchBuildMatrix stops the manifest claiming a platform
-// the release does not build. Widening compatibility.platforms to the spec's
-// full enum is the tempting, wrong edit: it advertises a Windows bundle that
-// would never exist.
+// the release does not build. The explicit Windows mapping also prevents Go's
+// GOOS spelling from leaking into MCPB's platform vocabulary.
 func TestManifestPlatformsMatchBuildMatrix(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join(repoRoot, ".goreleaser.yml"))
 	if err != nil {
@@ -171,6 +178,9 @@ func TestManifestPlatformsMatchBuildMatrix(t *testing.T) {
 		t.Fatalf("manifest declares %d platforms, goreleaser builds %d (%v)", len(declared), len(built), built)
 	}
 	for i, want := range built {
+		if want == "windows" {
+			want = "win32"
+		}
 		if declared[i] != want {
 			t.Errorf("platform %d: manifest says %v, goreleaser builds %q", i, declared[i], want)
 		}
@@ -180,6 +190,19 @@ func TestManifestPlatformsMatchBuildMatrix(t *testing.T) {
 // TestBuildScriptRejectsUnshippedPlatform proves the guard fires rather than
 // trusting that it would. A gate nobody has faulted is a gate nobody knows the
 // state of.
+func runBundleScript(t *testing.T, args ...string) ([]byte, error) {
+	t.Helper()
+	script := filepath.Join(repoRoot, "scripts", "build-mcpb.sh")
+	if runtime.GOOS == "windows" {
+		bash, err := exec.LookPath("bash")
+		if err != nil {
+			t.Skipf("bash is required to exercise build-mcpb.sh: %v", err)
+		}
+		return exec.Command(bash, append([]string{script}, args...)...).CombinedOutput()
+	}
+	return exec.Command(script, args...).CombinedOutput()
+}
+
 func TestBuildScriptRejectsUnshippedPlatform(t *testing.T) {
 	script := filepath.Join(repoRoot, "scripts", "build-mcpb.sh")
 	if _, err := os.Stat(script); err != nil {
@@ -192,11 +215,68 @@ func TestBuildScriptRejectsUnshippedPlatform(t *testing.T) {
 		t.Skipf("no /usr/bin/true to stand in for the binary: %v", err)
 	}
 
-	out, err := exec.Command(script, binary, "windows", "amd64", "1.2.3", t.TempDir()).CombinedOutput()
+	out, err := runBundleScript(t, binary, "plan9", "amd64", "1.2.3", t.TempDir())
 	if err == nil {
-		t.Fatal("build-mcpb.sh bundled goos=windows, which the release does not build")
+		t.Fatal("build-mcpb.sh bundled goos=plan9, which the release does not build")
 	}
 	if !strings.Contains(string(out), "refusing to bundle unshipped platform") {
 		t.Errorf("guard fired for the wrong reason: %s", out)
+	}
+}
+
+func TestBuildScriptPackagesWindowsExecutable(t *testing.T) {
+	binary, err := exec.LookPath("true")
+	if err != nil {
+		t.Skipf("no executable to stand in for the binary: %v", err)
+	}
+	outDir := t.TempDir()
+	if out, err := runBundleScript(t, binary, "windows", "amd64", "1.2.3", outDir); err != nil {
+		t.Fatalf("build Windows bundle: %v\n%s", err, out)
+	}
+
+	bundle := filepath.Join(outDir, "katra_1.2.3_windows_amd64.mcpb")
+	zr, err := zip.OpenReader(bundle)
+	if err != nil {
+		t.Fatalf("open Windows bundle: %v", err)
+	}
+	defer func() { _ = zr.Close() }()
+
+	var manifest map[string]any
+	foundBinary := false
+	for _, f := range zr.File {
+		switch f.Name {
+		case "server/katra-mcp.exe":
+			foundBinary = true
+		case "manifest.json":
+			r, err := f.Open()
+			if err != nil {
+				t.Fatalf("open bundled manifest: %v", err)
+			}
+			data, readErr := io.ReadAll(r)
+			_ = r.Close()
+			if readErr != nil {
+				t.Fatalf("read bundled manifest: %v", readErr)
+			}
+			if err := json.Unmarshal(data, &manifest); err != nil {
+				t.Fatalf("parse bundled manifest: %v", err)
+			}
+		}
+	}
+	if !foundBinary {
+		t.Error("Windows bundle does not contain server/katra-mcp.exe")
+	}
+	server, ok := manifest["server"].(map[string]any)
+	if !ok {
+		t.Fatal("Windows bundle manifest has no server object")
+	}
+	if got := server["entry_point"]; got != "server/katra-mcp.exe" {
+		t.Errorf("Windows entry_point = %v, want server/katra-mcp.exe", got)
+	}
+	config, ok := server["mcp_config"].(map[string]any)
+	if !ok {
+		t.Fatal("Windows bundle manifest has no mcp_config object")
+	}
+	if got := config["command"]; got != "${__dirname}/server/katra-mcp.exe" {
+		t.Errorf("Windows command = %v, want ${__dirname}/server/katra-mcp.exe", got)
 	}
 }

@@ -77,7 +77,8 @@ sessions must append the reasoning worth publishing themselves.
 - **The `.mcpb` bundle is the second listing, and it must not drift from the
   first.** `packaging/mcpb/manifest.json.tmpl` copies its `description` from
   `server.json` verbatim, and its `compatibility.platforms` from the
-  `katra-mcp` build's `goos` list. `go test ./packaging/...` enforces both, so
+  `katra-mcp` build's `goos` list (`windows` maps to MCPB's `win32`).
+  `go test ./packaging/...` enforces both, so
   a palette-style silent divergence is a failing test rather than two listings
   making different claims. Bundles are assembled in the build post-hook, not an
   `after` hook, so `checksums.txt` covers them.

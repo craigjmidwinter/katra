@@ -11,6 +11,10 @@ first release, everything lands under `[Unreleased]`.
 
 ### Added
 
+- **Windows release support.** Tagged releases now include amd64 and arm64 zip
+  archives containing `katra.exe` and `katra-mcp.exe`, plus matching MCPB
+  bundles. Native Windows locking and path handling make those binaries usable,
+  not merely cross-compiled.
 - **One harness-neutral Katra workflow.** The complete epic → specced task →
   committed spec → running entry → decision/evidence → stamp/closure loop now
   lives in public docs and canonical `AGENTS.md`, rather than depending on the

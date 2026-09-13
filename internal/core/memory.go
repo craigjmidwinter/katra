@@ -95,10 +95,11 @@ func (s *Store) StateDir() string { return filepath.Join(s.Dir, ".state") }
 func (s *Store) ledgerPath() string { return filepath.Join(s.StateDir(), "memory-ledger.json") }
 
 // encodeProjectPath maps an absolute repo path to its Claude Code project dir
-// name: every "/" becomes "-". So "/Users/craig/workspace/devlog" becomes
-// "-Users-craig-workspace-devlog".
+// name: separators and the Windows volume colon become "-". Thus
+// "/Users/craig/workspace/devlog" becomes "-Users-craig-workspace-devlog",
+// while "C:\\Users\\craig\\devlog" becomes "C--Users-craig-devlog".
 func encodeProjectPath(abs string) string {
-	return strings.ReplaceAll(abs, string(filepath.Separator), "-")
+	return strings.NewReplacer("/", "-", "\\", "-", ":", "-").Replace(abs)
 }
 
 // claudeMemoryDir returns ~/.claude/projects/<encoded>/memory for a repo path.

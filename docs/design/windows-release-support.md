@@ -47,11 +47,11 @@ negative guard using a genuinely unshipped platform.
 
 ## Verification and documentation
 
-CI's release dry run lists tarballs and zip files, checks both `.exe` binaries
-inside the Windows amd64 zip, and retains the existing Linux workflow-surface
-smoke test. Local Windows tests and explicit cross-builds cover the build-tagged
-locking code. README download instructions gain a PowerShell path, and the
-release runbook names six archives and six MCP bundles rather than four.
+CI runs the Go suite natively on Windows and cross-compiles arm64 there. Its
+release dry run lists tarballs and zip files, checks both `.exe` binaries inside
+the Windows amd64 zip, and retains the existing Linux workflow-surface smoke
+test. README download instructions gain a PowerShell path, and the release
+runbook names six archives and six MCP bundles rather than four.
 
 The OCI image remains Linux-only. It is MCP Registry transport packaging, not
 the native release matrix, so adding Windows there would be both impossible and

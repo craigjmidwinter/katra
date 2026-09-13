@@ -32,7 +32,12 @@ template=$root/packaging/mcpb/manifest.json.tmpl
 # The manifest declares only what the goreleaser matrix actually builds. A
 # bundle for a platform we do not ship is a claim, not a package.
 case "$goos" in
-  darwin | linux) ;;
+  darwin | linux)
+    binary_name=katra-mcp
+    ;;
+  windows)
+    binary_name=katra-mcp.exe
+    ;;
   *)
     echo "build-mcpb: refusing to bundle unshipped platform: $goos" >&2
     exit 1
@@ -43,12 +48,13 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 
 mkdir -p "$stage/server"
-cp "$binary" "$stage/server/katra-mcp"
-chmod 0755 "$stage/server/katra-mcp"
+cp "$binary" "$stage/server/$binary_name"
+chmod 0755 "$stage/server/$binary_name"
 
 # The template carries a placeholder rather than being goreleaser-templated, so
 # `python3 -c ... json.load` in the test suite can read it as-is.
-sed "s/__VERSION__/${version}/g" "$template" > "$stage/manifest.json"
+sed -e "s/__VERSION__/${version}/g" -e "s/__BINARY__/${binary_name}/g" \
+  "$template" > "$stage/manifest.json"
 
 mkdir -p "$outdir"
 outdir=$(cd "$outdir" && pwd)  # the zip runs from $stage, so this has to be absolute

@@ -245,8 +245,7 @@ you better and has years more mileage.
 
 ## Install
 
-Binaries ship for macOS and Linux, amd64 and arm64. There is no Windows
-build; Windows is untested and unsupported.
+Binaries ship for macOS, Linux, and Windows on amd64 and arm64.
 
 ### `go install`
 
@@ -300,13 +299,11 @@ and installs prebuilt binaries. `brew upgrade katra` tracks new releases.
 Same trigger as Homebrew — these archives are produced by the release
 workflow, so they exist starting with v0.1.0, not yet. Every
 [release](https://github.com/craigjmidwinter/katra/releases/latest), once one
-exists, ships archives for macOS and Linux on both amd64 and arm64, each
+exists, ships archives for macOS, Linux, and Windows on both amd64 and arm64, each
 containing **both** `katra` and `katra-mcp`, plus a `checksums.txt` and a
 signature over it.
 
-The snippet below is for a macOS/Linux shell (bash/zsh) — there is no Windows
-build, and the `uname` mapping it relies on would just produce a garbage URL
-on one.
+On macOS or Linux (bash/zsh):
 
 ```bash
 # Latest release, without the leading v. Set this by hand to pin a version.
@@ -319,6 +316,19 @@ ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
 curl -fsSLO "https://github.com/craigjmidwinter/katra/releases/download/v${VERSION}/katra_${VERSION}_${OS}_${ARCH}.tar.gz"
 tar xzf "katra_${VERSION}_${OS}_${ARCH}.tar.gz" katra katra-mcp
 sudo install -m 0755 katra katra-mcp /usr/local/bin/
+```
+
+On Windows (PowerShell), download the zip for the machine's architecture and
+extract both `.exe` files into a directory on `PATH`:
+
+```powershell
+$release = Invoke-RestMethod https://api.github.com/repos/craigjmidwinter/katra/releases/latest
+$version = $release.tag_name.TrimStart('v')
+$arch = if ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString() -eq 'Arm64') { 'arm64' } else { 'amd64' }
+$archive = "katra_${version}_windows_${arch}.zip"
+
+Invoke-WebRequest "https://github.com/craigjmidwinter/katra/releases/download/v${version}/${archive}" -OutFile $archive
+Expand-Archive $archive -DestinationPath katra-bin
 ```
 
 On macOS, a binary you downloaded yourself is quarantined by Gatekeeper. Clear
@@ -335,6 +345,9 @@ sha256sum --check --ignore-missing checksums.txt
 # macOS
 shasum -a 256 --check --ignore-missing checksums.txt
 ```
+
+On Windows, `Get-FileHash $archive -Algorithm SHA256` prints the archive hash;
+compare it with the matching line in `checksums.txt` before extracting.
 
 Then the signature over `checksums.txt`. Releases are signed keylessly with
 [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) — there

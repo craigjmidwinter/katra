@@ -53,6 +53,32 @@ jobs:
       - name: Test
         run: go test -race ./...
 
+  windows:
+    name: Windows build / test
+    runs-on: windows-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Cross-compile Windows arm64
+        shell: pwsh
+        run: |
+          $env:GOARCH = "arm64"
+          go build ./cmd/katra ./cmd/katra-mcp
+
   lint:
     name: golangci-lint
     runs-on: ubuntu-latest
@@ -279,7 +305,7 @@ jobs:
           HOMEBREW_TAP_GITHUB_TOKEN: ""
 
       - name: Show what a release would contain
-        run: ls -l dist/*.tar.gz dist/checksums.txt
+        run: ls -l dist/*.tar.gz dist/*.zip dist/checksums.txt
 
       # Both binaries have to be in every archive. The skill, the git hooks and
       # the MCP wiring all assume katra-mcp sits beside katra, so an archive
@@ -299,6 +325,16 @@ jobs:
           smoke_dir="$(mktemp -d)"
           tar -xzf "$archive" -C "$smoke_dir"
           ./scripts/check-workflow-surface.sh "$smoke_dir/katra"
+
+      - name: Both Windows binaries are in the archive
+        run: |
+          set -euo pipefail
+          archive="$(find dist -maxdepth 1 -name 'katra_*_windows_amd64.zip' -print -quit)"
+          test -n "$archive"
+          contents="$(unzip -Z1 "$archive")"
+          echo "$contents"
+          echo "$contents" | grep -qx katra.exe
+          echo "$contents" | grep -qx katra-mcp.exe
 
       # Publishing is deliberately tag-only, but malformed metadata must fail
       # on a pull request rather than after the release image already exists.

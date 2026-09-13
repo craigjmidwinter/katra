@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -184,10 +185,7 @@ func Slugify(s string) string {
 var datePrefixRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-`)
 
 func slugFromFilename(path string) string {
-	name := path
-	if i := strings.LastIndexByte(name, '/'); i >= 0 {
-		name = name[i+1:]
-	}
+	name := filepath.Base(path)
 	name = strings.TrimSuffix(name, ".md")
 	name = datePrefixRe.ReplaceAllString(name, "")
 	return name

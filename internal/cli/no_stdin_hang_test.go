@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +24,9 @@ func buildKatra(t *testing.T) string {
 		t.Skipf("no go toolchain: %v", err)
 	}
 	bin := filepath.Join(t.TempDir(), "katra")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
 	build := exec.Command("go", "build", "-o", bin, "./cmd/katra")
 	build.Dir = "../.."
 	if out, err := build.CombinedOutput(); err != nil {
@@ -68,7 +72,9 @@ func runWithOpenStdin(t *testing.T, bin, dir string, args ...string) (string, er
 func katraRepo(t *testing.T, bin string) string {
 	t.Helper()
 	dir := t.TempDir()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	for _, args := range [][]string{
 		{"init"}, {"config", "user.email", "t@example.com"}, {"config", "user.name", "T"},
 		{"commit", "--allow-empty", "-m", "base"},

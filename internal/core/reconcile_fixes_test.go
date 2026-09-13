@@ -3,6 +3,7 @@ package core
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -126,6 +127,9 @@ func TestIndexFingerprintTracksStagedNotWorkingTree(t *testing.T) {
 // deletion each produce a distinct id rather than colliding with the content hash
 // / a bare "absent" marker.
 func TestFingerprintModeAndDeletionDistinct(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not expose Unix executable mode changes")
+	}
 	s, repo := gitTestStore(t)
 	root, _ := s.RepoRoot()
 	p := filepath.Join(repo, "s.sh")

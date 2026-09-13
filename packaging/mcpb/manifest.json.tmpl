@@ -14,12 +14,12 @@
   },
   "server": {
     "type": "binary",
-    "entry_point": "server/katra-mcp",
+    "entry_point": "server/__BINARY__",
     "mcp_config": {
-      "command": "${__dirname}/server/katra-mcp"
+      "command": "${__dirname}/server/__BINARY__"
     }
   },
   "compatibility": {
-    "platforms": ["darwin", "linux"]
+    "platforms": ["darwin", "linux", "win32"]
   }
 }

@@ -19,6 +19,7 @@ func memTestStore(t *testing.T) (*Store, string) {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	repo := t.TempDir()
 	storeDir := filepath.Join(repo, "katra")
@@ -203,6 +204,7 @@ func TestResolveAndIgnore(t *testing.T) {
 func TestScanSkipsWhenNoMemoryDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	repo := t.TempDir()
 	s, err := InitStore(filepath.Join(repo, "katra"), "No Mem")
 	if err != nil {

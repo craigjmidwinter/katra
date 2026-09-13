@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Katra release matrix</title>
+<style>
+body{margin:0;padding:40px;background:#10151c;color:#edf3fa;font:16px system-ui}h1{margin:0 0 8px;color:#8bd5ca}p{color:#a9b7c6;margin:0 0 28px}table{border-collapse:collapse;width:100%;max-width:920px;background:#18212c}th,td{padding:14px 18px;border:1px solid #344252;text-align:left}th{color:#f5c2e7}code{color:#f9e2af}.yes{color:#a6e3a1;font-weight:700}.transport{color:#89b4fa}</style>
+<h1>Katra release matrix</h1>
+<p>Native archives contain both CLI and MCP server; MCPB contains the server.</p>
+<table>
+<tr><th>Target</th><th>Architectures</th><th>Native archive</th><th>MCPB platform</th><th>Registry OCI</th></tr>
+<tr><td>macOS</td><td><code>amd64 arm64</code></td><td class="yes">tar.gz</td><td><code>darwin</code></td><td>—</td></tr>
+<tr><td>Linux</td><td><code>amd64 arm64</code></td><td class="yes">tar.gz</td><td><code>linux</code></td><td class="transport">amd64 + arm64</td></tr>
+<tr><td>Windows</td><td><code>amd64 arm64</code></td><td class="yes">zip + .exe</td><td><code>win32</code></td><td>—</td></tr>
+</table>

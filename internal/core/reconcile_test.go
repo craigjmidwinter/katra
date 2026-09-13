@@ -14,6 +14,7 @@ func gitTestStore(t *testing.T) (*Store, string) {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	repo := t.TempDir()
 	// Resolve symlinks so paths match git's view (macOS /var vs /private/var).
 	if real, err := filepath.EvalSymlinks(repo); err == nil {

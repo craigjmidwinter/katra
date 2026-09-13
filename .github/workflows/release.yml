@@ -108,6 +108,7 @@ jobs:
           name: dist
           path: |
             dist/*.tar.gz
+            dist/*.zip
             dist/mcpb/*.mcpb
             dist/checksums.txt
           retention-days: 7

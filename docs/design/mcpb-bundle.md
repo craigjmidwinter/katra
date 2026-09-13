@@ -20,8 +20,8 @@ holds today. This is not a hypothetical gap.
 
 ## Why it is nearly free
 
-`.goreleaser.yml` already builds `katra-mcp` from `./cmd/katra-mcp` with
-`CGO_ENABLED=0` for darwin/linux × amd64/arm64. MCPB's `server.type: "binary"`
+`.goreleaser.yml` builds `katra-mcp` from `./cmd/katra-mcp` with
+`CGO_ENABLED=0` for darwin/linux/windows × amd64/arm64. MCPB's `server.type: "binary"`
 wants precisely that: a self-contained pre-compiled executable with no runtime
 declaration. There is no new compile, only a repackage.
 
@@ -53,6 +53,9 @@ One `.mcpb` per platform, because `entry_point` names a single executable:
     └── server/
         └── katra-mcp
 
+Windows bundles use the same layout with `server/katra-mcp.exe`; the rendered
+manifest points at that suffixed executable.
+
 `manifest.json` is rendered from `packaging/mcpb/manifest.json.tmpl`. Verified
 against `modelcontextprotocol/mcpb`'s `MANIFEST.md` on 2026-08-25: the required
 fields are `manifest_version`, `name`, `version`, `description`, `author` and
@@ -64,9 +67,9 @@ Two deliberate constraints:
 - `description` is copied verbatim from `server.json`, so the registry listing
   and the bundle listing cannot drift into two different claims about what
   katra is. A test enforces the equality rather than a comment asking for it.
-- `platforms` is `["darwin", "linux"]` because the goreleaser matrix is.
-  Widening it to the spec's full enum would claim a Windows build that does not
-  exist. The same test pins this to the actual `goos` list.
+- `platforms` is `["darwin", "linux", "win32"]` because the GoReleaser matrix
+  also builds Windows. MCPB spells Go's `windows` value as `win32`; the parity
+  test owns that mapping and pins the declaration to the actual `goos` list.
 
 `mcp_config.command` is included even though it is optional for some server
 types: the spec's binary example is silent on stdio invocation, and stating the
