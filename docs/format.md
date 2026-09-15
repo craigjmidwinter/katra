@@ -110,6 +110,43 @@ summary: tuned the magnus model
 | `entry` | task, decision | The entry slug that recorded or occasioned it. |
 | `supersedes` | decision | Slugs this decision replaces. |
 | `superseded-by` | decision | The mirror of the above. |
+| `author` | any | An **opaque**, durable identity, stamped at creation from `$KATRA_AUTHOR`. See below. |
+| `author_role` | any | The **opaque** role that identity held at creation, from `$KATRA_AUTHOR_ROLE`. |
+
+### `author` and `author_role`
+
+Recorded when a node is created, from `KATRA_AUTHOR` and `KATRA_AUTHOR_ROLE`,
+so that work can be attributed to whoever produced it and in what capacity.
+
+**These are durable and must still be legible years later**, which is why they
+are deliberately *not* the same value as `claimed_by`. A claim is a runtime
+nonce that stops resolving when its pane dies — correct for a claim, fatal for
+authorship. An author field that turns to unreadable hex on pane close fails the
+across-time guarantee katra exists for, and it would still look recorded.
+
+**`author_role` is captured at creation, never resolved later.** Resolving an
+identity to a role afterwards answers what that role is *today*, not what it was
+at authorship. Roles change; who ranked this, in what capacity, at the time is
+the fact worth keeping.
+
+**katra never interprets either value.** No parsing, no prefix checks, no length
+assumptions, no shape validation — if the runtime changes its format katra must
+not notice, because validation is interpretation and interpretation belongs to
+whoever reads the store. Environment variables rather than a lookup, so the
+fields work under any harness, in CI, and on a machine with none of the
+infrastructure that issues the values.
+
+**Absent is a value.** An unset variable leaves its key off entirely; neither is
+ever written empty, and `author_role` is never inferred from the identity. A person running `katra task
+new` by hand is not a manager, and a default would flatter whoever forgot to set
+the variable. Anything reporting authorship must report its unattributed count
+beside it — `katra doctor` does.
+
+Nodes created before this field existed carry no author and cannot be attributed
+retroactively. That is a permanent gap in the record, not a bug to fix.
+
+An explicit `author` in frontmatter wins over the environment, so importing or
+reconstructing history is not overwritten by whatever happens to be set.
 
 `specced` sits between `todo` and `doing`: a design exists, committed, and the
 task points at it, but nothing has been built yet. It is optional — `todo →

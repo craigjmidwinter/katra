@@ -50,7 +50,11 @@ type entryData struct {
 	Cover    string     `json:"cover,omitempty"`
 	Draft    bool       `json:"draft"`
 	Featured bool       `json:"featured"`
-	HTML     string     `json:"html"`
+	// Opaque actor token, omitted when the node carries none. Emitted so a
+	// reader of the built site can attribute work without parsing the store;
+	// katra still never interprets it.
+	Author string `json:"author,omitempty"`
+	HTML   string `json:"html"`
 
 	// Node-model fields (Katra). "type" is always set (Kind()); the rest
 	// are omitted when empty so entry records stay unchanged in shape.
@@ -143,6 +147,7 @@ func BuildData(s *core.Store) ([]byte, error) {
 			Summary:  e.FM.Summary,
 			Cover:    e.FM.Cover,
 			Draft:    e.IsDraft(),
+			Author:   e.FM.Author,
 			Featured: e.FM.Featured,
 			HTML:     htmlBody,
 
