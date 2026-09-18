@@ -1,6 +1,7 @@
 package core
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -64,5 +65,49 @@ func TestIsGitNotFoundFalseForOrdinaryGitError(t *testing.T) {
 	}
 	if IsGitNotFound(err) {
 		t.Errorf("IsGitNotFound(%v) = true, want false — git is present, the directory just isn't a repo", err)
+	}
+}
+
+// TestDirtyEntriesKeepsTheFirstCharacterOfAWorktreeOnlyPath guards a path
+// mangling that hid in the most common dirty state there is.
+//
+// Porcelain v1 leaves column one blank for a worktree-only modification
+// (" M path"), execGit trimmed the whole output, and the fixed 3-character
+// offset then ate the first character: " M index.html" parsed as "ndex.html".
+// Only ever on the first line, and only for that state — staged entries begin
+// with a letter, untracked with "??" — which is why it survived.
+//
+// Not cosmetic: a mangled path matches nothing, so it dropped out of
+// reconcile's dirty set as silently as it dropped out of a checkpoint.
+func TestDirtyEntriesKeepsTheFirstCharacterOfAWorktreeOnlyPath(t *testing.T) {
+	s, repo := gitTestStore(t)
+
+	writeFile(t, filepath.Join(repo, "index.html"), "original\n")
+	runGit(t, repo, "add", "index.html")
+	runGit(t, repo, "commit", "-m", "add index")
+
+	// Worktree-only change, and the alphabetically first entry so it lands on
+	// the first porcelain line.
+	writeFile(t, filepath.Join(repo, "index.html"), "changed\n")
+
+	entries, err := s.DirtyEntries()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var paths []string
+	for _, e := range entries {
+		paths = append(paths, e.Path)
+	}
+	var found bool
+	for _, p := range paths {
+		if p == "index.html" {
+			found = true
+		}
+		if p == "ndex.html" {
+			t.Errorf("path lost its first character: %q", p)
+		}
+	}
+	if !found {
+		t.Errorf("index.html missing from dirty entries: %v", paths)
 	}
 }

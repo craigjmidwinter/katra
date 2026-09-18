@@ -259,27 +259,32 @@ func hookSnapshotRun(event string) error {
 	if err := writeCheckpoint(s, c); err != nil {
 		return nil // fail-open: a katra error must never disrupt compaction
 	}
-	fmt.Fprintln(os.Stderr,
-		"katra: context is about to be compacted, so the open loops were written to your draft.\n"+
+	fmt.Fprintf(os.Stderr,
+		"katra: context is about to be compacted, so the open loops were written to `%s`.\n"+
 			"  What katra could not derive is why — add it now, while you still have it:\n"+
-			"    katra append \"…\"   (or: katra checkpoint --file -)")
+			"    katra checkpoint \"…\"   (or: katra checkpoint --file -)\n",
+		checkpointSlug(s, c))
 	return nil
 }
 
 // writeCheckpoint appends the derived block to the active draft, creating one
 // when there is none.
+// checkpointSlug names where the checkpoint landed, so the message can tell the
+// session where to add the part katra could not derive.
+func checkpointSlug(s *core.Store, c core.Checkpoint) string {
+	if e := s.CheckpointEntry(c.At); e != nil {
+		return e.Slug
+	}
+	return core.CheckpointTitle(c.At)
+}
+
 func writeCheckpoint(s *core.Store, c core.Checkpoint) error {
 	block := c.Render()
-	d, err := s.ActiveDraft()
-	if err != nil || d == nil {
-		_, err := s.NewEntry(core.Frontmatter{
-			Title:   core.CheckpointTitle(c.At),
-			Summary: "Open loops captured before clearing context",
-			Tags:    []string{"checkpoint"},
-		}, block)
+	e, created, err := checkpointTarget(s, c, "", block)
+	if err != nil || created {
 		return err
 	}
-	return s.AppendBody(d, block)
+	return s.AppendBody(e, block)
 }
 
 // pre-commit (PreToolUse, matcher Bash): coverage check. If staged non-store

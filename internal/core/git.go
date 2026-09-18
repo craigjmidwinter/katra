@@ -15,6 +15,23 @@ import (
 // execGit is the shared git-invocation site: every git call in the package goes
 // through here, so the "git isn't even on PATH" case is diagnosed once, not
 // re-derived (or missed) at each call site.
+// gitPorcelain runs a git command preserving leading whitespace, for output
+// whose column positions carry meaning. Everything else uses git/gitRoot, whose
+// trimming is convenient and here would be corrupting.
+func (s *Store) gitPorcelain(args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = s.Dir
+	out, err := cmd.Output()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(string(ee.Stderr)))
+		}
+		return "", err
+	}
+	// Only the trailing newline; leading columns are data.
+	return strings.TrimRight(string(out), "\n"), nil
+}
+
 func execGit(dir string, args []string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
@@ -112,7 +129,19 @@ type DirtyEntry struct {
 // untracked files (a newly written source file is untracked but is real work);
 // callers falling back to a repo-wide guess must not (see reconcile).
 func (s *Store) DirtyEntries() ([]DirtyEntry, error) {
-	out, err := s.git("status", "--porcelain", "--untracked-files=all")
+	// gitPorcelain, not git: porcelain v1 encodes the index and worktree states
+	// in the first two columns, and a worktree-only modification leaves column
+	// one BLANK (" M path"). execGit trims the whole output, so that leading
+	// space vanished from the first line and the fixed 3-character offset below
+	// then ate the first character of the path -- " M index.html" came back as
+	// "ndex.html".
+	//
+	// It only ever showed on the first line, and only when that line was a
+	// worktree-only change, which is why it survived: staged entries start with
+	// a letter and untracked ones with "??". It is also not cosmetic. A mangled
+	// path matches nothing, so it dropped silently out of reconcile's dirty set
+	// as well as out of a checkpoint.
+	out, err := s.gitPorcelain("status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		return nil, err
 	}

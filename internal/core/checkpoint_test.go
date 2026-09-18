@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestCheckpointThresholdStaysSilentWhenNothingIsInFlight is the property that
@@ -57,7 +58,7 @@ func TestCheckpointRendersStatusNotNarrative(t *testing.T) {
 
 	got := s.BuildCheckpoint().Render()
 
-	for _, want := range []string{"Checkpoint", "In flight", "live-work", "Changed code", "a.go", "Where", "branch"} {
+	for _, want := range []string{"Checkpoint", "In flight", "live-work", "Uncommitted", "a.go", "Where", "branch"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("rendered checkpoint is missing %q:\n%s", want, got)
 		}
@@ -95,5 +96,157 @@ func TestCheckpointDedupesMemoryByPath(t *testing.T) {
 	}
 	if !strings.Contains(got, "`other.md`") {
 		t.Error("deduping dropped a distinct path")
+	}
+}
+
+// TestThresholdSeesCommittedUndocumentedWork is the regression for the blindness
+// the steward found on the first live use. A session that did a full day of work
+// and committed as it went has a clean tree, so InFlight is empty and the first
+// three inputs all read zero — at exactly the moment it is fullest.
+func TestThresholdSeesCommittedUndocumentedWork(t *testing.T) {
+	s, repo := gitTestStore(t)
+
+	for _, name := range []string{"a.md", "b.md", "c.md"} {
+		writeFile(t, filepath.Join(repo, name), "work\n")
+		runGit(t, repo, "add", name)
+		runGit(t, repo, "commit", "-m", "did "+name)
+	}
+
+	c := s.BuildCheckpoint()
+	if len(c.AtRisk) != 0 {
+		t.Fatalf("precondition: tree should be clean, got %v", c.AtRisk)
+	}
+	if c.Undocumented == 0 {
+		t.Fatal("three committed, unchronicled commits count as zero undocumented work")
+	}
+	if !c.HasOpenLoops() {
+		t.Error("a day of committed work with nothing written down reads as 'nothing to lose'")
+	}
+	if !strings.Contains(c.Render(), "Undocumented work") {
+		t.Error("the block does not tell the reader why it fired")
+	}
+}
+
+// TestChroniclingClearsTheCounter is the property that keeps the new input from
+// being permanently loud: it must fall to zero when someone does the thing the
+// hook is asking for.
+func TestChroniclingClearsTheCounter(t *testing.T) {
+	s, repo := gitTestStore(t)
+	writeFile(t, filepath.Join(repo, "a.md"), "work\n")
+	runGit(t, repo, "add", "a.md")
+	runGit(t, repo, "commit", "-m", "did a")
+
+	if s.BuildCheckpoint().Undocumented == 0 {
+		t.Fatal("precondition: the commit should count as undocumented")
+	}
+
+	// Chronicle it: an entry stamped with that commit.
+	head := strings.TrimSpace(runGit(t, repo, "rev-parse", "HEAD"))
+	if _, err := s.NewNode("entry", Frontmatter{Title: "Wrote it down", Hash: head}, "body"); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := s.BuildCheckpoint().Undocumented; got != 0 {
+		t.Errorf("Undocumented = %d after chronicling the commit, want 0", got)
+	}
+}
+
+// TestStoreOnlyCommitsAreNotUndocumentedWork: a commit that only touches katra/
+// *is* chronicling, so counting it would mean the counter could never be
+// cleared by writing.
+func TestStoreOnlyCommitsAreNotUndocumentedWork(t *testing.T) {
+	s, repo := gitTestStore(t)
+	runGit(t, repo, "add", "-A")
+	runGit(t, repo, "commit", "-m", "store only")
+
+	if got := s.BuildCheckpoint().Undocumented; got != 0 {
+		t.Errorf("Undocumented = %d for a store-only commit, want 0", got)
+	}
+}
+
+// TestCheckpointEntryIsReusedNotScattered: one checkpoint entry per day, rather
+// than a new one on every compaction of a long session.
+func TestCheckpointEntryIsReusedNotScattered(t *testing.T) {
+	s, _ := gitTestStore(t)
+	at := time.Now()
+
+	if s.CheckpointEntry(at) != nil {
+		t.Fatal("precondition: no checkpoint entry should exist yet")
+	}
+	made, err := s.NewEntry(Frontmatter{Title: CheckpointTitle(at)}, "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := s.CheckpointEntry(at)
+	if got == nil || got.Slug != made.Slug {
+		t.Errorf("CheckpointEntry did not find today's checkpoint entry (got %v)", got)
+	}
+}
+
+// TestCheckpointReportsPreExistingDirtyFile is the instance test the feature
+// failed. A session at 100% context had exactly one uncommitted file, and the
+// checkpoint reported a stale task instead — the one thing it named was wrong
+// and the one thing at risk was absent.
+//
+// The cause was composing EvaluateReconcile, whose unit is this turn's authored
+// paths and which deliberately excludes a pre-existing dirty file the session
+// never touched. Correct for a Stop gate, wrong here: that file is precisely
+// what is lost when a session ends.
+func TestCheckpointReportsPreExistingDirtyFile(t *testing.T) {
+	s, repo := gitTestStore(t)
+
+	// Committed and safe.
+	writeFile(t, filepath.Join(repo, "shipped.md"), "done\n")
+	runGit(t, repo, "add", "shipped.md")
+	runGit(t, repo, "commit", "-m", "shipped")
+
+	// The session authored something ELSE this turn. This is the condition that
+	// made the instance fail and that a fresh store does not reproduce: once a
+	// session has touched paths, reconcile stops falling back to the repo-wide
+	// dirty set, and anything it did not touch becomes invisible to it.
+	writeFile(t, filepath.Join(repo, "touched.md"), "authored\n")
+	if err := s.RecordTouched("wedged", "t1", filepath.Join(repo, "touched.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	// The at-risk artefact: dirty, and never touched through Edit/Write.
+	writeFile(t, filepath.Join(repo, "shipped.md"), "done\nplus 58 lines nobody wrote down\n")
+
+	c := s.BuildCheckpoint()
+
+	var found bool
+	for _, p := range c.AtRisk {
+		if p == "shipped.md" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("the only uncommitted file is absent from AtRisk: %v", c.AtRisk)
+	}
+	if !c.HasOpenLoops() {
+		t.Error("uncommitted work reads as nothing to lose")
+	}
+	if !strings.Contains(c.Render(), "shipped.md") {
+		t.Errorf("the rendered checkpoint does not name the at-risk file:\n%s", c.Render())
+	}
+}
+
+// TestCheckpointDoesNotDependOnASessionHavingTouchedTheFile pins the
+// distinction directly: a stale `doing` task must not be the only thing
+// reported while a dirty file goes unmentioned.
+func TestCheckpointDoesNotDependOnASessionHavingTouchedTheFile(t *testing.T) {
+	s, repo := gitTestStore(t)
+	if _, err := s.NewNode("task", Frontmatter{Title: "Stale from yesterday", Status: "doing"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(repo, "touched.md"), "authored\n")
+	if err := s.RecordTouched("wedged", "t1", filepath.Join(repo, "touched.md")); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(repo, "at-risk.md"), "unsaved reasoning\n")
+
+	got := s.BuildCheckpoint().Render()
+	if !strings.Contains(got, "at-risk.md") {
+		t.Errorf("a stale doing task was reported and the at-risk file was not:\n%s", got)
 	}
 }
