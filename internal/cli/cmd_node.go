@@ -20,7 +20,7 @@ func taskCmd() *cobra.Command {
 
 func taskNewCmd() *cobra.Command {
 	var tags []string
-	var effort, epic, summary, body, spec string
+	var effort, epic, summary, body, spec, horizon string
 	cmd := &cobra.Command{
 		Use:   "new \"Title\"",
 		Short: "Create a new task (status: todo, or specced with --spec)",
@@ -39,6 +39,7 @@ func taskNewCmd() *cobra.Command {
 				Status:  status,
 				Spec:    spec,
 				Effort:  effort,
+				Horizon: horizon,
 				Epic:    epic,
 				Tags:    tags,
 				Summary: summary,
@@ -52,6 +53,12 @@ func taskNewCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&effort, "effort", "", "effort estimate (S|M|L)")
+	// horizon is documented in docs/format.md as a *task* field, and `epic new`
+	// has exposed it since it existed -- but `task new` never did, so the one
+	// prioritisation field the format has could not be set on the node type it
+	// is documented for. A migration hit this for real: an ordered blocker list
+	// had nowhere to go.
+	cmd.Flags().StringVar(&horizon, "horizon", "", "planning horizon (now|next|later)")
 	cmd.Flags().StringVar(&epic, "epic", "", "parent epic slug")
 	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags")
 	cmd.Flags().StringVar(&summary, "summary", "", "one-line summary")

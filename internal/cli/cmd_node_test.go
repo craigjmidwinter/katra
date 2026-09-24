@@ -265,3 +265,53 @@ func TestTaskNewWithSpecFlag(t *testing.T) {
 		t.Errorf("Spec = %q, want docs/design/foo.md", node.FM.Spec)
 	}
 }
+
+// TestTaskNewAcceptsHorizon closes an asymmetry that had a real cost: horizon
+// is documented in docs/format.md as a *task* field, `epic new` exposed it, and
+// `task new` did not — so the one prioritisation field the format has could not
+// be set on the node type it is documented for.
+//
+// Found during a migration assessment: a project with an ordered blocker list
+// had nowhere to put the ordering, and was told to keep its list rather than
+// flatten it to fit the tool.
+func TestTaskNewAcceptsHorizon(t *testing.T) {
+	store, err := core.InitStore(t.TempDir(), "CLI Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, store.Dir, "task", "new", "Ranked work", "--horizon", "next"); err != nil {
+		t.Fatal(err)
+	}
+
+	node, err := store.GetNode("ranked-work")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if node.FM.Horizon != "next" {
+		t.Errorf("Horizon = %q, want next", node.FM.Horizon)
+	}
+}
+
+// TestTaskAndEpicAgreeOnHorizon: the asymmetry was invisible because each
+// command was correct on its own. Asserting they expose the same field is what
+// makes a future divergence fail rather than sit unnoticed.
+func TestTaskAndEpicAgreeOnHorizon(t *testing.T) {
+	for _, kind := range []string{"task", "epic"} {
+		cmd := taskCmd()
+		if kind == "epic" {
+			cmd = epicCmd()
+		}
+		var found bool
+		for _, sub := range cmd.Commands() {
+			if sub.Name() != "new" {
+				continue
+			}
+			if sub.Flags().Lookup("horizon") != nil {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("`%s new` does not expose --horizon; the format documents horizon for tasks", kind)
+		}
+	}
+}
