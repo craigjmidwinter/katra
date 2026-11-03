@@ -5,6 +5,7 @@ import (
 	"html"
 	"strings"
 
+	"github.com/yuin/goldmark"
 	"gopkg.in/yaml.v3"
 )
 
@@ -12,6 +13,13 @@ import (
 // returns an HTML fragment. The viewer's styles.css + app.js give them
 // behaviour (lightbox, compare slider). Add a component by registering a new
 // ComponentFunc in render.go's Registry — that's the whole extension surface.
+
+// EmbedSandbox is the exact sandbox attribute on every embed. Leaving out
+// allow-same-origin is the point: alongside allow-scripts it lets a same-origin
+// frame delete its own sandbox, and there is deliberately no per-embed key to
+// put it back, because that key would live in the same committed markdown the
+// sandbox defends against. See docs/design/playable-embed-isolation.md.
+const EmbedSandbox = "allow-scripts allow-pointer-lock"
 
 type embedSpec struct {
 	Src     string `yaml:"src"`
@@ -32,8 +40,8 @@ func renderEmbed(body string) (string, error) {
 	}
 	var b strings.Builder
 	b.WriteString(`<figure class="dl-embed">`)
-	fmt.Fprintf(&b, `<iframe src="%s" style="height:%dpx" loading="lazy" sandbox="allow-scripts allow-same-origin allow-pointer-lock"></iframe>`,
-		attr(s.Src), s.Height)
+	fmt.Fprintf(&b, `<iframe src="%s" style="height:%dpx" loading="lazy" sandbox="%s"></iframe>`,
+		attr(s.Src), s.Height, EmbedSandbox)
 	b.WriteString(figcap(s.Caption))
 	b.WriteString(`</figure>`)
 	return b.String(), nil
@@ -127,15 +135,15 @@ func renderVideo(body string) (string, error) {
 }
 
 func renderNote(body string) (string, error) {
-	return calloutHTML("note", body), nil
+	return calloutHTML("note", body, plainMD), nil
 }
 
 func renderWarning(body string) (string, error) {
-	return calloutHTML("warning", body), nil
+	return calloutHTML("warning", body, plainMD), nil
 }
 
-func calloutHTML(kind, body string) string {
-	return fmt.Sprintf(`<aside class="dl-callout dl-callout-%s">%s</aside>`, kind, renderPlain(body))
+func calloutHTML(kind, body string, conv goldmark.Markdown) string {
+	return fmt.Sprintf(`<aside class="dl-callout dl-callout-%s">%s</aside>`, kind, renderPlain(body, conv))
 }
 
 func figcap(s string) string {

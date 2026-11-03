@@ -104,7 +104,7 @@ func BuildData(s *core.Store) ([]byte, error) {
 		},
 	}
 	known := core.KnownSlugs(entries)
-	renderer := core.NewRenderer(func(slug string) bool { return known[slug] })
+	renderer := core.NewRenderer(func(slug string) bool { return known[slug] }, s.Config.SanitizeRawHTML())
 	graph := core.BuildLinkGraph(entries)
 	// Best-effort: outside a git repo (or a static-build sandbox), path-style
 	// specs just never resolve — they still render, as plain code text.
@@ -192,6 +192,9 @@ const defaultTitle = "Katra"
 // it would overwrite a host's tailored value with a placeholder, and a renderer
 // that improves one field while degrading another is not an improvement.
 // og:url needs the deploy URL, which katra does not know. Those stay the host's.
+//
+// The content security policy goes here too, ahead of everything it governs,
+// because a static build has no other way to carry one.
 func Shell(s *core.Store) ([]byte, error) {
 	raw, err := Asset("index.html")
 	if err != nil {
@@ -204,7 +207,8 @@ func Shell(s *core.Store) ([]byte, error) {
 	}
 	escaped := html.EscapeString(title)
 
-	head := "<title>" + escaped + "</title>\n" +
+	head := metaPolicy + "\n" +
+		"<title>" + escaped + "</title>\n" +
 		`<meta property="og:type" content="website">` + "\n" +
 		`<meta property="og:title" content="` + escaped + `">`
 

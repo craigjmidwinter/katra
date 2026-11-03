@@ -50,6 +50,22 @@ type Config struct {
 	// attribution, and it is removable in one line because a credit that
 	// cannot be removed is a reason to reject a tool.
 	Colophon *bool `yaml:"colophon,omitempty"`
+
+	// RawHTML is what happens to HTML written directly in markdown: "allow"
+	// (the default) or "sanitize". See SanitizeRawHTML.
+	RawHTML string `yaml:"rawHTML,omitempty"`
+}
+
+// SanitizeRawHTML reports whether raw HTML is stripped from rendered bodies.
+// Only an absent value or "allow" keeps it: a typo in a security switch has to
+// fail towards the safe side rather than quietly leaving it off.
+func (c Config) SanitizeRawHTML() bool {
+	switch strings.ToLower(strings.TrimSpace(c.RawHTML)) {
+	case "", "allow":
+		return false
+	default:
+		return true
+	}
 }
 
 // ColophonEnabled reports whether the generated site carries the katra credit

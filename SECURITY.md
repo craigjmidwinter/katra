@@ -40,6 +40,13 @@ vulnerabilities — worth knowing before filing:
   reachable from your LAN restates that limitation; a report that it lets a
   remote client do something beyond reading/serving the log (arbitrary file
   access outside `katra/`, code execution, and the like) is a real finding.
+- **`katra serve` and `katra hub serve` have no sessions**, so they set no
+  cookies and there is nothing for `HttpOnly` or `SameSite` to protect. Committed
+  entries and embeds are still untrusted: code in them running on the viewer
+  origin, or an embed reaching outside its opaque origin, is a real finding. A
+  static `katra build` carries a `<meta>` policy only; `frame-ancestors`,
+  `nosniff` and the media `sandbox` directive are the host's to set there. See
+  [the design note](docs/design/playable-embed-isolation.md).
 - **The commit gate and the git/Claude Code hooks execute locally**, as you,
   with your permissions — the same trust boundary as any git hook or shell
   script you've installed. They're not a sandbox and aren't meant to be.

@@ -37,22 +37,33 @@ var Registry = map[string]ComponentFunc{
 	"warning": renderWarning,
 }
 
-var md = newMarkdownWith(nil)
+var md = newMarkdownWith(nil, false)
+
+// rendererOptions is where raw HTML is decided. Without WithUnsafe goldmark
+// omits raw HTML and refuses dangerous link schemes, which is the whole of
+// rawHTML: sanitize. Components are unaffected, being katra's own output.
+func rendererOptions(sanitize bool) []goldmark.Option {
+	if sanitize {
+		return nil
+	}
+	return []goldmark.Option{goldmark.WithRendererOptions(gmhtml.WithUnsafe())}
+}
 
 // newMarkdownWith builds a converter. When resolver is non-nil, [[wikilinks]]
 // whose target slug fails resolver() render with the dl-wikilink-missing class;
 // a nil resolver renders every wikilink as resolved (we don't know otherwise).
-func newMarkdownWith(resolver func(slug string) bool) goldmark.Markdown {
-	m := goldmark.New(
+// sanitize drops raw HTML, in callouts as well as in the body.
+func newMarkdownWith(resolver func(slug string) bool, sanitize bool) goldmark.Markdown {
+	opts := append([]goldmark.Option{
 		goldmark.WithExtensions(extension.GFM, extension.Typographer),
 		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
-		goldmark.WithRendererOptions(gmhtml.WithUnsafe()),
-	)
+	}, rendererOptions(sanitize)...)
+	m := goldmark.New(opts...)
 	m.Parser().AddOptions(parser.WithInlineParsers(
 		util.Prioritized(&wikilinkParser{resolver: resolver}, 1),
 	))
 	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(&componentRenderer{}, 1),
+		util.Prioritized(&componentRenderer{sanitize: sanitize}, 1),
 		util.Prioritized(&wikilinkRenderer{}, 1),
 	))
 	return m
@@ -75,9 +86,10 @@ func RenderMarkdown(src string) (string, error) {
 type Renderer struct{ md goldmark.Markdown }
 
 // NewRenderer returns a Renderer whose wikilinks are resolved against resolver
-// (typically membership in the set of known node slugs).
-func NewRenderer(resolver func(slug string) bool) *Renderer {
-	return &Renderer{md: newMarkdownWith(resolver)}
+// (typically membership in the set of known node slugs). sanitize strips raw
+// HTML; pass Config.SanitizeRawHTML.
+func NewRenderer(resolver func(slug string) bool, sanitize bool) *Renderer {
+	return &Renderer{md: newMarkdownWith(resolver, sanitize)}
 }
 
 // Render converts a markdown body to HTML with resolved wikilinks.
@@ -170,14 +182,14 @@ func (r *wikilinkRenderer) render(w util.BufWriter, source []byte, node ast.Node
 
 // renderPlain is used by components that contain nested markdown (note/warning).
 // It deliberately uses a fresh, component-free converter to avoid recursion.
-var plainMD = goldmark.New(
-	goldmark.WithExtensions(extension.GFM),
-	goldmark.WithRendererOptions(gmhtml.WithUnsafe()),
+var (
+	plainMD     = goldmark.New(append([]goldmark.Option{goldmark.WithExtensions(extension.GFM)}, rendererOptions(false)...)...)
+	safePlainMD = goldmark.New(append([]goldmark.Option{goldmark.WithExtensions(extension.GFM)}, rendererOptions(true)...)...)
 )
 
-func renderPlain(src string) string {
+func renderPlain(src string, conv goldmark.Markdown) string {
 	var buf bytes.Buffer
-	if err := plainMD.Convert([]byte(strings.TrimSpace(src)), &buf); err != nil {
+	if err := conv.Convert([]byte(strings.TrimSpace(src)), &buf); err != nil {
 		return html.EscapeString(src)
 	}
 	return buf.String()
@@ -185,7 +197,7 @@ func renderPlain(src string) string {
 
 // componentRenderer overrides fenced-code-block rendering: registered languages
 // become components, everything else falls back to a plain <pre><code>.
-type componentRenderer struct{}
+type componentRenderer struct{ sanitize bool }
 
 func (r *componentRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	reg.Register(ast.KindFencedCodeBlock, r.renderFenced)
@@ -200,6 +212,12 @@ func (r *componentRenderer) renderFenced(w util.BufWriter, source []byte, node a
 	body := codeText(n, source)
 
 	if fn, ok := Registry[lang]; ok {
+		// Callouts are the one component whose body is author markdown, so
+		// they are the one a sanitizing renderer has to intercept.
+		if r.sanitize && (lang == "note" || lang == "warning") {
+			_, _ = w.WriteString(calloutHTML(lang, body, safePlainMD))
+			return ast.WalkSkipChildren, nil
+		}
 		out, err := fn(body)
 		if err != nil {
 			out = "<!-- katra component error (" + html.EscapeString(lang) + "): " + html.EscapeString(err.Error()) + " -->"

@@ -151,6 +151,21 @@ func ServeHub(load func() ([]HubProject, error), port int) error {
 		}
 	}()
 
+	addr := fmt.Sprintf(":%d", port)
+	fmt.Printf("\n  Katra hub — %d project(s)\n", len(projects))
+	fmt.Printf("  ───────────────────────────────\n")
+	fmt.Printf("  local:   http://localhost:%d/\n", port)
+	for _, ip := range lanAddrs() {
+		fmt.Printf("  network: http://%s:%d/\n", ip, port)
+	}
+	fmt.Printf("  serving every registered katra. Ctrl-C to stop.\n\n")
+	return http.ListenAndServe(addr, hubHandler(set))
+}
+
+// hubHandler is the hub's whole HTTP surface, every route behind the security
+// headers.
+func hubHandler(set *hubSet) http.Handler {
+	hub := set.hub
 	mux := http.NewServeMux()
 	mux.HandleFunc("/__livereload", sseHandler(hub))
 
@@ -195,14 +210,7 @@ func ServeHub(load func() ([]HubProject, error), port int) error {
 			w.Header().Set("Cache-Control", "no-cache")
 			_, _ = w.Write(projectsJSON(projects, true))
 		case strings.HasPrefix(sub, "media/"):
-			relPath := strings.TrimPrefix(sub, "media/")
-			p := filepath.Join(store.MediaDir(), filepath.Clean("/"+relPath))
-			if !strings.HasPrefix(p, store.MediaDir()) {
-				http.Error(w, "forbidden", http.StatusForbidden)
-				return
-			}
-			w.Header().Set("Cache-Control", "no-cache")
-			http.ServeFile(w, r, p)
+			serveMedia(w, r, store.MediaDir(), strings.TrimPrefix(sub, "media/"))
 		default: // app.js, styles.css
 			b, err := Asset(sub)
 			if err != nil {
@@ -258,15 +266,7 @@ func ServeHub(load func() ([]HubProject, error), port int) error {
 		page(hubIndexHTML(projects, true))(w, r)
 	})
 
-	addr := fmt.Sprintf(":%d", port)
-	fmt.Printf("\n  Katra hub — %d project(s)\n", len(projects))
-	fmt.Printf("  ───────────────────────────────\n")
-	fmt.Printf("  local:   http://localhost:%d/\n", port)
-	for _, ip := range lanAddrs() {
-		fmt.Printf("  network: http://%s:%d/\n", ip, port)
-	}
-	fmt.Printf("  serving every registered katra. Ctrl-C to stop.\n\n")
-	return http.ListenAndServe(addr, mux)
+	return securityHeaders(mux)
 }
 
 // sseHandler returns the livereload SSE handler for a reload hub.
@@ -462,7 +462,7 @@ func hubShell(active, inner string, web bool, projects []HubProject) string {
 	}
 	nav += `</div>`
 
-	return `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8">` + metaPolicy +
 		`<meta name="viewport" content="width=device-width, initial-scale=1">` +
 		`<link rel="preconnect" href="https://fonts.googleapis.com">` +
 		`<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>` +

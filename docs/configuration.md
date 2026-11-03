@@ -4,8 +4,8 @@ layout: default
 nav_order: 5
 description: >-
   Every key in katra/config.yml — title, accent, the colophon (footer) credit,
-  the two git-hook knobs, and the memory-ingest settings — with its default and
-  its failure mode.
+  the two git-hook knobs, raw HTML handling, and the memory-ingest settings —
+  with its default and its failure mode.
 ---
 
 # Configuration
@@ -19,6 +19,7 @@ title: HellHole Country Club
 description: Night golf, in VR, on a course that hates you
 accent: "#b5502f"
 colophon: true
+rawHTML: allow
 
 autoCommit: false
 commitPrefix: "katra:"
@@ -146,3 +147,23 @@ never run an agent session has no `.gitignore` and no `.state/`, which is
 correct but does mean the ignore rule appears later than you might expect. If
 you are committing for the first time after enabling the hooks, check that
 `.state/` is not staged.
+
+## Raw HTML
+
+`rawHTML` decides what happens to HTML written directly in markdown.
+
+- **`allow`, the default,** keeps it in the page. The viewer's content security
+  policy still stops it running script: inline handlers, `javascript:` links
+  and `<script>` tags do nothing.
+- **`sanitize`** strips it, along with `javascript:` links. Components still
+  render, because they are katra's own output. `<details>` and every other
+  HTML tag are stripped too.
+
+Any other value counts as `sanitize`, so a typo cannot leave a security switch
+off. Set it on a katra whose entries come from people you do not fully trust.
+The key is per store and lives in the same repository as the entries, so review
+changes to it the same way.
+
+Migrating: `allow` keeps every existing page's markup, but markup that relied on
+inline script no longer works. See
+[Migrating to the opaque-origin sandbox](components#migrating-to-the-opaque-origin-sandbox).

@@ -9,8 +9,21 @@ first release, everything lands under `[Unreleased]`.
 
 ## [Unreleased]
 
+### Security
+
+- **Embeds run in an opaque origin.** The sandbox is now `allow-scripts
+  allow-pointer-lock`, because `allow-same-origin` let an embed remove it. Under
+  `serve` and `hub serve`, every `media/` response is sandboxed by header as
+  well, so opening a file directly no longer runs it on the viewer origin.
+- **Content security policy on every page.** Inline event handlers and
+  `javascript:` links in entries no longer run, and remote images and frames are
+  blocked. This changes existing content: see
+  [the migration note](docs/components.md#migrating-to-the-opaque-origin-sandbox).
+
 ### Added
 
+- **`rawHTML: allow|sanitize`** in `config.yml`. `sanitize` strips raw HTML from
+  entries; the default keeps it.
 - **Windows release support.** Tagged releases now include amd64 and arm64 zip
   archives containing `katra.exe` and `katra-mcp.exe`, plus matching MCPB
   bundles. Native Windows locking and path handling make those binaries usable,

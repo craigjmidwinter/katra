@@ -1,0 +1,20 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Embed isolation</title><style>
+body{margin:0;padding:22px;background:#12161c;color:#e7e4dc;font:14px/1.4 ui-sans-serif,system-ui,sans-serif}
+h1{font-size:18px;margin:0 0 4px}p{margin:0 0 14px;color:#a7adb5;font-size:13px}
+table{border-collapse:collapse;width:100%}th,td{padding:6px 8px;border-bottom:1px solid #2b323b;text-align:left}
+th{color:#a7adb5;font-weight:600;font-size:12px}.bad{color:#ff9a8a;font-weight:600}.ok{color:#8fdcae;font-weight:600}
+</style></head><body><h1>The same hostile entry, in real Chromium</h1>
+<p>Fixture reports what it managed to do. 10 escapes on main, 0 here; the widget still works.</p>
+<table><tr><th>What the entry tried</th><th>main (17c9eae)</th><th>this branch</th></tr>
+<tr><td>Embed reads parent.document</td><td class="bad">read it</td><td class="ok">SecurityError</td></tr>
+<tr><td>Embed runs on the viewer origin</td><td class="bad">yes</td><td class="ok">opaque</td></tr>
+<tr><td>Embed reads cookies</td><td class="bad">read them</td><td class="ok">throws</td></tr>
+<tr><td>Embed reads localStorage</td><td class="bad">read it</td><td class="ok">throws</td></tr>
+<tr><td>Embed reads data.json</td><td class="bad">read it</td><td class="ok">blocked</td></tr>
+<tr><td>Inline handler inside an embed</td><td class="bad">ran</td><td class="ok">blocked</td></tr>
+<tr><td>Raw onerror handler in an entry</td><td class="bad">ran</td><td class="ok">blocked</td></tr>
+<tr><td>Raw srcdoc inline script</td><td class="bad">ran</td><td class="ok">blocked</td></tr>
+<tr><td>Raw srcdoc loads media/evil.js</td><td class="bad">ran</td><td class="ok">refused</td></tr>
+<tr><td>Raw iframe with no sandbox attribute</td><td class="bad">read parent</td><td class="ok">SecurityError</td></tr>
+<tr><td>Widget script, sibling .js, sibling fetch</td><td class="ok">work</td><td class="ok">work</td></tr>
+</table></body></html>

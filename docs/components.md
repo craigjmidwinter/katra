@@ -129,9 +129,36 @@ caption: Frame time vs district count, Quest 3 vs Editor
 | `height` | no | Pixels. Defaults to `480`. |
 | `caption` | no | |
 
-The iframe is sandboxed with `allow-scripts allow-same-origin
-allow-pointer-lock`, so inline JavaScript runs and a WebGL canvas can capture
-the pointer.
+The iframe is sandboxed with exactly `allow-scripts allow-pointer-lock`, so
+JavaScript runs and a WebGL canvas can capture the pointer, but the embed sits
+in an opaque origin and cannot touch the page around it. There is no key to
+widen this: anything an entry could set, a malicious entry could set too.
+
+Inside an embed, under `katra serve` and `katra hub serve`:
+
+- An inline `<script>` runs, and a same-directory `.js` file loads.
+- `fetch` works for files in `media/`, and for nothing else.
+- Inline event handlers (`onclick="…"`) do not run. Use `addEventListener` in a
+  `<script>`.
+- `document.cookie`, `localStorage` and `parent.document` throw. Catch the error
+  if a widget tries them.
+
+A static `katra build` has no response headers, so there the sandbox attribute
+is the whole control, and a multi-file embed's `fetch` depends on the host
+sending CORS headers.
+
+### Migrating to the opaque-origin sandbox
+
+Existing content that stops working:
+
+- **Inline handlers and `javascript:` links in entries** no longer run, in any
+  mode. Raw HTML still renders. This is intended.
+- **Inline handlers in embeds** no longer run under `serve` or `hub serve`.
+- **Embeds that read `localStorage`, cookies or the parent page** now throw.
+- **Remote images, video and frames in entries, and external `src:` on an
+  embed,** are blocked. Copy them into `media/`.
+- **Embeds that make external requests** are blocked under `serve` and `hub
+  serve`, which was already against the rules below.
 
 ### Charts and diagrams
 

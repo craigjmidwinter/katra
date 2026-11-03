@@ -15,16 +15,11 @@ import (
 	"github.com/craigjmidwinter/katra/internal/core"
 )
 
-// reloadClient is injected before </body> on the served page. It opens an SSE
-// stream and reloads the tab whenever the watcher reports a change.
+// reloadClient is injected before </body> on the served page. It is a file, not
+// an inline script, because the page's CSP forbids inline scripts; the path is
+// relative so it resolves under /p/<id>/ on the hub as well.
 const reloadClient = `
-<script>
-(function(){
-  if (location.search.indexOf('noreload') !== -1) return;
-  var es = new EventSource('/__livereload');
-  es.onmessage = function(e){ if (e.data === 'reload') location.reload(); };
-})();
-</script>`
+<script src="livereload.js"></script>`
 
 // Serve runs a live-reloading dev server for the store. data.json is generated
 // per request (always fresh); a poll-based watcher reloads open tabs when any
@@ -33,6 +28,20 @@ func Serve(s *core.Store, port int) error {
 	hub := &reloadHub{clients: map[chan string]struct{}{}}
 	go watch(s.Dir, hub)
 
+	addr := fmt.Sprintf(":%d", port)
+	fmt.Printf("\n  %s — live dev log\n", s.Config.Title)
+	fmt.Printf("  ───────────────────────────────\n")
+	fmt.Printf("  local:   http://localhost:%d/\n", port)
+	for _, ip := range lanAddrs() {
+		fmt.Printf("  network: http://%s:%d/\n", ip, port)
+	}
+	fmt.Printf("  watching %s — open tabs reload on change. Ctrl-C to stop.\n\n", s.Dir)
+	return http.ListenAndServe(addr, serveHandler(s, hub))
+}
+
+// serveHandler is the dev server's whole HTTP surface, every route behind the
+// security headers.
+func serveHandler(s *core.Store, hub *reloadHub) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/__livereload", func(w http.ResponseWriter, r *http.Request) {
@@ -73,14 +82,7 @@ func Serve(s *core.Store, port int) error {
 	})
 
 	mux.HandleFunc("/media/", func(w http.ResponseWriter, r *http.Request) {
-		rel := strings.TrimPrefix(r.URL.Path, "/media/")
-		p := filepath.Join(s.MediaDir(), filepath.Clean("/"+rel))
-		if !strings.HasPrefix(p, s.MediaDir()) {
-			http.Error(w, "forbidden", http.StatusForbidden)
-			return
-		}
-		w.Header().Set("Cache-Control", "no-cache")
-		http.ServeFile(w, r, p)
+		serveMedia(w, r, s.MediaDir(), strings.TrimPrefix(r.URL.Path, "/media/"))
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -114,15 +116,7 @@ func Serve(s *core.Store, port int) error {
 		_, _ = w.Write(b)
 	})
 
-	addr := fmt.Sprintf(":%d", port)
-	fmt.Printf("\n  %s — live dev log\n", s.Config.Title)
-	fmt.Printf("  ───────────────────────────────\n")
-	fmt.Printf("  local:   http://localhost:%d/\n", port)
-	for _, ip := range lanAddrs() {
-		fmt.Printf("  network: http://%s:%d/\n", ip, port)
-	}
-	fmt.Printf("  watching %s — open tabs reload on change. Ctrl-C to stop.\n\n", s.Dir)
-	return http.ListenAndServe(addr, mux)
+	return securityHeaders(mux)
 }
 
 func contentType(name string) string {

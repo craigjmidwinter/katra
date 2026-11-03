@@ -52,3 +52,76 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("body = %q", e.Body)
 	}
 }
+
+// TestEmbedSandboxIsExact pins the attribute itself. allow-same-origin beside
+// allow-scripts lets a frame remove its own sandbox, so a change here is a
+// security decision and has to show up as a failing test.
+func TestEmbedSandboxIsExact(t *testing.T) {
+	const want = `sandbox="allow-scripts allow-pointer-lock"`
+	out, err := RenderMarkdown("```embed\nsrc: media/x.html\n```\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, want) {
+		t.Fatalf("embed lost its exact sandbox %s:\n%s", want, out)
+	}
+	if strings.Contains(out, "allow-same-origin") {
+		t.Fatalf("embed must stay in an opaque origin:\n%s", out)
+	}
+}
+
+// TestUnknownEmbedKeyCannotWidenSandbox: nothing an author writes in the fence
+// reaches the attribute.
+func TestUnknownEmbedKeyCannotWidenSandbox(t *testing.T) {
+	out, err := RenderMarkdown("```embed\nsrc: media/x.html\nsandbox: allow-same-origin\nsameOrigin: true\n```\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, "allow-same-origin") {
+		t.Fatalf("fence keys must not reach the sandbox:\n%s", out)
+	}
+}
+
+func TestRawHTMLSwitch(t *testing.T) {
+	src := "<div onclick=\"x()\">raw</div>\n\n[bad](javascript:alert(1))\n\n" +
+		"```note\n<img src=x onerror=y()>\n\n**kept**\n```\n\n" +
+		"```embed\nsrc: media/x.html\n```\n"
+	render := func(sanitize bool) string {
+		t.Helper()
+		out, err := NewRenderer(func(string) bool { return true }, sanitize).Render(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+
+	allowed := render(false)
+	for _, want := range []string{`onclick="x()"`, `onerror=y()`} {
+		if !strings.Contains(allowed, want) {
+			t.Errorf("allow must pass raw HTML through unchanged; missing %s in:\n%s", want, allowed)
+		}
+	}
+
+	safe := render(true)
+	for _, banned := range []string{"onclick", "onerror", "javascript:"} {
+		if strings.Contains(safe, banned) {
+			t.Errorf("sanitize left %q in:\n%s", banned, safe)
+		}
+	}
+	for _, want := range []string{"<iframe", "<strong>kept</strong>", "dl-callout-note"} {
+		if !strings.Contains(safe, want) {
+			t.Errorf("sanitize must keep components and markdown; missing %q in:\n%s", want, safe)
+		}
+	}
+}
+
+func TestSanitizeRawHTMLFailsClosed(t *testing.T) {
+	for value, want := range map[string]bool{
+		"": false, "allow": false, " Allow ": false,
+		"sanitize": true, "SANITIZE": true, "alow": true, "off": true,
+	} {
+		if got := (Config{RawHTML: value}).SanitizeRawHTML(); got != want {
+			t.Errorf("RawHTML %q: got %v, want %v", value, got, want)
+		}
+	}
+}

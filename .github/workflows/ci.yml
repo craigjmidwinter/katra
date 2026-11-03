@@ -50,7 +50,11 @@ jobs:
 
       # -race matters more here than in most projects: the hub daemon refreshes
       # its project set on a ticker while HTTP handlers read it.
+      # The runner ships Chrome. Requiring it keeps the embed isolation tests
+      # from turning into silent skips.
       - name: Test
+        env:
+          KATRA_REQUIRE_BROWSER: "1"
         run: go test -race ./...
 
   windows:

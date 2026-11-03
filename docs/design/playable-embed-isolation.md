@@ -84,11 +84,19 @@ must not turn it off.
 | `nosniff` | header | set it on the host |
 | `no-referrer` | header and `<meta>` | `<meta>` |
 | Inline-script hashes on media | yes | not applicable, no media headers |
+| Media opened directly stays opaque | yes | no; it runs on the site's origin |
+| Multi-file embed `fetch` | CORS for `null` | depends on the host |
+
+A static site has no katra sessions or server to protect, but a host that shares
+an origin with something sensitive should serve `media/` with the same headers.
+
+The session-cookie requirement does not apply: `serve` and `hub serve` set no
+cookies, and a test keeps it that way.
 
 ## Migration
 
 Existing content that stops working is listed in
-[Components](../components#embed) and [Configuration](../configuration).
+[Components](../components#migrating-to-the-opaque-origin-sandbox).
 
 ## Rejected
 

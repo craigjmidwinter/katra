@@ -122,6 +122,8 @@ Rules for the HTML, because it renders inside a sandboxed iframe:
 - **No external requests.** No CDN scripts, no web fonts, no remote images.
   Inline everything; embed images as `data:` URIs. A `<script>` tag with inline
   JS is fine, but plain inline SVG is usually less work and always renders.
+- **Expect an opaque origin.** Inline handlers (`onclick="…"`) do not run, so use
+  `addEventListener`. `localStorage`, cookies and `parent` throw.
 - **Size it for the column.** Set an explicit `viewBox`, let it scale to 100%
   width, and pass `height:` in the embed block if 480px is wrong.
 - **Give the figure its own background.** `prefers-color-scheme` follows the
