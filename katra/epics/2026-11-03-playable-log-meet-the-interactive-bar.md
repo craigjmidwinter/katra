@@ -7,7 +7,7 @@ tags:
     - viewer
 summary: Rich, playable posts in every katra, starting with making author JavaScript safe.
 type: epic
-status: active
+status: done
 horizon: now
 ---
 

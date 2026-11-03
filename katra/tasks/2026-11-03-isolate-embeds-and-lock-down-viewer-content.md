@@ -6,10 +6,11 @@ tags:
     - security
 summary: Opaque-origin embeds, CSP on pages and media, a rawHTML switch, and browser regression tests.
 type: task
-status: doing
+status: done
 spec: docs/design/playable-embed-isolation.md
 effort: M
 epic: playable-log-meet-the-interactive-bar
+entry: the-sandbox-that-was-not-one
 ---
 
 

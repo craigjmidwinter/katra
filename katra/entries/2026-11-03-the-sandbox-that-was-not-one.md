@@ -5,7 +5,14 @@ time: "17:15:54"
 tags:
     - security
     - viewer
+hash: 2ef6f25
+stat:
+    f: 23
+    a: 970
+    d: 75
 summary: Embeds now run in an opaque origin, and nothing committed can run as the viewer.
+closes:
+    - isolate-embeds-and-lock-down-viewer-content
 ---
 
 ```embed
