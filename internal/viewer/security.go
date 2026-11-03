@@ -116,8 +116,10 @@ func serveMedia(w http.ResponseWriter, r *http.Request, mediaDir, rel string) {
 	h.Set("Cache-Control", "no-cache")
 	h.Set("Content-Security-Policy", MediaPolicy(htmlToServe(p)))
 	// A sandboxed embed's origin is opaque and serialises as "null". Answering
-	// only that keeps ordinary websites from reading media off a LAN hub, which
-	// "*" would allow.
+	// only that stops a plain cross-site fetch, but it is not a boundary: any
+	// site can sandbox a frame of its own and send the same Origin. Treat media
+	// as readable by whoever can reach the server, which is already the no-auth
+	// model. See the design note.
 	h.Add("Vary", "Origin")
 	if r.Header.Get("Origin") == "null" {
 		h.Set("Access-Control-Allow-Origin", "null")

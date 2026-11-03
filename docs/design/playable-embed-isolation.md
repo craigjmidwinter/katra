@@ -63,8 +63,12 @@ embeds are unaffected: their requests come from an opaque origin.
 
 **CORS for `null` only.** Sandboxed multi-file builds fetch their siblings from
 an opaque origin. `media/` answers `Access-Control-Allow-Origin: null` to
-`Origin: null`, not `*`, so ordinary websites a reader visits cannot read a LAN
-hub's media.
+`Origin: null`, not `*`. That stops a plain cross-site fetch, and no more: a
+website a reader visits can create its own sandboxed frame, send the same
+`Origin`, and read a LAN hub's `media/` through that reader's browser. The
+server cannot tell that frame from a real embed. This is a residual exposure
+that P1 adds, limited to `media/`; `data.json` and pages stay without CORS.
+Dropping the header closes it, at the cost of `fetch` in multi-file embeds.
 
 **`rawHTML: allow|sanitize`.** `sanitize` turns on goldmark's safe mode: raw
 HTML is dropped and `javascript:` links are not emitted. Components still

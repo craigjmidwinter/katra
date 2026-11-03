@@ -31,4 +31,4 @@ The attribute was not enough. It protects one iframe, so opening a media file di
 
 "No `unsafe-inline`" and "self-contained widget" collide, because a widget is one file with an inline script. Rejected `'unsafe-inline'` on embed responses. The server hashes the inline scripts in the HTML it is about to send, and a misread script simply stays blocked. The hash does not vouch for the code; the opaque origin contains it.
 
-Also rejected: a per-embed opt-in, since an attacker could set it; `Access-Control-Allow-Origin: *` on media, which would let any website a reader visits read a LAN hub's media; and an HTML sanitizer dependency, since goldmark's safe mode strips raw HTML with no new code.
+Also rejected: a per-embed opt-in, since an attacker could set it; `Access-Control-Allow-Origin: *` on media, in favour of answering only `null`, which stops a plain cross-site fetch but not a site that sandboxes its own frame; and an HTML sanitizer dependency, since goldmark's safe mode strips raw HTML with no new code.
