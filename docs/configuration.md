@@ -20,6 +20,7 @@ description: Night golf, in VR, on a course that hates you
 accent: "#b5502f"
 colophon: true
 rawHTML: allow
+requireOwner: false
 
 autoCommit: false
 commitPrefix: "katra:"
@@ -43,6 +44,8 @@ for `config.yml`, which is why an empty `katra/` is not one.
 | `colophon` | boolean | `true` | The one-line "Chronicled with katra" footer on a built site. Set `false` to remove it. See below. |
 | `autoCommit` | boolean | `false` | Whether the post-commit hook commits the stamp itself. See below. |
 | `commitPrefix` | string | `katra:` | Prefix for the hook's own stamp commits. |
+| `rawHTML` | `allow` or `sanitize` | `allow` | What happens to HTML written in markdown. See below. |
+| `requireOwner` | boolean | `false` | Refuse to create a task or epic without an `owner`. See below. |
 | `memory.enabled` | boolean | `true` | Whether Claude Code memory is ingested at all. |
 | `memory.types` | list of strings | `[project]` | Which memory `metadata.type` values are admitted. |
 | `memory.sensitiveTerms` | list of strings | none | Extra strings that quarantine a memory on match, case-insensitive, layered on the built-in secret detectors. |
@@ -167,3 +170,16 @@ changes to it the same way.
 Migrating: `allow` keeps every existing page's markup, but markup that relied on
 inline script no longer works. See
 [Migrating to the opaque-origin sandbox](components#migrating-to-the-opaque-origin-sandbox).
+
+## Requiring an owner
+
+`requireOwner: true` makes `owner` mandatory when a task or epic is created,
+through `katra task new`, `katra epic new` or the MCP server: creating one
+without `--owner` is refused and writes nothing. It also makes `katra doctor`
+list every open task and epic that has no owner.
+
+It is off by default, because making an optional key required is a breaking
+change. Nodes that already exist are not touched. With it off, doctor still
+lists owner gaps once any node in the katra has an owner, since a katra that
+has started recording owners usually wants the gaps; one that never has hears
+nothing about them.

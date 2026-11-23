@@ -87,6 +87,7 @@ func newServer(version string) *server.MCPServer {
 		mcp.WithString("body", mcp.Description("Initial markdown body.")),
 		mcp.WithString("effort", mcp.Description("Effort estimate: XS|S|M|L|XL (case-insensitive).")),
 		mcp.WithString("epic", mcp.Description("Parent epic slug.")),
+		mcp.WithString("owner", mcp.Description("Who answers for the task. Required when the katra's config.yml sets requireOwner.")),
 		mcp.WithString("tags", mcp.Description("Comma-separated tags.")),
 		mcp.WithString("spec", mcp.Description("Spec artifact ref (a node slug in the katra, or a path relative to the repo root); creates the task already specced.")),
 	), handleTaskNew)
@@ -124,6 +125,7 @@ func newServer(version string) *server.MCPServer {
 		mcp.WithString("title", mcp.Required(), mcp.Description("Epic title.")),
 		mcp.WithString("body", mcp.Description("Initial markdown body.")),
 		mcp.WithString("horizon", mcp.Description("Planning horizon: now|next|later.")),
+		mcp.WithString("owner", mcp.Description("Who answers for the epic. Required when the katra's config.yml sets requireOwner.")),
 	), handleEpicNew)
 
 	s.AddTool(mcp.NewTool("katra_decide",
@@ -413,6 +415,10 @@ func handleTaskNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	if err != nil {
 		return mcp.NewToolResultError(err.Error() + " — pass effort as one of those, or omit it"), nil
 	}
+	owner, err := s.CreationOwner(argString(req, "owner"))
+	if err != nil {
+		return mcp.NewToolResultError(strings.Replace(err.Error(), "--owner", "owner", 1)), nil
+	}
 	spec := argString(req, "spec")
 	status := "todo"
 	if spec != "" {
@@ -423,6 +429,7 @@ func handleTaskNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		Status: status,
 		Spec:   spec,
 		Effort: effort,
+		Owner:  owner,
 		Epic:   argString(req, "epic"),
 		Tags:   splitCSV(argString(req, "tags")),
 	}, argString(req, "body"))
@@ -533,9 +540,14 @@ func handleEpicNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+	owner, err := s.CreationOwner(argString(req, "owner"))
+	if err != nil {
+		return mcp.NewToolResultError(strings.Replace(err.Error(), "--owner", "owner", 1)), nil
+	}
 	e, err := s.NewNode("epic", core.Frontmatter{
 		Title:   argString(req, "title"),
 		Horizon: argString(req, "horizon"),
+		Owner:   owner,
 	}, argString(req, "body"))
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil

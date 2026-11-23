@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -263,5 +264,29 @@ func TestHandleTaskBlockAndSetStatus(t *testing.T) {
 	}
 	if n, _ := s.GetNode("held"); n.FM.Status != "todo" {
 		t.Fatalf("after unblock: %q", n.FM.Status)
+	}
+}
+
+// TestHandleNewOwner: task_new and epic_new store an owner, and refuse to
+// create without one when the katra sets requireOwner.
+func TestHandleNewOwner(t *testing.T) {
+	s := newTestStore(t)
+	res, err := handleTaskNew(context.Background(), callReq(map[string]any{"title": "Owned", "owner": "me"}))
+	if err != nil || res.IsError {
+		t.Fatalf("task_new: %+v %v", res, err)
+	}
+	if n, _ := s.GetNode("owned"); n.FM.Owner != "me" {
+		t.Fatalf("owner = %q", n.FM.Owner)
+	}
+	cfg := filepath.Join(s.Dir, core.ConfigFile)
+	b, _ := os.ReadFile(cfg)
+	if err := os.WriteFile(cfg, append(b, []byte("requireOwner: true\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range []func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error){handleTaskNew, handleEpicNew} {
+		res, err := h(context.Background(), callReq(map[string]any{"title": "Orphan"}))
+		if err != nil || !res.IsError || !strings.Contains(resultText(t, res), "requireOwner") {
+			t.Errorf("want a requireOwner refusal, got %+v %v", res, err)
+		}
 	}
 }

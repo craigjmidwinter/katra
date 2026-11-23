@@ -212,6 +212,13 @@ do not affect the exit code:
 - epics whose stored status disagrees with the status their child tasks
   compute — fix with `katra epic rollup --write`
 - a task's `spec:` reference that resolves to neither a node nor a file
+- a node value no writer would produce: a status its type does not have, an
+  effort off the `XS`–`XL` scale, `blocked` with no `blocked_by`
+- a blocked task whose blocker looks like a slug but names no node, or whose
+  blockers are all done or cut — fix with `katra task unblock`. A blocker
+  with a space in it is free text and is not checked.
+- open tasks and epics with no owner, once the katra sets `requireOwner` or
+  any node has an owner
 - more than one draft open, and unreferenced files in `media/`
 
 ## The node model
@@ -233,6 +240,7 @@ Create a task (status `todo`, or `specced` if `--spec` is given).
 | --- | --- |
 | `--spec REF` | Spec artifact ref (node slug, or a path relative to the repo root); creates the task already `specced`. |
 | `--effort XS\|S\|M\|L\|XL` | Effort estimate, any case; anything else is refused. |
+| `--owner WHO` | Who answers for the task. Required when `config.yml` sets `requireOwner`. |
 | `--epic SLUG` | Parent epic slug. |
 | `--tags a,b` | Comma-separated tags. |
 | `--summary S` | One-line summary. |
@@ -286,6 +294,7 @@ Create an epic (status `planned`).
 | Flag | Meaning |
 | --- | --- |
 | `--horizon now\|next\|later` | Planning horizon. |
+| `--owner WHO` | Who answers for the epic. Required when `config.yml` sets `requireOwner`. |
 | `--tags a,b` | Comma-separated tags. |
 | `--summary S` | One-line summary. |
 | `--body M` | Initial body markdown. |

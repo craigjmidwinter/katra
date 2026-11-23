@@ -255,13 +255,13 @@ contain `katra setup`, the viewer, the hub, or the CLI.
 | `katra_compare` | Import two images and append a compare slider. |
 | `katra_stamp` | Stamp a draft with commit hashes and diffstat. |
 | `katra_nodes` | List nodes of any type. |
-| `katra_task_new` | Create a task. |
+| `katra_task_new` | Create a task, optionally with an `owner` (required when the katra sets `requireOwner`). |
 | `katra_task_list` | List tasks. |
 | `katra_task_set_status` | Set a node's status. Tasks: `todo`/`specced`/`doing`/`blocked`/`waiting_on_owner`/`done`/`cut`. Refuses a status the type lacks, `blocked` with no `blocked_by`, and `waiting_on_owner` with no `owner`. |
 | `katra_task_block` | Mark a task `blocked`, adding to `blocked_by` (comma-separated slugs or free text). |
 | `katra_task_unblock` | Return a blocked or waiting task to `todo` (`specced` if it has a spec) and clear `blocked_by`. |
 | `katra_task_spec` | Attach a spec and advance a todo task to `specced` without moving later statuses backwards. |
-| `katra_epic_new` | Create an epic. |
+| `katra_epic_new` | Create an epic, optionally with an `owner` (required when the katra sets `requireOwner`). |
 | `katra_decide` | Record a decision. |
 | `katra_article_new` | Create an article. |
 

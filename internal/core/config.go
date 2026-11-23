@@ -54,6 +54,12 @@ type Config struct {
 	// RawHTML is what happens to HTML written directly in markdown: "allow"
 	// (the default) or "sanitize". See SanitizeRawHTML.
 	RawHTML string `yaml:"rawHTML,omitempty"`
+
+	// RequireOwner makes `owner` mandatory when a task or epic is created
+	// through the CLI or MCP, and makes `katra doctor` list every open one
+	// without an owner. Off by default: making an optional key required is a
+	// breaking change (docs/format.md), so a katra opts in.
+	RequireOwner bool `yaml:"requireOwner,omitempty"`
 }
 
 // SanitizeRawHTML reports whether raw HTML is stripped from rendered bodies.

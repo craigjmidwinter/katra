@@ -572,6 +572,7 @@
       }
       var meta = el("div", "kv-task-meta");
       if (t.effort) meta.appendChild(el("span", "kv-badge", esc(t.effort)));
+      if (t.owner) meta.appendChild(el("span", "owner", "@" + esc(t.owner)));
       if (t.epic) {
         var ep = state.bySlug[t.epic];
         meta.appendChild(el("span", "epic", "↳ " + esc(ep ? ep.title : t.epic)));

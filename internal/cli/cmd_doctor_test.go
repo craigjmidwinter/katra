@@ -216,3 +216,69 @@ func TestDoctorReportsDanglingSpec(t *testing.T) {
 		t.Errorf("a dangling spec must be a warning, not a problem:\n%s", out)
 	}
 }
+
+// TestDoctorOwnershipAndBlockers: doctor warns on invalid node values and on
+// blocker problems, lists owner gaps once the katra has adopted owners, and
+// stays silent about owners in a katra that has not.
+func TestDoctorOwnershipAndBlockers(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Doc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.NewNode("task", core.Frontmatter{Title: "Plain", Status: "todo"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if out := runDoctor(t, s.Dir); strings.Contains(out, "no owner") {
+		t.Errorf("owner gaps reported in a katra with no owners:\n%s", out)
+	}
+	for _, fm := range []core.Frontmatter{
+		{Title: "Owned", Status: "todo", Owner: "me"},
+		{Title: "Typo Blocked", Status: "blocked", BlockedBy: []string{"no-such-node"}},
+		{Title: "Odd", Status: "open"},
+	} {
+		if _, err := s.NewNode("task", fm, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out := runDoctor(t, s.Dir)
+	for _, want := range []string{
+		"typo-blocked: blocked by no-such-node, which names no node",
+		`odd: status "open" is not a task status`,
+		"open task(s)/epic(s) with no owner",
+		"task  plain",
+		"✓ no problems",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("doctor output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestRequireOwner: with requireOwner set, task and epic creation without an
+// owner is refused and writes nothing; with one, the owner is stored.
+func TestRequireOwner(t *testing.T) {
+	dir := t.TempDir()
+	s, err := core.InitStore(dir, "Strict")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := filepath.Join(s.Dir, core.ConfigFile)
+	b, _ := os.ReadFile(cfg)
+	if err := os.WriteFile(cfg, append(b, []byte("requireOwner: true\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"task", "new", "Nobody's"}, {"epic", "new", "Nobody's Epic"}} {
+		if _, err := runNodeCmd(t, s.Dir, args...); err == nil || !strings.Contains(err.Error(), "requireOwner") {
+			t.Errorf("%v without --owner: %v, want a requireOwner refusal", args, err)
+		}
+	}
+	if nodes, _ := s.ListNodes(); len(nodes) != 0 {
+		t.Fatalf("refused creation wrote %d node(s)", len(nodes))
+	}
+	if _, err := runNodeCmd(t, s.Dir, "task", "new", "Mine", "--owner", "role:steward"); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.GetNode("mine"); err != nil || n.FM.Owner != "role:steward" {
+		t.Fatalf("owner not stored: %+v %v", n, err)
+	}
+}

@@ -29,6 +29,13 @@ first release, everything lands under `[Unreleased]`.
 
 ### Added
 
+- **`--owner` on `task new` and `epic new`** (and `owner` on the MCP
+  creation tools), plus **`requireOwner`** in `config.yml`, off by default,
+  which refuses to create a task or epic without one. The viewer's board shows
+  a task's owner.
+- **`katra doctor` checks the initiative model**, as warnings only: values no
+  writer would produce, blockers that name no node or are all finished, and
+  owner gaps once a katra uses owners.
 - **Tasks can be `blocked` or `waiting_on_owner`.** `katra task block <slug>
   --by …` records what a task waits on (node slugs or free text), `task wait
   --owner` marks it waiting on a person, and `task unblock` returns it to

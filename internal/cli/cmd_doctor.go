@@ -78,6 +78,33 @@ func doctorCmd() *cobra.Command {
 				}
 			}
 
+			// Ownership and blocking. Every finding is a warning: the format
+			// promises that odd values degrade, so a katra written by another
+			// tool must still pass doctor. Writers are where values are refused.
+			if nodes, err := s.ListNodes(); err == nil {
+				for _, n := range nodes {
+					for _, verr := range core.ValidateNode(n) {
+						fmt.Printf("  ⚠ %s: %v\n", n.Slug, verr)
+					}
+				}
+				for _, p := range core.BlockerProblems(nodes) {
+					fmt.Printf("  ⚠ %s: %s\n", p.Slug, p.Message)
+				}
+				// A katra that has not adopted owners gets no owner noise: the
+				// gap list appears once requireOwner is set, or once any node
+				// carries an owner.
+				if gaps := core.OwnerGaps(nodes); len(gaps) > 0 && (s.Config.RequireOwner || anyOwner(nodes)) {
+					fmt.Printf("  ⚠ %d open task(s)/epic(s) with no owner\n", len(gaps))
+					for i, n := range gaps {
+						if i >= visualOffenders {
+							fmt.Printf("      … and %d more\n", len(gaps)-visualOffenders)
+							break
+						}
+						fmt.Printf("      %s  %s\n", n.Kind(), n.Slug)
+					}
+				}
+			}
+
 			// `katra task spec` writes a dangling ref regardless (the spec may land
 			// in the same change), so doctor is where it actually gets reported.
 			if nodes, err := s.ListNodes(); err == nil {
@@ -130,6 +157,16 @@ func doctorCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// anyOwner reports whether any node in the katra names an owner.
+func anyOwner(nodes []core.Entry) bool {
+	for _, n := range nodes {
+		if strings.TrimSpace(n.FM.Owner) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // orUnset labels an empty status readably in doctor output.

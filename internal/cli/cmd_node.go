@@ -21,7 +21,7 @@ func taskCmd() *cobra.Command {
 
 func taskNewCmd() *cobra.Command {
 	var tags []string
-	var effort, epic, summary, body, spec string
+	var effort, epic, summary, body, spec, owner string
 	cmd := &cobra.Command{
 		Use:   "new \"Title\"",
 		Short: "Create a new task (status: todo, or specced with --spec)",
@@ -35,6 +35,10 @@ func taskNewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("%w — pass --effort with one of those, or leave it off", err)
 			}
+			owner, err = s.CreationOwner(owner)
+			if err != nil {
+				return err
+			}
 			status := "todo"
 			if spec != "" {
 				status = "specced"
@@ -44,6 +48,7 @@ func taskNewCmd() *cobra.Command {
 				Status:  status,
 				Spec:    spec,
 				Effort:  effort,
+				Owner:   owner,
 				Epic:    epic,
 				Tags:    tags,
 				Summary: summary,
@@ -57,6 +62,7 @@ func taskNewCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&effort, "effort", "", "effort estimate (XS|S|M|L|XL; case-insensitive)")
+	cmd.Flags().StringVar(&owner, "owner", "", "who answers for the task (required when config.yml sets requireOwner)")
 	cmd.Flags().StringVar(&epic, "epic", "", "parent epic slug")
 	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags")
 	cmd.Flags().StringVar(&summary, "summary", "", "one-line summary")
@@ -310,7 +316,7 @@ func epicRollupCmd() *cobra.Command {
 }
 
 func epicNewCmd() *cobra.Command {
-	var horizon, summary, body string
+	var horizon, summary, body, owner string
 	var tags []string
 	cmd := &cobra.Command{
 		Use:   "new \"Title\"",
@@ -321,10 +327,15 @@ func epicNewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			owner, err = s.CreationOwner(owner)
+			if err != nil {
+				return err
+			}
 			e, err := s.NewNode("epic", core.Frontmatter{
 				Title:   strings.Join(args, " "),
 				Status:  "planned",
 				Horizon: horizon,
+				Owner:   owner,
 				Tags:    tags,
 				Summary: summary,
 			}, body)
@@ -337,6 +348,7 @@ func epicNewCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&horizon, "horizon", "", "planning horizon (now|next|later)")
+	cmd.Flags().StringVar(&owner, "owner", "", "who answers for the epic (required when config.yml sets requireOwner)")
 	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags")
 	cmd.Flags().StringVar(&summary, "summary", "", "one-line summary")
 	cmd.Flags().StringVar(&body, "body", "", "initial body markdown")
