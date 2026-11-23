@@ -53,8 +53,9 @@ func TestSaveKeepsUnknownFrontmatterKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if again.FM.Extra["owner"] != "role:steward" {
-		t.Errorf("owner did not round-trip: %#v", again.FM.Extra)
+	xt, _ := again.FM.Extra["x-tool"].(map[string]any)
+	if xt["run"] != 42 {
+		t.Errorf("x-tool did not round-trip: %#v", again.FM.Extra)
 	}
 }
 

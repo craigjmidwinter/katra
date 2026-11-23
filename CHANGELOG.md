@@ -29,6 +29,11 @@ first release, everything lands under `[Unreleased]`.
 
 ### Added
 
+- **`owner` and `blocked_by` frontmatter keys** for tasks and epics: who
+  answers for a node, and what it waits on (node slugs, or free text for an
+  outside blocker). Both are optional, and a node without them is written
+  exactly as before. `core.ValidateNode` checks them for writers; readers
+  never reject a node.
 - **`rawHTML: allow|sanitize`** in `config.yml`. `sanitize` strips raw HTML from
   entries; the default keeps it.
 - **Windows release support.** Tagged releases now include amd64 and arm64 zip

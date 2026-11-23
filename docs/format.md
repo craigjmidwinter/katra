@@ -107,6 +107,8 @@ summary: tuned the magnus model
 | `effort` | task | `S`, `M`, `L` |
 | `horizon` | task | `now`, `next`, `later` |
 | `epic` | task | Parent epic slug. |
+| `owner` | task, epic | Who answers for it: a person, a role, an agent. Opaque; katra stores it and never resolves it. Not the author, which git records. |
+| `blocked_by` | task, epic | What it waits on. Each item is a node slug, or free text for a blocker outside the katra (a decision someone else owes, say). |
 | `entry` | task, decision | The entry slug that recorded or occasioned it. |
 | `supersedes` | decision | Slugs this decision replaces. |
 | `superseded-by` | decision | The mirror of the above. |
