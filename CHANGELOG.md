@@ -29,6 +29,10 @@ first release, everything lands under `[Unreleased]`.
 
 ### Added
 
+- **Effort is a fixed scale, `XS|S|M|L|XL`.** `task new --effort` and the MCP
+  `task_new` tool accept any case and write uppercase, and refuse anything
+  else with the scale in the error. Files already on disk still read; `doctor`
+  will report odd values in a later change.
 - **`owner` and `blocked_by` frontmatter keys** for tasks and epics: who
   answers for a node, and what it waits on (node slugs, or free text for an
   outside blocker). Both are optional, and a node without them is written

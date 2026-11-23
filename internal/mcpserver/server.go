@@ -85,7 +85,7 @@ func newServer(version string) *server.MCPServer {
 		mcp.WithDescription("Create a new task node (status defaults to todo, or specced when spec is given). Returns its slug."),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Task title.")),
 		mcp.WithString("body", mcp.Description("Initial markdown body.")),
-		mcp.WithString("effort", mcp.Description("Effort estimate: S|M|L.")),
+		mcp.WithString("effort", mcp.Description("Effort estimate: XS|S|M|L|XL (case-insensitive).")),
 		mcp.WithString("epic", mcp.Description("Parent epic slug.")),
 		mcp.WithString("tags", mcp.Description("Comma-separated tags.")),
 		mcp.WithString("spec", mcp.Description("Spec artifact ref (a node slug in the katra, or a path relative to the repo root); creates the task already specced.")),
@@ -394,6 +394,10 @@ func handleTaskNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+	effort, err := core.NormalizeEffort(argString(req, "effort"))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error() + " — pass effort as one of those, or omit it"), nil
+	}
 	spec := argString(req, "spec")
 	status := "todo"
 	if spec != "" {
@@ -403,7 +407,7 @@ func handleTaskNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		Title:  argString(req, "title"),
 		Status: status,
 		Spec:   spec,
-		Effort: argString(req, "effort"),
+		Effort: effort,
 		Epic:   argString(req, "epic"),
 		Tags:   splitCSV(argString(req, "tags")),
 	}, argString(req, "body"))

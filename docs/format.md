@@ -104,7 +104,7 @@ summary: tuned the magnus model
 | `status` | epic | `planned`, `active`, `done`, `cut` |
 | `status` | decision | `proposed`, `accepted`, `superseded`, `deprecated` |
 | `spec` | task | Reference to the committed spec artifact. Resolved as a node slug in the katra first, otherwise a path relative to the **repository root** (not the katra directory). Legal in any status; setting it never moves a status backwards. |
-| `effort` | task | `S`, `M`, `L` |
+| `effort` | task | `XS`, `S`, `M`, `L`, `XL`. The CLI and MCP accept any case and write uppercase, and refuse anything else. |
 | `horizon` | task | `now`, `next`, `later` |
 | `epic` | task | Parent epic slug. |
 | `owner` | task, epic | Who answers for it: a person, a role, an agent. Opaque; katra stores it and never resolves it. Not the author, which git records. |

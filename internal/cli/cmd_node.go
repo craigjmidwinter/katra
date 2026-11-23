@@ -30,6 +30,10 @@ func taskNewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			effort, err = core.NormalizeEffort(effort)
+			if err != nil {
+				return fmt.Errorf("%w — pass --effort with one of those, or leave it off", err)
+			}
 			status := "todo"
 			if spec != "" {
 				status = "specced"
@@ -51,7 +55,7 @@ func taskNewCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&effort, "effort", "", "effort estimate (S|M|L)")
+	cmd.Flags().StringVar(&effort, "effort", "", "effort estimate (XS|S|M|L|XL; case-insensitive)")
 	cmd.Flags().StringVar(&epic, "epic", "", "parent epic slug")
 	cmd.Flags().StringSliceVar(&tags, "tags", nil, "comma-separated tags")
 	cmd.Flags().StringVar(&summary, "summary", "", "one-line summary")

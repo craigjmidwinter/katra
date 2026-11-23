@@ -66,7 +66,7 @@ type Frontmatter struct {
 	Type         string   `yaml:"type,omitempty"`          // "" or "entry" = entry; else task|epic|decision|article
 	Status       string   `yaml:"status,omitempty"`        // task: todo|specced|doing|done|cut ; epic: planned|active|done|cut ; decision: proposed|accepted|superseded|deprecated
 	Spec         string   `yaml:"spec,omitempty"`          // task -> spec artifact ref: a node slug in the katra, else a path relative to the repo root
-	Effort       string   `yaml:"effort,omitempty"`        // S|M|L
+	Effort       string   `yaml:"effort,omitempty"`        // XS|S|M|L|XL (see Efforts)
 	Horizon      string   `yaml:"horizon,omitempty"`       // now|next|later
 	Owner        string   `yaml:"owner,omitempty"`         // task/epic -> who answers for it; opaque, katra never resolves it (not the author: git knows that)
 	BlockedBy    []string `yaml:"blocked_by,omitempty"`    // task/epic -> what it waits on: node slugs, or free text for an outside blocker

@@ -232,7 +232,7 @@ Create a task (status `todo`, or `specced` if `--spec` is given).
 | Flag | Meaning |
 | --- | --- |
 | `--spec REF` | Spec artifact ref (node slug, or a path relative to the repo root); creates the task already `specced`. |
-| `--effort S\|M\|L` | Effort estimate. |
+| `--effort XS\|S\|M\|L\|XL` | Effort estimate, any case; anything else is refused. |
 | `--epic SLUG` | Parent epic slug. |
 | `--tags a,b` | Comma-separated tags. |
 | `--summary S` | One-line summary. |

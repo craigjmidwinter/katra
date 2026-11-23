@@ -211,3 +211,26 @@ func TestToNodeRowIncludesSpec(t *testing.T) {
 		t.Errorf("Spec = %q, want docs/design/foo.md", row.Spec)
 	}
 }
+
+// TestHandleTaskNewEffort: the MCP writer normalizes case and refuses an
+// effort off the scale without creating the task.
+func TestHandleTaskNewEffort(t *testing.T) {
+	s := newTestStore(t)
+	res, err := handleTaskNew(context.Background(), callReq(map[string]any{"title": "Sized", "effort": "xl"}))
+	if err != nil || res.IsError {
+		t.Fatalf("handleTaskNew: %v %+v", err, res)
+	}
+	if n, err := s.GetNode("sized"); err != nil || n.FM.Effort != "XL" {
+		t.Fatalf("effort stored as %q (%v), want XL", n.FM.Effort, err)
+	}
+	res, err = handleTaskNew(context.Background(), callReq(map[string]any{"title": "Huge", "effort": "XXL"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError || !strings.Contains(resultText(t, res), "XS|S|M|L|XL") {
+		t.Fatalf("want a refusal naming the scale, got %+v", res)
+	}
+	if _, err := s.GetNode("huge"); err == nil {
+		t.Error("refused task was created anyway")
+	}
+}

@@ -265,3 +265,26 @@ func TestTaskNewWithSpecFlag(t *testing.T) {
 		t.Errorf("Spec = %q, want docs/design/foo.md", node.FM.Spec)
 	}
 }
+
+// TestTaskNewEffort: `task new --effort` stores the canonical spelling and
+// refuses an off-scale value with an error that names the scale, writing
+// nothing.
+func TestTaskNewEffort(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Effort")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, s.Dir, "task", "new", "Tiny", "--effort", "xs"); err != nil {
+		t.Fatalf("task new --effort xs: %v", err)
+	}
+	if n, err := s.GetNode("tiny"); err != nil || n.FM.Effort != "XS" {
+		t.Fatalf("effort = %q (%v), want XS", n.FM.Effort, err)
+	}
+	_, err = runNodeCmd(t, s.Dir, "task", "new", "Vast", "--effort", "XXL")
+	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("XS|S|M|L|XL")) {
+		t.Fatalf("want a refusal naming the scale, got %v", err)
+	}
+	if _, err := s.GetNode("vast"); err == nil {
+		t.Error("refused task was created anyway")
+	}
+}
