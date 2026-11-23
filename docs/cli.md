@@ -199,6 +199,23 @@ so the derived half survives even if the session does nothing. It stays silent
 when nothing is in flight, because a hook that fires every time is one people
 mute.
 
+### `katra migrate interim-tags [--write]`
+
+Move the tags a katra used before these keys existed into the keys:
+`owner:<who>` becomes `owner`, `blocked-by:<slug>` an item in `blocked_by`, and
+`size:<XS..XL>` the `effort` (it replaces the old effort, since `XL` had no key
+before). Migrated tags are dropped. Only tasks and epics are migrated.
+
+Without `--write` it prints the plan per node and changes no file. With
+`--write` it applies the plan as a minimal edit: only the migrated lines
+change, and quoting, key order and the body are left exactly as they were. A
+second run finds nothing to do.
+
+A conflict stays a tag and is reported: two owner tags on one node, an owner
+tag that disagrees with an existing `owner`, a size off the scale. Statuses are
+not changed; a task that gains `blocked_by` stays as it was until someone runs
+`katra task block`.
+
 ### `katra doctor`
 
 Check the katra for problems: dangling media references and entries that fail

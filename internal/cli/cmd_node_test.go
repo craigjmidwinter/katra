@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/craigjmidwinter/katra/internal/core"
@@ -328,5 +329,50 @@ func TestTaskBlockUnblockWaitCommands(t *testing.T) {
 	}
 	if n, _ := s.GetNode("stuck"); n.FM.Status != "waiting_on_owner" || n.FM.Owner != "craig" {
 		t.Fatalf("after wait: %q owner %q", n.FM.Status, n.FM.Owner)
+	}
+}
+
+// TestMigrateInterimTagsDryRunThenWrite: the default run changes no file, the
+// --write run applies, and the next dry run has nothing to do.
+func TestMigrateInterimTagsDryRunThenWrite(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Migrate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := s.NewNode("task", core.Frontmatter{Title: "Tagged", Status: "todo", Tags: []string{"owner:daisy", "keep"}}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, _ := os.ReadFile(n.Path)
+	root := func(args ...string) (string, error) {
+		t.Helper()
+		t.Setenv("DEVLOG_DIR", s.Dir)
+		cmd := migrateCmd()
+		cmd.SetArgs(args)
+		r, w, _ := os.Pipe()
+		orig := os.Stdout
+		os.Stdout = w
+		err := cmd.Execute()
+		_ = w.Close()
+		os.Stdout = orig
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		return buf.String(), err
+	}
+	out, err := root("interim-tags")
+	if err != nil || !strings.Contains(out, "1 node(s) would change") {
+		t.Fatalf("dry run: %v\n%s", err, out)
+	}
+	if after, _ := os.ReadFile(n.Path); string(after) != string(before) {
+		t.Fatal("dry run changed the file")
+	}
+	if _, err := root("interim-tags", "--write"); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.GetNode("tagged"); got.FM.Owner != "daisy" || strings.Join(got.FM.Tags, ",") != "keep" {
+		t.Fatalf("after write: owner %q tags %v", got.FM.Owner, got.FM.Tags)
+	}
+	if out, _ := root("interim-tags"); !strings.Contains(out, "0 node(s) would change") {
+		t.Errorf("not idempotent:\n%s", out)
 	}
 }

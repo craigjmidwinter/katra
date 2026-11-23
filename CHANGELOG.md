@@ -29,6 +29,10 @@ first release, everything lands under `[Unreleased]`.
 
 ### Added
 
+- **`katra migrate interim-tags [--write]`** moves `owner:`, `blocked-by:` and
+  `size:` tags into `owner`, `blocked_by` and `effort`. It is a dry run by
+  default, edits only the migrated lines, and is idempotent. Conflicts are
+  reported and left as tags.
 - **`--owner` on `task new` and `epic new`** (and `owner` on the MCP
   creation tools), plus **`requireOwner`** in `config.yml`, off by default,
   which refuses to create a task or epic without one. The viewer's board shows

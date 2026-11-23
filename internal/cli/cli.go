@@ -45,6 +45,7 @@ func Execute(version string) {
 		articleCmd(),
 		memoryCmd(),
 		reconcileCmd(),
+		migrateCmd(),
 		agentHookCmd(),
 	)
 	if err := root.Execute(); err != nil {
