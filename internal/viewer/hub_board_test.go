@@ -50,3 +50,37 @@ func TestHubBoardShowsSpeccedColumnAndKeepsSpeccedTasks(t *testing.T) {
 		t.Errorf("Specced section leaked another task:\n%s", speccedSection)
 	}
 }
+
+// TestHubBoardShowsBlockedColumn: blocked and waiting_on_owner tasks land in
+// one Blocked column, each card saying what it waits on, between Doing and
+// Specced.
+func TestHubBoardShowsBlockedColumn(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Board Test")
+	if err != nil {
+		t.Fatalf("InitStore: %v", err)
+	}
+	for _, fm := range []core.Frontmatter{
+		{Title: "Doing Task", Status: "doing"},
+		{Title: "Stuck Task", Status: "blocked", BlockedBy: []string{"licence <decision>"}},
+		{Title: "Waiting Task", Status: "waiting_on_owner", Owner: "craig"},
+		{Title: "Specced Task", Status: "specced", Spec: "x"},
+	} {
+		if _, err := s.NewNode("task", fm, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	html := hubBoardHTML([]HubProject{{ID: "board-test", Store: s}}, false)
+	if !strings.Contains(html, "<h2>Blocked — 2</h2>") {
+		t.Fatalf("missing Blocked column with both tasks:\n%s", html)
+	}
+	bi, si := strings.Index(html, "<h2>Blocked"), strings.Index(html, "<h2>Specced")
+	if di := strings.Index(html, "<h2>Doing"); !(di < bi && bi < si) {
+		t.Fatalf("Blocked not between Doing and Specced: %d %d %d", di, bi, si)
+	}
+	section := html[bi:si]
+	for _, want := range []string{"Stuck Task", "blocked by licence &lt;decision&gt;", "Waiting Task", "waiting on craig"} {
+		if !strings.Contains(section, want) {
+			t.Errorf("Blocked section missing %q:\n%s", want, section)
+		}
+	}
+}

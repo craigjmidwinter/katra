@@ -100,7 +100,7 @@ summary: tuned the magnus model
 
 | Key | Applies to | Values |
 | --- | --- | --- |
-| `status` | task | `todo`, `specced`, `doing`, `done`, `cut` |
+| `status` | task | `todo`, `specced`, `doing`, `blocked`, `waiting_on_owner`, `done`, `cut`. `blocked` needs a non-empty `blocked_by`, and `waiting_on_owner` an `owner`. Both count as not started in an epic's rollup. |
 | `status` | epic | `planned`, `active`, `done`, `cut` |
 | `status` | decision | `proposed`, `accepted`, `superseded`, `deprecated` |
 | `spec` | task | Reference to the committed spec artifact. Resolved as a node slug in the katra first, otherwise a path relative to the **repository root** (not the katra directory). Legal in any status; setting it never moves a status backwards. |

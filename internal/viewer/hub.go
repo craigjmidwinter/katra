@@ -414,6 +414,7 @@ a.card:hover{border-color:var(--line-3)}
 .card .m{color:var(--ink-soft);font-family:var(--mono);font-size:11px;margin-top:4px}
 .card .b{display:inline-block;margin-right:.9rem}
 .card .proj{color:var(--ink-faint);font-family:var(--mono);font-size:10.5px;margin-top:4px}
+.card .why{color:var(--ink-dim);font-size:12.5px;margin-top:3px}
 .eff{font-family:var(--mono);font-size:9.5px;color:var(--ink-soft);border:1px solid var(--line-2);border-radius:4px;padding:1px 5px;margin-left:.4rem;text-transform:uppercase}
 .empty{color:var(--ink-faint);font-family:var(--mono);font-size:12px}
 @media(max-width:980px){.flight-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.proj-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hub-cols{grid-template-columns:1fr}}
@@ -725,6 +726,17 @@ func plural(n int) string {
 }
 
 // hubTaskCard renders one task as a card linking into its project's viewer.
+// hubBlockedCard is a task card that also says what the task waits on: its
+// blockers, or its owner when it is waiting_on_owner.
+func hubBlockedCard(pid string, t core.Entry, web bool) string {
+	why := "blocked by " + strings.Join(t.FM.BlockedBy, ", ")
+	if t.FM.Status == "waiting_on_owner" {
+		why = "waiting on " + t.FM.Owner
+	}
+	return fmt.Sprintf(`<a class="card" href="%s"><div class="t">%s</div><div class="why">%s</div><div class="proj">%s</div></a>`,
+		projHref(pid, t.Slug, web), html.EscapeString(t.FM.Title), html.EscapeString(why), html.EscapeString(pid))
+}
+
 func hubTaskCard(pid, title, effort, slug string, web bool) string {
 	eff := ""
 	if effort != "" {
@@ -738,8 +750,8 @@ func hubTaskCard(pid, title, effort, slug string, web bool) string {
 // project. Specced sits between Doing and Todo — a task there has a design but
 // no work started yet.
 func hubBoardHTML(projects []HubProject, web bool) string {
-	var doing, specced, todo strings.Builder
-	nDoing, nSpecced, nTodo := 0, 0, 0
+	var doing, blocked, specced, todo strings.Builder
+	nDoing, nBlocked, nSpecced, nTodo := 0, 0, 0, 0
 	for _, p := range projects {
 		tasks, _ := p.Store.ListNodes("task")
 		for _, t := range tasks {
@@ -748,6 +760,11 @@ func hubBoardHTML(projects []HubProject, web bool) string {
 			case "doing":
 				doing.WriteString(card)
 				nDoing++
+			case "blocked", "waiting_on_owner":
+				// One column for both: neither can move until something outside
+				// the task does. The card says which.
+				blocked.WriteString(hubBlockedCard(p.ID, t, web))
+				nBlocked++
 			case "specced":
 				specced.WriteString(card)
 				nSpecced++
@@ -758,6 +775,7 @@ func hubBoardHTML(projects []HubProject, web bool) string {
 		}
 	}
 	inner := fmt.Sprintf(`<h2>Doing — %d</h2>`, nDoing) + orEmpty(doing.String(), "Nothing in progress.") +
+		fmt.Sprintf(`<h2>Blocked — %d</h2>`, nBlocked) + orEmpty(blocked.String(), "Nothing blocked.") +
 		fmt.Sprintf(`<h2>Specced — %d</h2>`, nSpecced) + orEmpty(specced.String(), "Nothing specced.") +
 		fmt.Sprintf(`<h2>Todo — %d</h2>`, nTodo) + orEmpty(todo.String(), "Nothing queued.")
 	return hubShell("board", inner, web, projects)

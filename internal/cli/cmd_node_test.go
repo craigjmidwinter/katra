@@ -288,3 +288,45 @@ func TestTaskNewEffort(t *testing.T) {
 		t.Error("refused task was created anyway")
 	}
 }
+
+// TestTaskBlockUnblockWaitCommands drives the three commands end to end and
+// checks that a refused change (blocked with no --by, waiting with no owner)
+// writes nothing.
+func TestTaskBlockUnblockWaitCommands(t *testing.T) {
+	s, err := core.InitStore(t.TempDir(), "Block")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, s.Dir, "task", "new", "Stuck"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runNodeCmd(t, s.Dir, "task", "block", "stuck"); err == nil {
+		t.Fatal("block without --by accepted")
+	}
+	out, err := runNodeCmd(t, s.Dir, "task", "block", "stuck", "--by", "other-task", "--by", "a decision, with a comma")
+	if err != nil {
+		t.Fatalf("block: %v", err)
+	}
+	n, _ := s.GetNode("stuck")
+	if n.FM.Status != "blocked" || len(n.FM.BlockedBy) != 2 || n.FM.BlockedBy[1] != "a decision, with a comma" {
+		t.Fatalf("after block: %q %q (out %q)", n.FM.Status, n.FM.BlockedBy, out)
+	}
+	if _, err := runNodeCmd(t, s.Dir, "task", "unblock", "stuck"); err != nil {
+		t.Fatalf("unblock: %v", err)
+	}
+	if n, _ := s.GetNode("stuck"); n.FM.Status != "todo" || len(n.FM.BlockedBy) != 0 {
+		t.Fatalf("after unblock: %q %q", n.FM.Status, n.FM.BlockedBy)
+	}
+	if _, err := runNodeCmd(t, s.Dir, "task", "wait", "stuck"); err == nil {
+		t.Fatal("wait without an owner accepted")
+	}
+	if n, _ := s.GetNode("stuck"); n.FM.Status != "todo" {
+		t.Fatalf("refused wait still wrote status %q", n.FM.Status)
+	}
+	if _, err := runNodeCmd(t, s.Dir, "task", "wait", "stuck", "--owner", "craig"); err != nil {
+		t.Fatalf("wait --owner: %v", err)
+	}
+	if n, _ := s.GetNode("stuck"); n.FM.Status != "waiting_on_owner" || n.FM.Owner != "craig" {
+		t.Fatalf("after wait: %q owner %q", n.FM.Status, n.FM.Owner)
+	}
+}

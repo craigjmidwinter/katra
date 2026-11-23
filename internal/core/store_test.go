@@ -424,6 +424,9 @@ func TestEpicRollupStatus(t *testing.T) {
 		{"all done", []Entry{mk("done"), mk("done")}, "done"},
 		{"cut ignored -> all-done", []Entry{mk("done"), mk("cut")}, "done"},
 		{"only cut -> no basis", []Entry{mk("cut")}, ""},
+		{"blocked counts as not started", []Entry{mk("todo"), mk("blocked")}, "planned"},
+		{"waiting counts as not started", []Entry{mk("waiting_on_owner"), mk("specced")}, "planned"},
+		{"blocked beside done is active, not done", []Entry{mk("done"), mk("blocked")}, "active"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

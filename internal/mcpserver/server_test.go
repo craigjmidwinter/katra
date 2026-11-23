@@ -50,10 +50,12 @@ func TestServerToolInventory(t *testing.T) {
 		"katra_new",
 		"katra_nodes",
 		"katra_stamp",
+		"katra_task_block",
 		"katra_task_list",
 		"katra_task_new",
 		"katra_task_set_status",
 		"katra_task_spec",
+		"katra_task_unblock",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("tool inventory:\n got %v\nwant %v", got, want)
@@ -232,5 +234,34 @@ func TestHandleTaskNewEffort(t *testing.T) {
 	}
 	if _, err := s.GetNode("huge"); err == nil {
 		t.Error("refused task was created anyway")
+	}
+}
+
+// TestHandleTaskBlockAndSetStatus: the MCP block tool records blockers, and
+// set_status refuses a bare blocked and an off-type status.
+func TestHandleTaskBlockAndSetStatus(t *testing.T) {
+	s := newTestStore(t)
+	if _, err := s.NewNode("task", core.Frontmatter{Title: "Held", Status: "todo"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	for _, st := range []string{"blocked", "wip"} {
+		res, err := handleTaskSetStatus(context.Background(), callReq(map[string]any{"slug": "held", "status": st}))
+		if err != nil || !res.IsError {
+			t.Errorf("set_status %q: want a refusal, got %+v %v", st, res, err)
+		}
+	}
+	res, err := handleTaskBlock(context.Background(), callReq(map[string]any{"slug": "held", "by": "a, b"}))
+	if err != nil || res.IsError {
+		t.Fatalf("block: %+v %v", res, err)
+	}
+	if n, _ := s.GetNode("held"); n.FM.Status != "blocked" || strings.Join(n.FM.BlockedBy, "|") != "a|b" {
+		t.Fatalf("after block: %q %q", n.FM.Status, n.FM.BlockedBy)
+	}
+	res, err = handleTaskUnblock(context.Background(), callReq(map[string]any{"slug": "held"}))
+	if err != nil || res.IsError {
+		t.Fatalf("unblock: %+v %v", res, err)
+	}
+	if n, _ := s.GetNode("held"); n.FM.Status != "todo" {
+		t.Fatalf("after unblock: %q", n.FM.Status)
 	}
 }

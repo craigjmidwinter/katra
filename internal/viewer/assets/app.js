@@ -523,11 +523,18 @@
       tasks = tasks.filter(function (t) { return t.epic === es; });
     }
 
-    var cols = ["todo", "specced", "doing", "done"];
-    if (tasks.some(function (t) { return t.status === "cut"; })) cols.push("cut");
-    var grid = el("div", "kv-cols board");
+    // blocked and waiting_on_owner share one column: neither moves until
+    // something outside the task does. The card says which.
+    var column = function (t) {
+      var st = t.status || "todo";
+      return st === "waiting_on_owner" ? "blocked" : st;
+    };
+    var cols = ["todo", "specced", "doing", "blocked", "done"];
+    var hasCut = tasks.some(function (t) { return t.status === "cut"; });
+    if (hasCut) cols.push("cut");
+    var grid = el("div", "kv-cols board" + (hasCut ? " has-cut" : ""));
     cols.forEach(function (status) {
-      var ct = tasks.filter(function (t) { return (t.status || "todo") === status; });
+      var ct = tasks.filter(function (t) { return column(t) === status; });
       var col = el("div", "kv-col " + status);
       var head = el("div", "kv-colhead");
       head.appendChild(el("span", "nm", status));
@@ -558,6 +565,11 @@
     } else if (status === "cut") {
       if (t.summary) c.appendChild(el("div", "kv-task-note", esc(t.summary)));
     } else {
+      if (status === "blocked") {
+        var why = t.status === "waiting_on_owner" ? "waiting on " + (t.owner || "its owner")
+          : "blocked by " + (t.blockedBy || []).join(", ");
+        c.appendChild(el("div", "kv-task-note", esc(why)));
+      }
       var meta = el("div", "kv-task-meta");
       if (t.effort) meta.appendChild(el("span", "kv-badge", esc(t.effort)));
       if (t.epic) {

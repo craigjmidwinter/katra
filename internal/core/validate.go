@@ -25,6 +25,19 @@ func ValidateNode(e Entry) []error {
 	if e.FM.Owner != "" && strings.TrimSpace(e.FM.Owner) == "" {
 		errs = append(errs, fmt.Errorf("owner is blank — give a name or role, or leave the key off"))
 	}
+	if allowed, ok := Statuses[e.Kind()]; ok && e.FM.Status != "" && !contains(allowed, e.FM.Status) {
+		errs = append(errs, fmt.Errorf("status %q is not a %s status (%s)", e.FM.Status, e.Kind(), strings.Join(allowed, "|")))
+	}
+	switch e.FM.Status {
+	case "blocked":
+		if !hasNonBlank(e.FM.BlockedBy) {
+			errs = append(errs, fmt.Errorf("status blocked needs blocked_by — say what it waits on (`katra task block <slug> --by …`)"))
+		}
+	case "waiting_on_owner":
+		if strings.TrimSpace(e.FM.Owner) == "" {
+			errs = append(errs, fmt.Errorf("status waiting_on_owner needs an owner — set one (`katra task wait <slug> --owner …`)"))
+		}
+	}
 	seen := map[string]bool{}
 	for _, b := range e.FM.BlockedBy {
 		switch {
@@ -60,4 +73,34 @@ func NormalizeEffort(s string) (string, error) {
 		return n, nil
 	}
 	return "", fmt.Errorf("effort %q is not one of %s", s, strings.Join(Efforts, "|"))
+}
+
+// Statuses lists the legal status values per node type. Kinds not listed
+// (entries, articles) carry no status. The order is the lifecycle's.
+//
+// A task that cannot move is blocked (on something named in blocked_by) or
+// waiting_on_owner (on the person in owner). Both count as not started for
+// an epic's rollup: they are planned work that has not begun.
+var Statuses = map[string][]string{
+	"task":     {"todo", "specced", "doing", "blocked", "waiting_on_owner", "done", "cut"},
+	"epic":     {"planned", "active", "done", "cut"},
+	"decision": {"proposed", "accepted", "superseded", "deprecated"},
+}
+
+func contains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
+func hasNonBlank(list []string) bool {
+	for _, x := range list {
+		if strings.TrimSpace(x) != "" {
+			return true
+		}
+	}
+	return false
 }

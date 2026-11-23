@@ -60,6 +60,8 @@ type entryData struct {
 	Spec         string   `json:"spec,omitempty"`   // task -> spec ref, resolved to a node slug when it is one (see ResolveSpec)
 	Effort       string   `json:"effort,omitempty"`
 	Horizon      string   `json:"horizon,omitempty"`
+	Owner        string   `json:"owner,omitempty"`
+	BlockedBy    []string `json:"blockedBy,omitempty"`
 	Epic         string   `json:"epic,omitempty"`
 	Entry        string   `json:"entry,omitempty"`
 	Supersedes   []string `json:"supersedes,omitempty"`
@@ -152,6 +154,8 @@ func BuildData(s *core.Store) ([]byte, error) {
 			Spec:         spec,
 			Effort:       e.FM.Effort,
 			Horizon:      e.FM.Horizon,
+			Owner:        e.FM.Owner,
+			BlockedBy:    e.FM.BlockedBy,
 			Epic:         e.FM.Epic,
 			Entry:        e.FM.Entry,
 			Supersedes:   e.FM.Supersedes,

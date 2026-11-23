@@ -29,6 +29,18 @@ first release, everything lands under `[Unreleased]`.
 
 ### Added
 
+- **Tasks can be `blocked` or `waiting_on_owner`.** `katra task block <slug>
+  --by …` records what a task waits on (node slugs or free text), `task wait
+  --owner` marks it waiting on a person, and `task unblock` returns it to
+  `todo` or `specced`. The MCP server gains `katra_task_block` and
+  `katra_task_unblock`. The board, in the viewer and the hub, has a Blocked
+  column that says what each card waits on. An epic counts both statuses as
+  not started.
+- **Status changes are validated.** `task start`/`done` and the MCP
+  `katra_task_set_status` refuse a status the node's type does not have, and a
+  `blocked` or `waiting_on_owner` the node cannot support, and write nothing.
+  Only problems the change introduces are refused; an older odd value
+  elsewhere in the node does not block it.
 - **Effort is a fixed scale, `XS|S|M|L|XL`.** `task new --effort` and the MCP
   `task_new` tool accept any case and write uppercase, and refuse anything
   else with the scale in the error. Files already on disk still read; `doctor`

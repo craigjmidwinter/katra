@@ -97,10 +97,21 @@ func newServer(version string) *server.MCPServer {
 	), handleTaskList)
 
 	s.AddTool(mcp.NewTool("katra_task_set_status",
-		mcp.WithDescription("Set a task's status (todo|specced|doing|done|cut)."),
-		mcp.WithString("slug", mcp.Required(), mcp.Description("Task slug.")),
-		mcp.WithString("status", mcp.Required(), mcp.Description("New status: todo|specced|doing|done|cut.")),
+		mcp.WithDescription("Set a node's status. Tasks: todo|specced|doing|blocked|waiting_on_owner|done|cut. A status the node's type lacks is refused, as are blocked without blocked_by (use katra_task_block) and waiting_on_owner without an owner."),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Node slug.")),
+		mcp.WithString("status", mcp.Required(), mcp.Description("New status.")),
 	), handleTaskSetStatus)
+
+	s.AddTool(mcp.NewTool("katra_task_block",
+		mcp.WithDescription("Mark a task blocked and add to its blocked_by list (existing blockers are kept)."),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Task slug.")),
+		mcp.WithString("by", mcp.Required(), mcp.Description("Comma-separated blockers: node slugs, or free text for an outside blocker.")),
+	), handleTaskBlock)
+
+	s.AddTool(mcp.NewTool("katra_task_unblock",
+		mcp.WithDescription("Clear a blocked or waiting_on_owner task back to todo (specced if it has a spec) and empty its blocked_by."),
+		mcp.WithString("slug", mcp.Required(), mcp.Description("Task slug.")),
+	), handleTaskUnblock)
 
 	s.AddTool(mcp.NewTool("katra_task_spec",
 		mcp.WithDescription("Attach a spec artifact to a task. Advances todo/empty status to specced; leaves doing/done/cut alone (setting spec never moves status backwards). A ref that resolves to neither a node nor a file warns but still writes — `katra doctor` is the blocking check, not this."),
@@ -346,6 +357,8 @@ type nodeRow struct {
 	Spec    string   `json:"spec,omitempty"`
 	Effort  string   `json:"effort,omitempty"`
 	Horizon string   `json:"horizon,omitempty"`
+	Owner   string   `json:"owner,omitempty"`
+	Blocked []string `json:"blocked_by,omitempty"`
 	Epic    string   `json:"epic,omitempty"`
 	Entry   string   `json:"entry,omitempty"`
 	Tags    []string `json:"tags,omitempty"`
@@ -362,6 +375,8 @@ func toNodeRow(e core.Entry) nodeRow {
 		Spec:    e.FM.Spec,
 		Effort:  e.FM.Effort,
 		Horizon: e.FM.Horizon,
+		Owner:   e.FM.Owner,
+		Blocked: e.FM.BlockedBy,
 		Epic:    e.FM.Epic,
 		Entry:   e.FM.Entry,
 		Tags:    e.FM.Tags,
@@ -479,15 +494,38 @@ func handleTaskSetStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	if status == "" {
 		return mcp.NewToolResultError("status is required"), nil
 	}
-	e, err := s.GetNode(argString(req, "slug"))
+	e, err := s.SetStatus(argString(req, "slug"), status)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	e.FM.Status = status
-	if err := e.Save(); err != nil {
+	return mcp.NewToolResultText(fmt.Sprintf("set %s status → %s", e.Slug, status)), nil
+}
+
+// handleTaskBlock mirrors `katra task block`: by is a comma-separated list of
+// node slugs or free-text blockers, added to any already recorded.
+func handleTaskBlock(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	return mcp.NewToolResultText(fmt.Sprintf("set %s status → %s", e.Slug, status)), nil
+	e, err := s.BlockTask(argString(req, "slug"), splitCSV(argString(req, "by")))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("%s → blocked by %s", e.Slug, strings.Join(e.FM.BlockedBy, ", "))), nil
+}
+
+// handleTaskUnblock mirrors `katra task unblock`.
+func handleTaskUnblock(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s, err := store()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	e, err := s.UnblockTask(argString(req, "slug"))
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("%s → %s (blockers cleared)", e.Slug, e.FM.Status)), nil
 }
 
 func handleEpicNew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {

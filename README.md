@@ -166,7 +166,7 @@ repository is a real change to how committing feels, and it should be a choice
 made on purpose.
 
 There is also an MCP server (`katra-mcp`) for clients that would rather call a
-tool than shell out. Its fifteen tools cover entries plus tasks, task specs,
+tool than shell out. Its seventeen tools cover entries plus tasks, task specs, blockers,
 epics, decisions, and articles. Full detail: [The Katra workflow](docs/workflow.md)
 and [Agents](docs/agents.md).
 
@@ -766,7 +766,7 @@ Browsable at <https://midwinter.io/katra/>, or in this repo:
   default and its failure mode.
 - [docs/format.md](docs/format.md) — the on-disk contract. Read it before
   writing a tool that consumes a katra.
-- [docs/agents.md](docs/agents.md) — CLI, fifteen MCP tools, and the optional
+- [docs/agents.md](docs/agents.md) — CLI, seventeen MCP tools, and the optional
   Claude skill, hooks, commit gate, and memory ingest.
 - [docs/hub.md](docs/hub.md) — the registry and the cross-project views.
 - [docs/architecture.md](docs/architecture.md) — the seams, and where your

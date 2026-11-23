@@ -217,9 +217,9 @@ entry.
 
 ## MCP equivalents
 
-`katra-mcp` exposes the same core operations as fifteen tools: seven entry
+`katra-mcp` exposes the same core operations as seventeen tools: seven entry
 tools (`katra_list`, `katra_get`, `katra_new`, `katra_append`,
-`katra_capture`, `katra_compare`, `katra_stamp`) and eight node tools
+`katra_capture`, `katra_compare`, `katra_stamp`) and ten node tools
 (`katra_nodes`, `katra_task_new`, `katra_task_list`,
-`katra_task_set_status`, `katra_task_spec`, `katra_epic_new`, `katra_decide`,
-`katra_article_new`). See [Agents](agents#mcp) for the inventory.
+`katra_task_set_status`, `katra_task_block`, `katra_task_unblock`,
+`katra_task_spec`, `katra_epic_new`, `katra_decide`, `katra_article_new`). See [Agents](agents#mcp) for the inventory.

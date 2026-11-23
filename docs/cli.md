@@ -251,13 +251,33 @@ Mark it `doing`. Legal from `specced`.
 
 Mark it `done`.
 
+### `katra task block SLUG --by X [--by Y]`
+
+Mark a task `blocked` and add each `--by` value to its `blocked_by` list,
+keeping blockers already recorded. A value is a node slug, or free text for a
+blocker outside the katra.
+
+### `katra task wait SLUG [--owner WHO]`
+
+Mark a task `waiting_on_owner`. Refused if the task has no `owner` and none is
+given.
+
+### `katra task unblock SLUG`
+
+Return a `blocked` or `waiting_on_owner` task to `todo`, or to `specced` if it
+has a spec, and clear `blocked_by`. Starting it again is `katra task start`.
+
+`start`, `done`, `block`, `wait` and `unblock` refuse a change that would leave
+the task invalid, such as `blocked` with nothing in `blocked_by`, and write
+nothing.
+
 ### `katra task list`
 
 List tasks, newest first.
 
 | Flag | Meaning |
 | --- | --- |
-| `--status S` | Filter by status — `todo`, `specced`, `doing`, `done`, `cut`. Comma-separate for more than one. |
+| `--status S` | Filter by status — `todo`, `specced`, `doing`, `blocked`, `waiting_on_owner`, `done`, `cut`. Comma-separate for more than one. |
 
 ### `katra epic new "Title"`
 

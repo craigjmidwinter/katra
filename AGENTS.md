@@ -89,7 +89,9 @@ sessions must append the reasoning worth publishing themselves.
   with librsvg. `python3 branding/contrast.py --check` recomputes BRAND.md's
   contrast table. Both run in CI's `branding` job. The fontTools pin in that
   job and `fonttools` in `branding/assets.lock.json` move together.
-- **Task lifecycle** is `todo → specced → doing → done | cut`; `spec:` refs
+- **Task lifecycle** is `todo → specced → doing → done | cut`, and any open
+  task can stop at `blocked` (needs `blocked_by`) or `waiting_on_owner` (needs
+  `owner`); `task unblock` returns it to `todo`/`specced`. `spec:` refs
   resolve as a node slug first, then a repo-root-relative path. Setting a
   spec never moves a status backwards.
 - **This repo has a portable post-commit stamp hook and may also have a

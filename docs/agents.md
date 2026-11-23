@@ -4,7 +4,7 @@ layout: default
 nav_order: 7
 description: >-
   How any coding agent keeps the log through the common CLI workflow, plus
-  optional Claude Code hooks, memory ingest, and the fifteen MCP tools.
+  optional Claude Code hooks, memory ingest, and the seventeen MCP tools.
 ---
 
 # Agents
@@ -257,7 +257,9 @@ contain `katra setup`, the viewer, the hub, or the CLI.
 | `katra_nodes` | List nodes of any type. |
 | `katra_task_new` | Create a task. |
 | `katra_task_list` | List tasks. |
-| `katra_task_set_status` | Move a task between `todo`/`specced`/`doing`/`done`/`cut`. |
+| `katra_task_set_status` | Set a node's status. Tasks: `todo`/`specced`/`doing`/`blocked`/`waiting_on_owner`/`done`/`cut`. Refuses a status the type lacks, `blocked` with no `blocked_by`, and `waiting_on_owner` with no `owner`. |
+| `katra_task_block` | Mark a task `blocked`, adding to `blocked_by` (comma-separated slugs or free text). |
+| `katra_task_unblock` | Return a blocked or waiting task to `todo` (`specced` if it has a spec) and clear `blocked_by`. |
 | `katra_task_spec` | Attach a spec and advance a todo task to `specced` without moving later statuses backwards. |
 | `katra_epic_new` | Create an epic. |
 | `katra_decide` | Record a decision. |

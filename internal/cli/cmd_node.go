@@ -14,7 +14,8 @@ func taskCmd() *cobra.Command {
 		Use:   "task",
 		Short: "Work with tasks",
 	}
-	cmd.AddCommand(taskNewCmd(), taskListCmd(), taskStartCmd(), taskDoneCmd(), taskSpecCmd())
+	cmd.AddCommand(taskNewCmd(), taskListCmd(), taskStartCmd(), taskDoneCmd(), taskSpecCmd(),
+		taskBlockCmd(), taskUnblockCmd(), taskWaitCmd())
 	return cmd
 }
 
@@ -138,7 +139,7 @@ func taskListCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringSliceVar(&status, "status", nil, "filter by status (todo|specced|doing|done|cut)")
+	cmd.Flags().StringSliceVar(&status, "status", nil, "filter by status (todo|specced|doing|blocked|waiting_on_owner|done|cut)")
 	return cmd
 }
 
@@ -161,18 +162,83 @@ func statusCmd(use, short, status string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			e, err := s.GetNode(args[0])
+			e, err := s.SetStatus(args[0], status)
 			if err != nil {
-				return err
-			}
-			e.FM.Status = status
-			if err := e.Save(); err != nil {
 				return err
 			}
 			fmt.Printf("✓ %s → %s\n", e.Slug, status)
 			return nil
 		},
 	}
+}
+
+func taskBlockCmd() *cobra.Command {
+	var by []string
+	cmd := &cobra.Command{
+		Use:   "block <slug> --by <slug or text>",
+		Short: "Mark a task blocked, recording what it waits on",
+		Long: "Mark a task blocked and add to its blocked_by list. --by repeats, and\n" +
+			"each value is a node slug or free text for an outside blocker (a\n" +
+			"decision someone else owes, say). Existing blockers are kept.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := resolveStore()
+			if err != nil {
+				return err
+			}
+			e, err := s.BlockTask(args[0], by)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("✓ %s → blocked by %s\n", e.Slug, strings.Join(e.FM.BlockedBy, ", "))
+			return nil
+		},
+	}
+	cmd.Flags().StringArrayVar(&by, "by", nil, "what the task waits on: a node slug or free text (repeatable)")
+	return cmd
+}
+
+func taskUnblockCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "unblock <slug>",
+		Short: "Clear a blocked or waiting task back to todo (or specced, if it has a spec)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := resolveStore()
+			if err != nil {
+				return err
+			}
+			e, err := s.UnblockTask(args[0])
+			if err != nil {
+				return err
+			}
+			fmt.Printf("✓ %s → %s (blockers cleared)\n", e.Slug, e.FM.Status)
+			return nil
+		},
+	}
+}
+
+func taskWaitCmd() *cobra.Command {
+	var owner string
+	cmd := &cobra.Command{
+		Use:   "wait <slug> [--owner <who>]",
+		Short: "Mark a task waiting on its owner",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s, err := resolveStore()
+			if err != nil {
+				return err
+			}
+			e, err := s.WaitOnOwner(args[0], owner)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("✓ %s → waiting_on_owner (%s)\n", e.Slug, e.FM.Owner)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&owner, "owner", "", "set the owner it waits on (required if the task has none)")
+	return cmd
 }
 
 // epicCmd groups the epic subcommands.
