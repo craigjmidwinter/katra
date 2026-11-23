@@ -40,6 +40,10 @@ type BlockerProblem struct {
 // taken to name a node, and anything else is free text.
 var slugShaped = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
+// askID matches a fleet ask id (YYYYMMDD-xxxxxx), a blocker that is a pending
+// decision rather than a node. It is slug-shaped, so it is recognised first.
+var askID = regexp.MustCompile(`^\d{8}-[0-9a-f]{6}$`)
+
 // BlockerProblems reports, for each blocked task, blockers that look like a
 // node slug but name no node (a typo, or a node since renamed), and the case
 // where every blocker is a node and all of them are done or cut, so the task
@@ -63,6 +67,8 @@ func BlockerProblems(nodes []Entry) []BlockerProblem {
 				if target.FM.Status != "done" && target.FM.Status != "cut" {
 					allFinished = false
 				}
+			case askID.MatchString(b):
+				allFinished = false // a decision katra cannot see
 			case slugShaped.MatchString(b):
 				allFinished = false
 				out = append(out, BlockerProblem{n.Slug, fmt.Sprintf("blocked by %s, which names no node", b)})

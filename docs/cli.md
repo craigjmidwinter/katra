@@ -211,8 +211,11 @@ Without `--write` it prints the plan per node and changes no file. With
 change, and quoting, key order and the body are left exactly as they were. A
 second run finds nothing to do.
 
-A conflict stays a tag and is reported: two owner tags on one node, an owner
-tag that disagrees with an existing `owner`, a size off the scale. Statuses are
+A conflict stays a tag and is reported: two owner tags or two size tags on one
+node, an owner tag that disagrees with an existing `owner`, a size off the
+scale. Each file is checked to read back with the planned values before it is
+replaced, and is replaced by a rename, so an interrupted run leaves whole
+files. A file's own list indent is kept. Statuses are
 not changed; a task that gains `blocked_by` stays as it was until someone runs
 `katra task block`.
 
@@ -233,7 +236,10 @@ do not affect the exit code:
   effort off the `XS`–`XL` scale, `blocked` with no `blocked_by`
 - a blocked task whose blocker looks like a slug but names no node, or whose
   blockers are all done or cut — fix with `katra task unblock`. A blocker
-  with a space in it is free text and is not checked.
+  with a space in it is free text, and one shaped like an ask id
+  (`20261111-1d3c47`) is a pending decision; neither is checked.
+- a frontmatter value of a shape katra cannot read, which also stops katra
+  rewriting that file, and a misspelt `blocked-by:` key
 - open tasks and epics with no owner, once the katra sets `requireOwner` or
   any node has an owner
 - more than one draft open, and unreferenced files in `media/`

@@ -175,7 +175,15 @@ katra itself:
   task with no reference at all — only the prose written from it is lost.
   Ignored is not erased: when katra rewrites a node (a status change, a
   stamp), it writes every key it does not know back with its value, after the
-  ones it does. Comments inside the frontmatter are not kept.
+  ones it does. The values are re-encoded, not copied: comments are dropped,
+  anchors are expanded, flow lists become block lists, and a scalar may change
+  spelling (`0755` becomes `493`, `1.10` becomes `1.1`). Quote a value whose
+  spelling matters.
+- **A value of the wrong shape degrades, too.** `blocked_by: other-task` reads
+  as a one-item list. A shape katra cannot hold at all (a list under `owner`)
+  leaves that field empty; the node still lists and renders, `katra doctor`
+  reports it, and katra refuses to rewrite that file until it is fixed by
+  hand, because rewriting would erase the value.
 - **A new status value degrades silently, the same way.** A consumer older
   than `specced` finds it outside every switch it wrote; it must fall into
   whatever default bucket it already has (a `specced` task rendering as

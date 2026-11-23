@@ -15,6 +15,14 @@ import (
 // read path calls this: a node it rejects still parses, lists and renders.
 func ValidateNode(e Entry) []error {
 	var errs []error
+	for _, u := range e.Unreadable {
+		errs = append(errs, fmt.Errorf("frontmatter value katra cannot read, so it will not rewrite this file: %s", u))
+	}
+	for _, k := range []string{"blocked-by", "blockedBy", "blockedby"} {
+		if _, ok := e.FM.Extra[k]; ok {
+			errs = append(errs, fmt.Errorf("%s is not a key katra reads — the key is blocked_by", k))
+		}
+	}
 	if e.FM.Effort != "" {
 		if _, err := NormalizeEffort(e.FM.Effort); err != nil {
 			errs = append(errs, err)
@@ -40,8 +48,9 @@ func ValidateNode(e Entry) []error {
 	}
 	seen := map[string]bool{}
 	for _, b := range e.FM.BlockedBy {
+		b = strings.TrimSpace(b)
 		switch {
-		case strings.TrimSpace(b) == "":
+		case b == "":
 			errs = append(errs, fmt.Errorf("blocked_by has an empty item — remove it"))
 		case b == e.Slug:
 			errs = append(errs, fmt.Errorf("blocked_by names the node itself (%s)", b))

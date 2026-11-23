@@ -94,7 +94,7 @@ func newServer(version string) *server.MCPServer {
 
 	s.AddTool(mcp.NewTool("katra_task_list",
 		mcp.WithDescription("List task nodes (newest first). Optionally filter by status."),
-		mcp.WithString("status", mcp.Description("Filter to this status: todo|specced|doing|done|cut.")),
+		mcp.WithString("status", mcp.Description("Filter to this status: todo|specced|doing|blocked|waiting_on_owner|done|cut.")),
 	), handleTaskList)
 
 	s.AddTool(mcp.NewTool("katra_task_set_status",

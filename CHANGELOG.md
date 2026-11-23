@@ -22,6 +22,14 @@ first release, everything lands under `[Unreleased]`.
 
 ### Fixed
 
+- **One hand-written value of the wrong shape no longer makes the whole store
+  unreadable.** `blocked_by: other-task` reads as a one-item list; a shape
+  katra cannot hold (a list under `owner`) leaves that field empty, is
+  reported by `doctor`, and stops katra rewriting the file rather than
+  erasing the value. Reported in review before release.
+- **`katra migrate interim-tags` no longer writes an unreadable file** when
+  the key it fills was present but empty (`owner:`), and checks every file
+  reads back as planned before replacing it.
 - **Saving a node no longer erases frontmatter keys katra does not know.** A
   status change or stamp re-wrote the file from katra's own fields, so a key
   added by another tool, or by a newer katra, vanished the first time an older

@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -63,19 +64,19 @@ type Frontmatter struct {
 	Pinned   bool     `yaml:"pinned,omitempty"`
 
 	// Node-model fields (Katra). Empty Type means "entry" for back-compat.
-	Type         string   `yaml:"type,omitempty"`          // "" or "entry" = entry; else task|epic|decision|article
-	Status       string   `yaml:"status,omitempty"`        // task: todo|specced|doing|done|cut ; epic: planned|active|done|cut ; decision: proposed|accepted|superseded|deprecated
-	Spec         string   `yaml:"spec,omitempty"`          // task -> spec artifact ref: a node slug in the katra, else a path relative to the repo root
-	Effort       string   `yaml:"effort,omitempty"`        // XS|S|M|L|XL (see Efforts)
-	Horizon      string   `yaml:"horizon,omitempty"`       // now|next|later
-	Owner        string   `yaml:"owner,omitempty"`         // task/epic -> who answers for it; opaque, katra never resolves it (not the author: git knows that)
-	BlockedBy    []string `yaml:"blocked_by,omitempty"`    // task/epic -> what it waits on: node slugs, or free text for an outside blocker
-	Epic         string   `yaml:"epic,omitempty"`          // task -> parent epic slug
-	Entry        string   `yaml:"entry,omitempty"`         // task/decision -> the entry slug that recorded/occasioned it
-	Closes       []string `yaml:"closes,omitempty"`        // entry -> task slug(s) it completes; consumed at stamp time
-	Advances     []string `yaml:"advances,omitempty"`      // entry -> task slug(s) it moves forward (todo -> doing); a declared edge, not a wikilink suggestion
-	Supersedes   []string `yaml:"supersedes,omitempty"`    // decision chain
-	SupersededBy []string `yaml:"superseded-by,omitempty"` // mirror of supersedes
+	Type         string     `yaml:"type,omitempty"`          // "" or "entry" = entry; else task|epic|decision|article
+	Status       string     `yaml:"status,omitempty"`        // task: todo|specced|doing|done|cut ; epic: planned|active|done|cut ; decision: proposed|accepted|superseded|deprecated
+	Spec         string     `yaml:"spec,omitempty"`          // task -> spec artifact ref: a node slug in the katra, else a path relative to the repo root
+	Effort       string     `yaml:"effort,omitempty"`        // XS|S|M|L|XL (see Efforts)
+	Horizon      string     `yaml:"horizon,omitempty"`       // now|next|later
+	Owner        string     `yaml:"owner,omitempty"`         // task/epic -> who answers for it; opaque, katra never resolves it (not the author: git knows that)
+	BlockedBy    StringList `yaml:"blocked_by,omitempty"`    // task/epic -> what it waits on: node slugs, or free text for an outside blocker
+	Epic         string     `yaml:"epic,omitempty"`          // task -> parent epic slug
+	Entry        string     `yaml:"entry,omitempty"`         // task/decision -> the entry slug that recorded/occasioned it
+	Closes       []string   `yaml:"closes,omitempty"`        // entry -> task slug(s) it completes; consumed at stamp time
+	Advances     []string   `yaml:"advances,omitempty"`      // entry -> task slug(s) it moves forward (todo -> doing); a declared edge, not a wikilink suggestion
+	Supersedes   []string   `yaml:"supersedes,omitempty"`    // decision chain
+	SupersededBy []string   `yaml:"superseded-by,omitempty"` // mirror of supersedes
 
 	// Extra holds every frontmatter key this version of katra does not know,
 	// so that saving a node writes them back instead of erasing them. The
@@ -93,6 +94,36 @@ type Entry struct {
 	Slug string      // filename minus the date prefix and extension
 	FM   Frontmatter // parsed frontmatter
 	Body string      // markdown body (everything after the frontmatter)
+
+	// Unreadable lists frontmatter values whose shape katra cannot hold (a
+	// list where it keeps a string, say). The node still parses and lists
+	// with those fields empty, because one odd file must not make the whole
+	// store unreadable; but it cannot be written back, since writing would
+	// erase the values it could not read. Doctor reports these.
+	Unreadable []string
+}
+
+// StringList is a list key that also accepts a single scalar, the form people
+// naturally hand-write for one item: `blocked_by: other-task` reads as a
+// one-item list. Null or empty reads as no items.
+type StringList []string
+
+// UnmarshalYAML implements yaml.Unmarshaler.
+func (l *StringList) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind == yaml.ScalarNode {
+		if n.Tag == "!!null" || strings.TrimSpace(n.Value) == "" {
+			*l = nil
+		} else {
+			*l = StringList{n.Value}
+		}
+		return nil
+	}
+	var v []string
+	if err := n.Decode(&v); err != nil {
+		return err
+	}
+	*l = v
+	return nil
 }
 
 // Kind returns the node type: FM.Type, or "entry" when empty (back-compat).
@@ -151,7 +182,14 @@ func parseEntryBytes(path string, b []byte) (Entry, error) {
 					rest = nil
 				}
 				if err := yaml.Unmarshal(yamlBlock, &e.FM); err != nil {
-					return e, fmt.Errorf("frontmatter: %w", err)
+					// A type mismatch is an odd value, not a broken file:
+					// yaml.v3 decodes every other field and reports the
+					// mismatches together. Malformed YAML stays an error.
+					var te *yaml.TypeError
+					if !errors.As(err, &te) {
+						return e, fmt.Errorf("frontmatter: %w", err)
+					}
+					e.Unreadable = te.Errors
 				}
 			}
 		}
@@ -162,6 +200,10 @@ func parseEntryBytes(path string, b []byte) (Entry, error) {
 
 // Serialize renders the entry back to file bytes (frontmatter + body).
 func (e Entry) Serialize() ([]byte, error) {
+	if len(e.Unreadable) > 0 {
+		return nil, fmt.Errorf("%s: frontmatter has values katra cannot read (%s) — fix them by hand; rewriting the file would erase them",
+			e.Slug, strings.Join(e.Unreadable, "; "))
+	}
 	y, err := yaml.Marshal(e.FM)
 	if err != nil {
 		return nil, err

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -44,10 +45,13 @@ func PlanInterimTags(nodes []Entry) []TagMigration {
 			continue
 		}
 		m := TagMigration{Node: n}
-		var owners []string
+		var owners, sizes []string
 		for _, t := range n.FM.Tags {
 			if v, ok := cutTag(t, tagOwner); ok {
 				owners = append(owners, v)
+			}
+			if v, ok := cutTag(t, tagSize); ok {
+				sizes = append(sizes, v)
 			}
 		}
 		var kept []string
@@ -85,6 +89,11 @@ func PlanInterimTags(nodes []Entry) []TagMigration {
 				}
 			case hasTagPrefix(t, tagSize):
 				v, _ := cutTag(t, tagSize)
+				if len(sizes) > 1 {
+					m.Skipped = append(m.Skipped, fmt.Sprintf("%q: %d size tags, set the effort by hand", t, len(sizes)))
+					kept = append(kept, t)
+					continue
+				}
 				eff, err := NormalizeEffort(v)
 				if err != nil || eff == "" {
 					m.Skipped = append(m.Skipped, fmt.Sprintf("%q: not on the effort scale (%s)", t, strings.Join(Efforts, "|")))
@@ -187,7 +196,7 @@ func (m TagMigration) Apply() error {
 	var out bytes.Buffer
 	out.Write(b[:first+1])
 	enc := yaml.NewEncoder(&out)
-	enc.SetIndent(4)
+	enc.SetIndent(listIndent(block))
 	if err := enc.Encode(mp); err != nil {
 		return err
 	}
@@ -195,7 +204,44 @@ func (m TagMigration) Apply() error {
 		return err
 	}
 	out.Write(rest)
-	return os.WriteFile(m.Node.Path, out.Bytes(), 0o644)
+
+	// Never write a file katra cannot read back with the values planned.
+	got, err := parseEntryBytes(m.Node.Path, out.Bytes())
+	if err != nil || len(got.Unreadable) > 0 || got.FM.Owner != m.Node.FM.Owner ||
+		got.FM.Effort != m.Node.FM.Effort || strings.Join(got.FM.BlockedBy, "\x00") != strings.Join(m.Node.FM.BlockedBy, "\x00") {
+		return fmt.Errorf("%s: the migrated frontmatter does not read back as planned (%v %v) — file left unchanged", m.Node.Path, err, got.Unreadable)
+	}
+	// Write beside the file and rename over it, so an interrupted run leaves
+	// either the old file or the new one, never half of one.
+	tmp, err := os.CreateTemp(filepath.Dir(m.Node.Path), ".katra-migrate-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name()) // a no-op once renamed
+	if _, err := tmp.Write(out.Bytes()); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if fi, err := os.Stat(m.Node.Path); err == nil {
+		_ = os.Chmod(tmp.Name(), fi.Mode().Perm())
+	}
+	return os.Rename(tmp.Name(), m.Node.Path)
+}
+
+// listIndent returns the indent a frontmatter block uses for list items (the
+// spaces before its first "- "), so a migrated file keeps its own layout.
+// katra writes 4; a hand-written file may use 2.
+func listIndent(block []byte) int {
+	for _, line := range strings.Split(string(block), "\n") {
+		trimmed := strings.TrimLeft(line, " ")
+		if n := len(line) - len(trimmed); n >= 2 && strings.HasPrefix(trimmed, "- ") {
+			return n
+		}
+	}
+	return 4
 }
 
 // mapIndex returns the index of key's key node in a mapping, or -1.
@@ -215,9 +261,14 @@ func setScalar(mp *yaml.Node, key, value string) {
 		return
 	}
 	if i := mapIndex(mp, key); i >= 0 {
-		if mp.Content[i+1].Value != value {
-			mp.Content[i+1].Value = value
+		v := mp.Content[i+1]
+		if v.Kind == yaml.ScalarNode && v.Tag == "!!str" && v.Value == value {
+			return // untouched, so its quoting stays exactly as written
 		}
+		// Replace the node outright. Editing Value alone keeps the old tag,
+		// so an empty (null) key became `owner: !!null craig`, which no
+		// longer parses.
+		mp.Content[i+1] = &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value}
 		return
 	}
 	setNode(mp, key, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value})
