@@ -171,6 +171,9 @@ katra itself:
 - **An unknown frontmatter key is ignored, never an error.** Adding an optional
   key is a safe change. A consumer older than `spec` ignores it and shows the
   task with no reference at all — only the prose written from it is lost.
+  Ignored is not erased: when katra rewrites a node (a status change, a
+  stamp), it writes every key it does not know back with its value, after the
+  ones it does. Comments inside the frontmatter are not kept.
 - **A new status value degrades silently, the same way.** A consumer older
   than `specced` finds it outside every switch it wrote; it must fall into
   whatever default bucket it already has (a `specced` task rendering as

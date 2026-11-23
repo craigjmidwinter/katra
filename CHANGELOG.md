@@ -20,6 +20,13 @@ first release, everything lands under `[Unreleased]`.
   blocked. This changes existing content: see
   [the migration note](docs/components.md#migrating-to-the-opaque-origin-sandbox).
 
+### Fixed
+
+- **Saving a node no longer erases frontmatter keys katra does not know.** A
+  status change or stamp re-wrote the file from katra's own fields, so a key
+  added by another tool, or by a newer katra, vanished the first time an older
+  one touched the file. Unknown keys now round-trip with their values.
+
 ### Added
 
 - **`rawHTML: allow|sanitize`** in `config.yml`. `sanitize` strips raw HTML from

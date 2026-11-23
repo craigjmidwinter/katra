@@ -74,6 +74,15 @@ type Frontmatter struct {
 	Advances     []string `yaml:"advances,omitempty"`      // entry -> task slug(s) it moves forward (todo -> doing); a declared edge, not a wikilink suggestion
 	Supersedes   []string `yaml:"supersedes,omitempty"`    // decision chain
 	SupersededBy []string `yaml:"superseded-by,omitempty"` // mirror of supersedes
+
+	// Extra holds every frontmatter key this version of katra does not know,
+	// so that saving a node writes them back instead of erasing them. The
+	// format promises that an unknown key is ignored (docs/format.md); without
+	// this, "ignored" meant "deleted on the next status change", which loses
+	// another tool's data, or a newer katra's, the first time an older one
+	// touches the file. Keys come back after the known ones, sorted; their
+	// values round-trip, their comments do not.
+	Extra map[string]any `yaml:",inline" json:"-"`
 }
 
 // Entry is one katra post: a markdown file with YAML frontmatter.
